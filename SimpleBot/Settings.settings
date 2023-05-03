@@ -1,0 +1,39 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="SimpleBot" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="GitToken" Type="System.String" Scope="User">
+      <Value Profile="(Default)">42</Value>
+    </Setting>
+    <Setting Name="ObsWebsocketUrl" Type="System.String" Scope="User">
+      <Value Profile="(Default)">ws://192.168.1.17:4455</Value>
+    </Setting>
+    <Setting Name="ObsWebsocketPassword" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TwitchClientId" Type="System.String" Scope="User">
+      <Value Profile="(Default)">a4lltinre0n377a7l8mb4pd3g2odym</Value>
+    </Setting>
+    <Setting Name="TwitchBotUsername" Type="System.String" Scope="User">
+      <Value Profile="(Default)">SimpieBot</Value>
+    </Setting>
+    <Setting Name="TwitchOAuthBot" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\SimpleVar\Desktop\oauth_simpiebot</Value>
+    </Setting>
+    <Setting Name="TwitchOAuth" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\SimpleVar\Desktop\oauth_simplevar</Value>
+    </Setting>
+    <Setting Name="UserDataFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\SimpleVar\Desktop\SimpleBot user data</Value>
+    </Setting>
+    <Setting Name="Channel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">SimpleVar</Value>
+    </Setting>
+    <Setting Name="CommandsPrefix" Type="System.String" Scope="User">
+      <Value Profile="(Default)">!</Value>
+    </Setting>
+    <Setting Name="SneakyJapanRound" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
