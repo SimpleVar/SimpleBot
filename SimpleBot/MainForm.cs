@@ -16,7 +16,7 @@ namespace SimpleBot
 
       bot = new Bot();
       bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;
-      bot.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
+      ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
       _ = bot.Init().ThrowMainThread();
     }
 
@@ -41,12 +41,14 @@ namespace SimpleBot
 
     private void Bot_UpdatedUsersInChat(object sender, EventArgs e)
     {
-      var userInChat = bot._usersInChat.ToArray();
+      var users = ChatActivity.UsersInChat();
       this.Invoke(() =>
       {
         listChatters.Items.Clear();
-        foreach (var user in userInChat)
+        listChatters.SuspendLayout();
+        foreach (var user in users)
           listChatters.Items.Add(user);
+        listChatters.ResumeLayout(true);
       });
     }
   }

@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using TwitchLib.Api.Core.Enums;
+﻿using TwitchLib.Api.Core.Enums;
 using TwitchLib.Api.Core.Exceptions;
 using TwitchLib.Api.Core.HttpCallHandlers;
 using TwitchLib.Api.Core.Interfaces;
@@ -17,6 +16,25 @@ namespace SimpleBot
       Settings.SkipDynamicScopeValidation = settings.SkipDynamicScopeValidation;
       Settings.SkipAutoServerTokenGeneration = settings.SkipAutoServerTokenGeneration;
       Settings.Scopes = settings.Scopes;
+    }
+
+    public async Task<bool> Shoutout(string broadcasterId, string shoutedUserId, string modId, string accessToken = null)
+    {
+      var list = new List<KeyValuePair<string, string>>
+      {
+        new KeyValuePair<string, string>("from_broadcaster_id", broadcasterId),
+        new KeyValuePair<string, string>("to_broadcaster_id", shoutedUserId),
+        new KeyValuePair<string, string>("moderator_id", modId)
+      };
+      try
+      {
+        await TwitchPostAsync("/chat/shoutouts", ApiVersion.Helix, null, list, accessToken).ConfigureAwait(true);
+        return true;
+      }
+      catch (TooManyRequestsException)
+      {
+        return false;
+      }
     }
 
     public Task<TwitchGetFollowsResponse> GetFollowedChannelsAsync(string userId, int first = 100, string after = null, string accessToken = null)

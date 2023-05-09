@@ -17,7 +17,7 @@ namespace SimpleBot
 
     public static event EventHandler<ForegroundWindowData> ForgroundWindowChanged;
 
-    public static void Init(Bot bot)
+    public static void Init()
     {
       if (_thread != null)
         throw new ApplicationException("Init should be called exactly once");
@@ -53,8 +53,8 @@ namespace SimpleBot
             Task.FromException(ex).ThrowMainThread();
           }
         }
-      });
-      _thread.IsBackground = true;
+      })
+      { IsBackground = true };
       _thread.Start();
     }
   }

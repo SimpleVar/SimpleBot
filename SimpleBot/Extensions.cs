@@ -34,31 +34,29 @@ namespace SimpleBot
       };
     }
 
-    public static string ToJson(this object o)
-    {
-      return JsonConvert.SerializeObject(o);
-    }
+    public static string NullIfEmpty(this string s) => string.IsNullOrEmpty(s) ? null : s;
+    public static string NullIfWhiteSpace(this string s) => string.IsNullOrWhiteSpace(s) ? null : s;
+    public static string ToJson(this object o) => JsonConvert.SerializeObject(o);
+    public static T FromJson<T>(this string json) => JsonConvert.DeserializeObject<T>(json);
 
-    public static T FromJson<T>(this string json) where T : class
-    {
-      try
-      {
-        return json == null ? null : JsonConvert.DeserializeObject<T>(json);
-      }
-      catch
-      {
-        return null;
-      }
-    }
+    public static Task NoThrow(this Task task) => task.ContinueWith(t => {});
+    public static Task<T> NoThrow<T>(this Task<T> task, T defaultVal = default) => task.ContinueWith(t => defaultVal);
 
     public static Task ThrowMainThread(this Task task) => task.ContinueWith(t =>
     {
-      if (t.Exception != null) MainForm.Get.Invoke(() => throw t.Exception?.InnerException ?? t.Exception);
+      if (t.Exception != null) MainForm.Get.Invoke(() => {
+        var ex = t.Exception?.InnerException ?? t.Exception;
+        Application.OnThreadException(ex);
+      });
     });
 
     public static Task<T> ThrowMainThread<T>(this Task<T> task) => task.ContinueWith(t =>
     {
-      if (t.Exception != null) MainForm.Get.Invoke(() => throw t.Exception?.InnerException ?? t.Exception);
+      if (t.Exception != null) MainForm.Get.Invoke(() =>
+      {
+        var ex = t.Exception?.InnerException ?? t.Exception;
+        Application.OnThreadException(ex);
+      });
       return t.Result;
     });
   }
