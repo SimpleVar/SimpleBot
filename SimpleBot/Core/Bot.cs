@@ -48,7 +48,7 @@ namespace SimpleBot
     public string CHANNEL_ID { get; private set; }
     public string BOT_ID { get; private set; }
     readonly JoinedChannel _twJC; // fake object with no data for quick TwSendMessage
-    readonly ConcurrentDictionary<string, int> _rewards = new(); // value = count, key = "user_id;reward_id"
+    readonly ConcurrentDictionary<string, int> _redeemCounts = new(); // value = count, key = "user_id;reward_id"
     static string _rewardsKey(string userId, string rewardId) => userId + ";" + rewardId;
     
     public Bot()
@@ -191,7 +191,7 @@ namespace SimpleBot
       cc.ChannelPointsCustomRewardRedemptionAdd += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
-        _rewards.AddOrUpdate(_rewardsKey(ev.UserId, ev.Reward.Id), 1, (k, v) => v + 1);
+        _redeemCounts.AddOrUpdate(_rewardsKey(ev.UserId, ev.Reward.Id), 1, (k, v) => v + 1);
         // handle redeems that have NO input
         switch (ev.Reward.Title)
         {
@@ -473,7 +473,7 @@ namespace SimpleBot
                 TwSendMsg("No such reward", chatter);
                 return;
               }
-              int count = _rewards.TryGetValue(_rewardsKey(chatter.uid, reward.Id), out int v) ? v : 0;
+              int count = _redeemCounts.TryGetValue(_rewardsKey(chatter.uid, reward.Id), out int v) ? v : 0;
               TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
             }).ThrowMainThread();
             return;
