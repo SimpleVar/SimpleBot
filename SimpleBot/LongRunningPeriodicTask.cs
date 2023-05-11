@@ -2,7 +2,7 @@
 {
   internal class LongRunningPeriodicTask
   {
-    readonly Thread _thread;
+    readonly Task _task;
     long _lastPeriodId;
 
     public int DelayMsAfterWork;
@@ -11,11 +11,7 @@
 
     public volatile bool Enabled;
 
-    static void sleep(int delayMs)
-    {
-      if (delayMs > 0)
-        Thread.Sleep(delayMs);
-    }
+    static Task sleep(int delayMs) => delayMs <= 0 ? Task.CompletedTask : Task.Delay(delayMs);
 
     public static LongRunningPeriodicTask Start(long lastPeriodId, bool enabled, int msAfterWork, int msInitial, int msAfterResume, Func<long, Task<int?>> work)
       => new(lastPeriodId, enabled, msAfterWork, msInitial, msAfterResume, work);
@@ -33,26 +29,24 @@
       DelayMsInitial = msInitial;
       DelayMsAfterEnabling = msAfterResume;
       Enabled = enabled;
-      _thread = new Thread(() =>
+      _task = Task.Factory.StartNew(async () =>
       {
-        sleep(DelayMsInitial);
+        await sleep(DelayMsInitial).ConfigureAwait(true);
         while (true)
         {
           if (!Enabled)
           {
             while (!Enabled)
             {
-              Thread.Sleep(1000);
+              await sleep(1000).ConfigureAwait(true);
             }
-            sleep(DelayMsAfterEnabling);
+            await sleep(DelayMsAfterEnabling).ConfigureAwait(true);
           }
           long rid = ++_lastPeriodId;
           int? delay = work(rid).ThrowMainThread().Result;
-          sleep(delay ?? DelayMsAfterWork);
+          await sleep(delay ?? DelayMsAfterWork).ConfigureAwait(true);
         }
-      })
-      { IsBackground = true };
-      _thread.Start();
+      }, TaskCreationOptions.LongRunning).ThrowMainThread();
     }
   }
 }

@@ -7,8 +7,8 @@
     const int MS_ROUND_DURATION = 60000;
     const int MS_AFTER_ROUND = 300000;
     
+    public static LongRunningPeriodicTask _task;
     static readonly object _lock = new();
-    static LongRunningPeriodicTask _task;
     static Bot _bot;
     static long _currentRoundId;
     static bool _currentRoundOpen;
@@ -40,7 +40,7 @@
         }
         // ROUND
         Bot.Log("Starting Sneaky Japan round: " + rid);
-        bot.TwSendMsg($"/me Sneaky Japan is sneaking about! Try " + bot.CMD_PREFIX + "Japan and test your perception to spot it. Hurry! You only have one minute");
+        bot.TwSendMsg($"/me peepoJapan Sneaky Japan is sneaking about! Try " + bot.CMD_PREFIX + "Japan and test your perception to spot it. Hurry! You only have one minute peepoJapan");
         await Task.Delay(MS_ROUND_DURATION);
         var winners = new List<string>();
         int sneakRoll = Rand.R.Next(20) + 1 + 10;

@@ -3,6 +3,7 @@ using TwitchLib.Api.Core.Exceptions;
 using TwitchLib.Api.Core.HttpCallHandlers;
 using TwitchLib.Api.Core.Interfaces;
 using TwitchLib.Api.Core.RateLimiter;
+using TwitchLib.Api.Helix.Models.Chat;
 
 namespace SimpleBot
 {
@@ -18,7 +19,7 @@ namespace SimpleBot
       Settings.Scopes = settings.Scopes;
     }
 
-    public async Task<bool> Shoutout(string broadcasterId, string shoutedUserId, string modId, string accessToken = null)
+    public async Task<bool> Shoutout(string broadcasterId, string modId, string shoutedUserId, string accessToken = null)
     {
       var list = new List<KeyValuePair<string, string>>
       {
@@ -35,6 +36,17 @@ namespace SimpleBot
       {
         return false;
       }
+    }
+
+    public async Task Announce(string broadcasterId, string modId, string announcement, AnnouncementColors color, string accessToken = null)
+    {
+      var list = new List<KeyValuePair<string, string>>
+      {
+        new KeyValuePair<string, string>("broadcaster_id", broadcasterId),
+        new KeyValuePair<string, string>("moderator_id", modId)
+      };
+      var payload = new { message = announcement, color = color.Value }.ToJson();
+      await TwitchPostAsync("/chat/announcements", ApiVersion.Helix, payload, list, accessToken).ConfigureAwait(true);
     }
 
     public Task<TwitchGetFollowsResponse> GetFollowedChannelsAsync(string userId, int first = 100, string after = null, string accessToken = null)

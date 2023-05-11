@@ -10,9 +10,11 @@ using System.Text.RegularExpressions;
 using TwitchLib.Api;
 using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
+using TwitchLib.Api.Helix.Models.Chat;
 using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
+using TwitchLib.Client.Extensions;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
@@ -120,10 +122,12 @@ namespace SimpleBot
       LearnHiragana.Init(this);
       LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, _ =>
       {
-        TwSendMsg(".announceblue Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)");
+        return _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID,
+          "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
+          AnnouncementColors.Blue);
       });
       //var yuli = GetUserId("zulu_gula7").ThrowMainThread().Result;
-      //var res = _twApi_More.Shoutout(CHANNEL_ID, yuli, CHANNEL_ID).Result;
+      //var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, yuli).Result;
 
       bool isVsVisible = false;
       int vsItemId = -1;

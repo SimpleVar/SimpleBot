@@ -13,49 +13,36 @@ namespace SimpleBot
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
 
-    static Thread _thread;
+    public static LongRunningPeriodicTask _task;
 
     public static event EventHandler<ForegroundWindowData> ForgroundWindowChanged;
 
     public static void Init()
     {
-      if (_thread != null)
+      if (_task != null)
         throw new ApplicationException("Init should be called exactly once");
 
-      _thread = new Thread(() =>
+      IntPtr prevHwnd = 0;
+      _task = LongRunningPeriodicTask.Start(0, true, 1000, 0, 0, _ =>
       {
-        IntPtr prevHwnd = 0;
-        while (true)
+        var hwnd = GetForegroundWindow();
+        if (hwnd == prevHwnd)
+          return;
+        GetWindowThreadProcessId(hwnd, out var pid);
+        string name, title;
+        try
         {
-          Thread.Sleep(1000);
-          var hwnd = GetForegroundWindow();
-          if (hwnd == prevHwnd)
-            continue;
-          GetWindowThreadProcessId(hwnd, out var pid);
-          string name, title;
-          try
-          {
-            var p = Process.GetProcessById((int)pid);
-            name = p.ProcessName;
-            title = p.MainWindowTitle;
-          }
-          catch
-          {
-            continue;
-          }
-          prevHwnd = hwnd;
-          try
-          {
-            ForgroundWindowChanged?.Invoke(null, new ForegroundWindowData { procName = name, title = title });
-          }
-          catch (Exception ex)
-          {
-            Task.FromException(ex).ThrowMainThread();
-          }
+          var p = Process.GetProcessById((int)pid);
+          name = p.ProcessName;
+          title = p.MainWindowTitle;
         }
-      })
-      { IsBackground = true };
-      _thread.Start();
+        catch
+        {
+          return;
+        }
+        prevHwnd = hwnd;
+        ForgroundWindowChanged?.Invoke(null, new ForegroundWindowData { procName = name, title = title });
+      });
     }
   }
 }
