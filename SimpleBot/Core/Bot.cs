@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
+using OBSWebsocketDotNet.Types;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
@@ -52,7 +53,9 @@ namespace SimpleBot
     readonly JoinedChannel _twJC; // fake object with no data for quick TwSendMessage
     readonly ConcurrentDictionary<string, int> _redeemCounts = new(); // value = count, key = "user_id;reward_id"
     static string _rewardsKey(string userId, string rewardId) => userId + ";" + rewardId;
-    
+
+    bool _isBrbEnabled;
+
     public Bot()
     {
       _twJC = new JoinedChannel(CHANNEL);
@@ -62,6 +65,7 @@ namespace SimpleBot
         return;
       
       Directory.CreateDirectory(Path.Combine(USER_DATA_FOLDER, "data"));
+      Directory.CreateDirectory(Path.Combine(USER_DATA_FOLDER, "obs_labels"));
       ChatterDataMgr.Load(Path.Combine(USER_DATA_FOLDER, "data\\chatters_data.txt"));
       ChatActivity.Load(Path.Combine(USER_DATA_FOLDER, "data\\chat_activity.txt")); // has IgnoredBotNames
       Quotes.Load(Path.Combine(USER_DATA_FOLDER, "data\\quotes.txt"));
@@ -276,6 +280,7 @@ namespace SimpleBot
         "slowmode" => BotCommandId.SlowMode,
         "title" or "settitle" => BotCommandId.SetTitle,
         "game" or "setgame" => BotCommandId.SetGame,
+        "brb" => BotCommandId.ShowBrb,
         "searchgame" => BotCommandId.SearchGame,
         "count" => BotCommandId.GetCmdCounter,
         "redeems" or "countredeem" or "countredeems" => BotCommandId.GetRedeemCounter,
@@ -397,6 +402,26 @@ namespace SimpleBot
             if (chatter.userLevel < UserLevel.Mod) return;
             ChatActivity.IncCommandCounter(chatter, BotCommandId.SetGame);
             _ = SetGameOrTitle.SetGame(this, chatter, argsStr).ThrowMainThread();
+            return;
+          case BotCommandId.ShowBrb:
+            if (_isBrbEnabled || chatter.userLevel < UserLevel.Vip) return;
+            string brbFile = null;
+            if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
+            {
+              brbFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\brb.txt");
+              File.WriteAllText(brbFile, "BRB");
+            }
+            _obs.SetInputMute("Audio Input Capture", true);
+            _isBrbEnabled = true;
+            _ = Task.Run(async () =>
+            {
+              var p = Cursor.Position;
+              do { await Task.Delay(1000); } while (Cursor.Position == p);
+              if (brbFile != null)
+                File.WriteAllText(brbFile, "");
+              _obs.SetInputMute("Audio Input Capture", false);
+              _isBrbEnabled = false;
+            });
             return;
 
           // COMMON

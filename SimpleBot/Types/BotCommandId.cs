@@ -9,6 +9,7 @@
     SlowModeOff = 130,
     SetTitle = 200,
     SetGame = 210,
+    ShowBrb = 750,
     SearchGame = 1000,
     GetCmdCounter = 1005,
     GetRedeemCounter = 1007,
