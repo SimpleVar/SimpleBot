@@ -54,11 +54,19 @@ namespace SimpleBot
     readonly ConcurrentDictionary<string, int> _redeemCounts = new(); // value = count, key = "user_id;reward_id"
     static string _rewardsKey(string userId, string rewardId) => userId + ";" + rewardId;
 
+#if !DEBUG
+    static string _logFilePath;
+#endif
     bool _isBrbEnabled;
 
     public Bot()
     {
       _twJC = new JoinedChannel(CHANNEL);
+#if !DEBUG
+      _logFilePath = Application.StartupPath + "logs\\";
+      Directory.CreateDirectory(_logFilePath);
+      _logFilePath += $"{DateTime.Now:yyyy_MM_dd}.txt";
+#endif
 
       // Load persistent data
       if (string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
@@ -217,7 +225,11 @@ namespace SimpleBot
 
     public static void Log(string msg)
     {
-      Debug.WriteLine($"[{DateTime.Now}] {msg}");
+      msg = $"[{DateTime.Now.ToLongTimeString()}] {msg}";
+      Debug.WriteLine(msg);
+#if !DEBUG
+      File.AppendAllText(_logFilePath, msg + '\n');
+#endif
     }
 
     public void TwSendMsg(string msg, Chatter tagChatter = null)
