@@ -25,7 +25,7 @@
       _task = LongRunningPeriodicTask.Start(_currentRoundId, true, MS_AFTER_ROUND, MS_BEFORE_FIRST_ROUND, MS_BEFORE_FIRST_ROUND,
         async rid =>
       {
-        if (ChatActivity.GetActiveChatters(TimeSpan.FromMinutes(10), maxChattersNeeded: 1).Count == 0)
+        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 1).Count == 0)
         {
           Bot.Log("Sneaky Japan delayed due to inactive chat");
           await Task.Delay(60000);
@@ -40,12 +40,17 @@
         }
         // ROUND
         Bot.Log("Starting Sneaky Japan round: " + rid);
-        bot.TwSendMsg($"/me peepoJapan Sneaky Japan is sneaking about! Try " + bot.CMD_PREFIX + "Japan and test your perception to spot it. Hurry! You only have one minute peepoJapan");
+        bool extraSneak = ChatActivity.IsUserInChat("soultego");
+        bot.TwSendMsg($"/me peepoJapan {(extraSneak?"VERY ":"")}Sneaky Japan is sneaking about! Try {bot.CMD_PREFIX}Japan and test your perception to spot it. Hurry! You only have one minute peepoJapan");
         await Task.Delay(MS_ROUND_DURATION);
-        var winners = new List<string>();
-        int sneakRoll = Rand.R.Next(20) + 1 + 10;
+        int d20s = extraSneak ? 2 : 1;
+        int japanBuff = 10;
+        int sneakRoll = japanBuff;
+        for (int i = 0; i < d20s; i++)
+          sneakRoll += Rand.R.Next(20) + 1;
         if (Rand.R.Next(100) == 0)
           sneakRoll = 0;
+        var winners = new List<string>();
         lock (_lock)
         {
           _currentRoundOpen = false;
@@ -74,11 +79,11 @@
           }
         }
         if (winners.Count == 0)
-          bot.TwSendMsg("/me This Japan was much too sneaky and could not be found by anyone D:");
+          bot.TwSendMsg("/me peepoJapan This Japan was much too sneaky and could not be found by anyone D:");
         else
         {
           var winnersText = winners.Count == 1 ? winners[0] : winners.Count + " pro gamers!";
-          bot.TwSendMsg($"/me This Japan wasn't sneaky enough and with brilliant observation was spotted by {winnersText} Clap The sneak roll was {sneakRoll}{(sneakRoll == 0 ? " LUL" : "")}");
+          bot.TwSendMsg($"/me peepoJapan This Japan wasn't sneaky enough and with brilliant observation was spotted by {winnersText} Clap The sneak roll was {d20s}d20+{japanBuff} = {sneakRoll}{(sneakRoll == 0 ? " LUL" : "")}");
         }
       });
     }

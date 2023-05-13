@@ -131,6 +131,14 @@ namespace SimpleBot
       }
     }
 
+    public static bool IsUserInChat(string canonicalName)
+    {
+      lock (_lock)
+      {
+        return _usersInChat.Contains(canonicalName);
+      }
+    }
+
     public static string[] UsersInChat()
     {
       lock (_lock)
