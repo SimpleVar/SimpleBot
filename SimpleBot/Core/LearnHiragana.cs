@@ -7,7 +7,7 @@
     public static void Init(Bot bot)
     {
 #if DEBUG
-      //return;
+      return;
 #endif
       _task = LongRunningPeriodicTask.Start(0, false, 60000, 3000, 10000, async rid =>
       {

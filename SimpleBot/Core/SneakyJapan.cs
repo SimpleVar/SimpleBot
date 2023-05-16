@@ -2,8 +2,7 @@
 {
   static class SneakyJapan
   {
-    // TODO configurable via command loaded settings:
-    const int MS_BEFORE_FIRST_ROUND = 3000;
+    const int MS_BEFORE_FIRST_ROUND = 32000;
     const int MS_ROUND_DURATION = 60000;
     const int MS_AFTER_ROUND = 300000;
     
@@ -83,7 +82,7 @@
         else
         {
           var winnersText = winners.Count == 1 ? winners[0] : winners.Count + " pro gamers!";
-          bot.TwSendMsg($"/me peepoJapan This Japan wasn't sneaky enough and with brilliant observation was spotted by {winnersText} Clap The sneak roll was {d20s}d20+{japanBuff} = {sneakRoll}{(sneakRoll == 0 ? " LUL" : "")}");
+          bot.TwSendMsg($"/me peepoJapan This Japan wasn't sneaky enough and with brilliant observation was spotted by {winnersText} Clap The sneak roll was {sneakRoll}{(sneakRoll == 0 ? " LUL" : "")}");
         }
       });
     }

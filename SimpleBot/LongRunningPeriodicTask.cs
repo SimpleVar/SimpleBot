@@ -2,7 +2,7 @@
 {
   internal class LongRunningPeriodicTask
   {
-    readonly Task _task;
+    public readonly Task _task;
     long _lastPeriodId;
 
     public int DelayMsAfterWork;

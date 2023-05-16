@@ -76,6 +76,7 @@ namespace SimpleBot
       Directory.CreateDirectory(Path.Combine(USER_DATA_FOLDER, "obs_labels"));
       ChatterDataMgr.Load(Path.Combine(USER_DATA_FOLDER, "data\\chatters_data.txt"));
       ChatActivity.Load(Path.Combine(USER_DATA_FOLDER, "data\\chat_activity.txt")); // has IgnoredBotNames
+      ViewersQueue.Load(Path.Combine(USER_DATA_FOLDER, "data\\viewers_queue.txt"));
       Quotes.Load(Path.Combine(USER_DATA_FOLDER, "data\\quotes.txt"));
     }
 
@@ -297,6 +298,14 @@ namespace SimpleBot
         "count" => BotCommandId.GetCmdCounter,
         "redeems" or "countredeem" or "countredeems" => BotCommandId.GetRedeemCounter,
         "followage" => BotCommandId.FollowAge,
+        "curr" or "current" => BotCommandId.Queue_Curr,
+        "next" => BotCommandId.Queue_Next,
+        "queue" => BotCommandId.Queue_All,
+        "clear" => BotCommandId.Queue_Clear,
+        "join" => BotCommandId.Queue_Join,
+        "leave" => BotCommandId.Queue_Leave,
+        "close" or "closequeue" => BotCommandId.Queue_Close,
+        "open" or "openqueue" => BotCommandId.Queue_Open,
         "japan" => BotCommandId.SneakyJapan,
         "japanstats" => BotCommandId.SneakyJapan_Stats,
         "coin" or "coinflip" => BotCommandId.CoinFlip,
@@ -356,14 +365,6 @@ namespace SimpleBot
         var cmd = args[0][CMD_PREFIX.Length..].ToLowerInvariant();
         args.RemoveAt(0);
         var argsStr = string.Join(' ', args);
-
-        if (cmd == "dbgsave")
-        {
-          ChatterDataMgr.ForceSave();
-          TwSendMsg("hmmmmkay");
-          return;
-        }
-
         BotCommandId cid = ParseCommandId(cmd);
 
         // TODO make req. user levels a user pref
@@ -418,6 +419,7 @@ namespace SimpleBot
           case BotCommandId.ShowBrb:
             if (_isBrbEnabled || chatter.userLevel < UserLevel.Vip) return;
             string brbFile = null;
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.ShowBrb);
             if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
             {
               brbFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\brb.txt");
@@ -498,6 +500,7 @@ namespace SimpleBot
             return;
           case BotCommandId.GetRedeemCounter:
             return; // TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.GetRedeemCounter);
             if (args.Count == 0)
             {
               TwSendMsg("Specify a reward title", chatter);
@@ -517,6 +520,38 @@ namespace SimpleBot
               int count = _redeemCounts.TryGetValue(_rewardsKey(chatter.uid, reward.Id), out int v) ? v : 0;
               TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
             }).ThrowMainThread();
+            return;
+          case BotCommandId.Queue_Curr:
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);
+            ViewersQueue.Curr(this, chatter);
+            return;
+          case BotCommandId.Queue_Next:
+            if (chatter.userLevel != UserLevel.Streamer) return;
+            ViewersQueue.Next(this);
+            return;
+          case BotCommandId.Queue_All:
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_All);
+            ViewersQueue.All(this, chatter);
+            return;
+          case BotCommandId.Queue_Clear:
+            if (chatter.userLevel != UserLevel.Streamer) return;
+            ViewersQueue.Clear(this);
+            return;
+          case BotCommandId.Queue_Join:
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Join);
+            ViewersQueue.Join(this, chatter, args.FirstOrDefault());
+            return;
+          case BotCommandId.Queue_Leave:
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Leave);
+            ViewersQueue.Leave(this, chatter);
+            return;
+          case BotCommandId.Queue_Close:
+            if (chatter.userLevel != UserLevel.Streamer) return;
+            ViewersQueue.Close(this);
+            return;
+          case BotCommandId.Queue_Open:
+            if (chatter.userLevel != UserLevel.Streamer) return;
+            ViewersQueue.Open(this);
             return;
           case BotCommandId.SneakyJapan:
             ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan);
@@ -585,16 +620,18 @@ namespace SimpleBot
             return;
           case BotCommandId.LearnHiragana:
             if (chatter.userLevel < UserLevel.Vip) return;
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.LearnHiragana);
             if (args.Count == 0 || !(args[0] is "on" or "off"))
             {
               TwSendMsg("Expected a parameter 'on' or 'off'", chatter);
               return;
             }
-            LearnHiragana._task.Enabled = args[0] == "off";
+            LearnHiragana._task.Enabled = args[0] == "on";
             TwSendMsg("SeemsGood", chatter);
             return;
           case BotCommandId.GetChessRatings:
             {
+              ChatActivity.IncCommandCounter(chatter, BotCommandId.GetChessRatings);
               var targetName = args.FirstOrDefault()?.CleanUsername() ?? chatter.DisplayName;
               bool found = false;
               try
