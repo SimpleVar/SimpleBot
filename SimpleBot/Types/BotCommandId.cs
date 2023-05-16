@@ -1,6 +1,6 @@
 ﻿namespace SimpleBot
 {
-  // NOTE: THESE VALUES MUST BE SET IN STONE
+  // NOTE: THESE VALUES MUST BE SET IN STONE (for counting uses per user)
   enum BotCommandId : int
   {
     AddIgnoredBot = 100,

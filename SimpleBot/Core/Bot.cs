@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
-using OBSWebsocketDotNet.Types;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
@@ -15,7 +14,6 @@ using TwitchLib.Api.Helix.Models.Chat;
 using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
-using TwitchLib.Client.Extensions;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
@@ -217,6 +215,7 @@ namespace SimpleBot
             break;
           case "Japan":
           case "Japan!!":
+            // TODO add some buff to next Sneaky Japan roll
             TwSendMsg("Japan, baby!!");
             break;
         }
@@ -367,10 +366,9 @@ namespace SimpleBot
         var argsStr = string.Join(' ', args);
         BotCommandId cid = ParseCommandId(cmd);
 
-        // TODO make req. user levels a user pref
-        // TODO make cmd names/aliases a user pref
         // TODO song requests
         // TODO !worship
+        // TODO commands that change the scene like !bigcam
         switch (cid)
         {
           // MOD
@@ -528,6 +526,7 @@ namespace SimpleBot
           case BotCommandId.Queue_Next:
             if (chatter.userLevel != UserLevel.Streamer) return;
             ViewersQueue.Next(this);
+            _ = e.ChatMessage.Hide(this);
             return;
           case BotCommandId.Queue_All:
             ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_All);
@@ -536,6 +535,7 @@ namespace SimpleBot
           case BotCommandId.Queue_Clear:
             if (chatter.userLevel != UserLevel.Streamer) return;
             ViewersQueue.Clear(this);
+            _ = e.ChatMessage.Hide(this);
             return;
           case BotCommandId.Queue_Join:
             ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Join);
@@ -548,14 +548,17 @@ namespace SimpleBot
           case BotCommandId.Queue_Close:
             if (chatter.userLevel != UserLevel.Streamer) return;
             ViewersQueue.Close(this);
+            _ = e.ChatMessage.Hide(this);
             return;
           case BotCommandId.Queue_Open:
             if (chatter.userLevel != UserLevel.Streamer) return;
             ViewersQueue.Open(this);
+            _ = e.ChatMessage.Hide(this);
             return;
           case BotCommandId.SneakyJapan:
             ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan);
             SneakyJapan.Japan(chatter);
+            _ = e.ChatMessage.Hide(this);
             return;
           case BotCommandId.SneakyJapan_Stats:
             {
@@ -699,42 +702,35 @@ namespace SimpleBot
     private bool tryModCommand(string cmd, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr)
     {
       // TODO persist commands
-      bool shouldTagChatter = false;
       string twFormat;
       switch (cmd)
       {
         case "weather":
-          if (string.IsNullOrWhiteSpace(argsStr))
-          {
-            TwSendMsg("Missing input, try " + CMD_PREFIX + "weather Osaka Japan");
-            return true;
-          }
-          shouldTagChatter = true;
           twFormat = "$(fetch https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/$(input)/today?unitGroup=metric&include=current&key=RK7YNMRSS664ZJZXWJHZZTF8W&contentType=json)"
-                   + "Weather at $(res.resolvedAddress) - $(res.currentConditions.conditions) | humidity $(res.currentConditions.humidity)% | temp $(res.currentConditions.temp)°C | feels $(res.currentConditions.feelslike)°C";
+                   + "@$(user) Weather at $(res.resolvedAddress) - $(res.currentConditions.conditions) | humidity $(res.currentConditions.humidity)% | temp $(res.currentConditions.temp)°C | feels $(res.currentConditions.feelslike)°C";
           break;
         case "hug": twFormat = "$(user) is hugging $(target) and its very wholesome..."; break;
         case "time": twFormat = CHANNEL + "'s time is $(time)"; break;
         case "winner": twFormat = "$(randomChatter) won, horrah!"; break;
         case "kate": twFormat = "$(fetch https://twitch.center/customapi/quote?token=767931e8&data=$(input))"; break;
         // TODO $(calc stuff)
-        //case "f2c": twFormat = "$(arg0)°F = $(calc ($arg0-32)*5/9)°C"; break;
+        //case "f2c": twFormat = "$(arg0)°F = $(calc ($(arg0)-32)*5/9)°C"; break;
         case "c2f":
           {
-            var deg = float.TryParse(args[0], out float x) ? x : 0;
+            var deg = float.TryParse(formatResponseText("$(arg0)", msgData, chatter, args, argsStr), out float x) ? x : 0;
             twFormat = $"{deg}°C = {deg * 9.0f / 5 + 32:F1}°F";
             break;
           }
         case "f2c":
           {
-            var deg = float.TryParse(args[0], out float x) ? x : 0;
+            var deg = float.TryParse(formatResponseText("$(arg0)", msgData, chatter, args, argsStr), out float x) ? x : 0;
             twFormat = $"{deg}°C = {(deg - 32) * 5.0f / 9:F1}°F";
             break;
           }
         default: return false;
       }
 
-      TwSendMsg(formatResponseText(twFormat, msgData, chatter, args, argsStr), shouldTagChatter ? chatter : null);
+      TwSendMsg(formatResponseText(twFormat, msgData, chatter, args, argsStr));
       return true;
     }
 
@@ -872,9 +868,19 @@ namespace SimpleBot
         }
         // built-in particles (case insensitive)
         particle = particle.ToLowerInvariant();
-        return particle switch
+        var rep = particle switch
         {
           "input" or "args" => argsStr,
+          "arg0" => args.Count > 0 ? args[0] : "",
+          "arg1" => args.Count > 1 ? args[1] : "",
+          "arg2" => args.Count > 2 ? args[2] : "",
+          "arg3" => args.Count > 3 ? args[3] : "",
+          "arg4" => args.Count > 4 ? args[4] : "",
+          "arg5" => args.Count > 5 ? args[5] : "",
+          "arg6" => args.Count > 6 ? args[6] : "",
+          "arg7" => args.Count > 7 ? args[7] : "",
+          "arg8" => args.Count > 8 ? args[8] : "",
+          "arg9" => args.Count > 9 ? args[9] : "",
           "name" or "user" => chatter.DisplayName,
           "user_id" => GetUserId(chatter.name).Result,
           "target" => args.FirstOrDefault()?.CleanUsername() ?? "<no target>",
@@ -883,6 +889,7 @@ namespace SimpleBot
           "fetch" => "<invalid fetch usage>",
           _ => m.Value, // original particle text e.g. '$unreal.42'
         };
+        return string.IsNullOrWhiteSpace(rep) ? "null" : rep; // shouldn't return an actual null here
       });
     }
 
