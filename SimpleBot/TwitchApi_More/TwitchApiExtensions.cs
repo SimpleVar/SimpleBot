@@ -1,5 +1,4 @@
 ﻿using TwitchLib.Api.Helix.Models.Common;
-using TwitchLib.Client.Extensions;
 using TwitchLib.Client.Models;
 
 namespace SimpleBot
@@ -17,10 +16,10 @@ namespace SimpleBot
     public static UserLevel GetUserLevel(this ChatMessage msg)
     {
       if (msg.IsBroadcaster) return UserLevel.Streamer;
-      if (msg.IsModerator) return UserLevel.Mod;
-      if (msg.IsVip) return UserLevel.Vip;
-      if (msg.IsSubscriber) return UserLevel.Sub;
-      return UserLevel.None;
+      if (msg.IsModerator) return UserLevel.Moderator;
+      if (msg.IsVip) return UserLevel.VIP;
+      if (msg.IsSubscriber) return UserLevel.Subscriber;
+      return UserLevel.Normal;
     }
 
     public static async Task<List<U>> AggregatePages<T, U>(Func<string, Task<T>> req, Func<T, Pagination> pageFn, Func<T, U[]> dataFn)

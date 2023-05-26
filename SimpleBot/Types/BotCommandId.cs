@@ -1,7 +1,7 @@
 ﻿namespace SimpleBot
 {
   // NOTE: THESE VALUES MUST BE SET IN STONE (for counting uses per user)
-  enum BotCommandId : int
+  enum BotCommandId : long
   {
     AddIgnoredBot = 100,
     RemoveIgnoredBot = 110,
@@ -9,6 +9,9 @@
     SlowModeOff = 130,
     SetTitle = 200,
     SetGame = 210,
+    AddCustomCommand = 300,
+    DelCustomCommand = 301,
+    EditCustomCommand = 302,
     ShowBrb = 750,
     SearchGame = 1000,
     GetCmdCounter = 1005,

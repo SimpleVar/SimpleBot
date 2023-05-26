@@ -2,10 +2,10 @@
 {
   enum UserLevel
   {
-    None,
-    Sub,
-    Vip,
-    Mod,
+    Normal,
+    Subscriber,
+    VIP,
+    Moderator,
     Streamer,
   }
 }

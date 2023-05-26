@@ -30,6 +30,7 @@ namespace SimpleBot
     public readonly string CHANNEL = Settings.Default.Channel;
     public readonly string BOT_NAME = Settings.Default.TwitchBotUsername;
     public readonly string USER_DATA_FOLDER = Settings.Default.UserDataFolder;
+    // There is an implicit assumption that CMD_PREFIX begins with a non-alphanumeric char
 #if DEBUG
     public readonly string CMD_PREFIX = "!" + Settings.Default.CommandsPrefix;
 #else
@@ -78,6 +79,8 @@ namespace SimpleBot
       ChatActivity.Load(Path.Combine(USER_DATA_FOLDER, "data\\chat_activity.txt")); // has IgnoredBotNames
       ViewersQueue.Load(Path.Combine(USER_DATA_FOLDER, "data\\viewers_queue.txt"));
       Quotes.Load(Path.Combine(USER_DATA_FOLDER, "data\\quotes.txt"));
+      LoadCustomCommands(Path.Combine(USER_DATA_FOLDER, "data\\custom_commands.txt"));
+      _saveCustomCommands();
     }
 
     bool _init = false;
@@ -201,11 +204,15 @@ namespace SimpleBot
         ).ThrowMainThread().ConfigureAwait(true);
         //Debug.WriteLine(res.ToJson());
       };
+      int ccReconnectTime = 1000;
       cc.WebsocketDisconnected += async (o , e)=>
       {
-        // TODO Don't do this in production. You should implement a better reconnect strategy with exponential backoff
         while (!await cc.ReconnectAsync())
-          await Task.Delay(1000);
+        {
+          await Task.Delay(ccReconnectTime);
+          if (ccReconnectTime < 300000)
+            ccReconnectTime *= 2;
+        }
       };
       cc.ChannelPointsCustomRewardRedemptionAdd += (o, e) =>
       {
@@ -286,7 +293,7 @@ namespace SimpleBot
       await _twApi.Helix.Chat.UpdateChatSettingsAsync(CHANNEL_ID, CHANNEL_ID, settings).ConfigureAwait(true);
     }
 
-    public static BotCommandId ParseCommandId(string cmd)
+    public static BotCommandId ParseBuiltinCommandId(string cmd)
     {
       // TODO 2-way dicts and !commands
       var cid = cmd switch
@@ -297,6 +304,9 @@ namespace SimpleBot
         "slowmode" => BotCommandId.SlowMode,
         "title" or "settitle" => BotCommandId.SetTitle,
         "game" or "setgame" => BotCommandId.SetGame,
+        "addcmd" or "addcommand" or "addcom" => BotCommandId.AddCustomCommand,
+        "delcmd" or "delcommand" or "delcom" => BotCommandId.DelCustomCommand,
+        "editcmd" or "editcommand" or "editcom" => BotCommandId.EditCustomCommand,
         "brb" => BotCommandId.ShowBrb,
         "searchgame" => BotCommandId.SearchGame,
         "count" => BotCommandId.GetCmdCounter,
@@ -324,10 +334,6 @@ namespace SimpleBot
         "elo" or "rating" => BotCommandId.GetChessRatings,
         _ => (BotCommandId)(-1),
       };
-      if (cid < 0)
-      {
-        // TODO customs
-      }
       return cid;
     }
 
@@ -367,395 +373,497 @@ namespace SimpleBot
 
       // commands
       var args = msg.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
-      if (args.Count > 0 && args[0].StartsWith(CMD_PREFIX))
+      if (args.Count <= 0 || !args[0].StartsWith(CMD_PREFIX))
+        return;
+      var cmd = args[0][CMD_PREFIX.Length..].ToLowerInvariant();
+      args.RemoveAt(0);
+      var argsStr = string.Join(' ', args);
+      BotCommandId cid = ParseBuiltinCommandId(cmd);
+
+      // TODO song requests
+      // TODO !worship
+      // TODO commands that change the scene like !bigcam
+      switch (cid)
       {
-        var cmd = args[0][CMD_PREFIX.Length..].ToLowerInvariant();
-        args.RemoveAt(0);
-        var argsStr = string.Join(' ', args);
-        BotCommandId cid = ParseCommandId(cmd);
+        // MOD
+        case BotCommandId.AddIgnoredBot:
+        case BotCommandId.RemoveIgnoredBot:
+          if (chatter.userLevel < UserLevel.Moderator) return;
+          if (args.Count == 0) return;
+          bool isAdding = cid == BotCommandId.AddIgnoredBot;
+          ChatActivity.IncCommandCounter(chatter, isAdding ? BotCommandId.AddIgnoredBot : BotCommandId.RemoveIgnoredBot);
+          var botNames = args.Select(x => x.CleanUsername().CanonicalUsername()).ToArray();
+          int changed = isAdding ? ChatActivity.AddIgnoredBot(botNames) : ChatActivity.RemoveIgnoredBot(botNames);
+          int existed = botNames.Length - changed;
+          string response = changed + " names " + (isAdding ? "added to" : "removed from") + " ignore list";
+          if (isAdding && existed != 0)
+            response += ", " + existed + " were already ignored";
+          response += ". Total ignores: " + ChatActivity.GetIgnoredBotsCount();
+          TwSendMsg(response, chatter);
+          return;
+        case BotCommandId.SlowModeOff:
+          bool slowmode;
+          args.Insert(0, "off");
+          goto case BotCommandId.SlowMode;
+        case BotCommandId.SlowMode:
+          if (chatter.userLevel < UserLevel.Moderator) return;
+          slowmode = args.FirstOrDefault()?.ToLowerInvariant() != "off";
+          ChatActivity.IncCommandCounter(chatter, slowmode ? BotCommandId.SlowMode : BotCommandId.SlowModeOff);
+          _ = ChangeChatSettings(s =>
+          {
+            s.SlowModeWaitTime = 3;
+            s.SlowMode = slowmode;
+            s.EmoteMode = slowmode;
+            s.FollowerMode = slowmode;
+            s.SubscriberMode = slowmode;
+          }).ThrowMainThread();
+          return;
+        case BotCommandId.SetTitle:
+          if (chatter.userLevel < UserLevel.Moderator) return;
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SetTitle);
+          _ = SetGameOrTitle.SetTitle(this, chatter, argsStr).ThrowMainThread();
+          return;
+        case BotCommandId.SetGame:
+          if (chatter.userLevel < UserLevel.Moderator) return;
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SetGame);
+          _ = SetGameOrTitle.SetGame(this, chatter, argsStr).ThrowMainThread();
+          return;
+        case BotCommandId.AddCustomCommand:
+          {
+            if (chatter.userLevel < UserLevel.Moderator) return;
+            if (args.Count < 1) return;
+            if (args.Count < 2)
+            {
+              TwSendMsg($"Missing response, example usage: {CMD_PREFIX}{cmd} hi Hello $(user)", chatter);
+              return;
+            }
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.AddCustomCommand);
+            string customCmd = args[0];
+            if (customCmd.StartsWith(CMD_PREFIX))
+              customCmd = customCmd[CMD_PREFIX.Length..];
+            if (!char.IsLetterOrDigit(customCmd.FirstOrDefault()))
+            {
+              TwSendMsg("Custom command must begin with letter or digit", chatter);
+              return;
+            }
+            var res = AddCustomCommand(customCmd, argsStr[(args[0].Length + 1)..], chatter)
+              ? $"Added command {customCmd} SeemsGood" : $"The command {customCmd} already exists";
+            TwSendMsg(res, chatter);
+            return;
+          }
+        case BotCommandId.DelCustomCommand:
+          {
+            if (chatter.userLevel < UserLevel.Moderator) return;
+            if (args.Count < 1) return;
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.DelCustomCommand);
+            string customCmd = args[0];
+            if (customCmd.StartsWith(CMD_PREFIX))
+              customCmd = customCmd[CMD_PREFIX.Length..];
+            if (!char.IsLetterOrDigit(customCmd.FirstOrDefault()))
+            {
+              TwSendMsg("Custom command must begin with letter or digit", chatter);
+              return;
+            }
+            var res = DelCustomCommand(customCmd, chatter)
+              ? $"Deleted command {customCmd} SeemsGood" : $"The command {customCmd} does not exist";
+            TwSendMsg(res, chatter);
+            return;
+          }
+        case BotCommandId.EditCustomCommand:
+          {
+            if (chatter.userLevel < UserLevel.Moderator) return;
+            if (args.Count < 1) return;
+            if (args.Count < 2)
+            {
+              TwSendMsg($"Missing response, example usage: {CMD_PREFIX}{cmd} hi Hello $(user)", chatter);
+              return;
+            }
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.EditCustomCommand);
+            string customCmd = args[0];
+            if (customCmd.StartsWith(CMD_PREFIX))
+              customCmd = customCmd[CMD_PREFIX.Length..];
+            if (!char.IsLetterOrDigit(customCmd.FirstOrDefault()))
+            {
+              TwSendMsg("Custom command must begin with letter or digit", chatter);
+              return;
+            }
+            var res = EditCustomCommand(customCmd, argsStr[(args[0].Length + 1)..], chatter)
+              ? $"Edited command {customCmd} SeemsGood" : $"The command {customCmd} does not exists";
+            TwSendMsg(res, chatter);
+            return;
+          }
+        case BotCommandId.ShowBrb:
+          if (_isBrbEnabled || chatter.userLevel < UserLevel.VIP) return;
+          string brbFile = null;
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.ShowBrb);
+          if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
+          {
+            brbFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\brb.txt");
+            File.WriteAllText(brbFile, "BRB");
+          }
+          _obs.SetInputMute("Audio Input Capture", true);
+          _isBrbEnabled = true;
+          _ = Task.Run(async () =>
+          {
+            var p = Cursor.Position;
+            do { await Task.Delay(1000); } while (Cursor.Position == p);
+            if (brbFile != null)
+              File.WriteAllText(brbFile, "");
+            _obs.SetInputMute("Audio Input Capture", false);
+            _isBrbEnabled = false;
+          });
+          return;
 
-        // TODO song requests
-        // TODO !worship
-        // TODO commands that change the scene like !bigcam
-        switch (cid)
-        {
-          // MOD
-          case BotCommandId.AddIgnoredBot:
-          case BotCommandId.RemoveIgnoredBot:
-            if (chatter.userLevel < UserLevel.Mod) return;
+        // COMMON
+        case BotCommandId.SearchGame:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SearchGame);
+          _ = SetGameOrTitle.SearchGame(this, chatter, argsStr).ThrowMainThread();
+          return;
+        case BotCommandId.GetCmdCounter:
+          {
             if (args.Count == 0) return;
-            bool isAdding = cid == BotCommandId.AddIgnoredBot;
-            ChatActivity.IncCommandCounter(chatter, isAdding ? BotCommandId.AddIgnoredBot : BotCommandId.RemoveIgnoredBot);
-            var botNames = args.Select(x => x.CleanUsername().CanonicalUsername()).ToArray();
-            int changed = isAdding ? ChatActivity.AddIgnoredBot(botNames) : ChatActivity.RemoveIgnoredBot(botNames);
-            int existed = botNames.Length - changed;
-            string response = changed + " names " + (isAdding ? "added to" : "removed from") + " ignore list";
-            if (isAdding && existed != 0)
-              response += ", " + existed + " were already ignored";
-            response += ". Total ignores: " + ChatActivity.GetIgnoredBotsCount();
-            TwSendMsg(response, chatter);
-            return;
-          case BotCommandId.SlowModeOff:
-            bool slowmode;
-            args.Insert(0, "off");
-            goto case BotCommandId.SlowMode;
-          case BotCommandId.SlowMode:
-            if (chatter.userLevel < UserLevel.Mod) return;
-            slowmode = args.FirstOrDefault()?.ToLowerInvariant() != "off";
-            ChatActivity.IncCommandCounter(chatter, slowmode ? BotCommandId.SlowMode : BotCommandId.SlowModeOff);
-            _ = ChangeChatSettings(s =>
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.GetCmdCounter);
+            string targetCmdName = args[0];
+            if (targetCmdName.StartsWith(CMD_PREFIX))
+              targetCmdName = targetCmdName[CMD_PREFIX.Length..];
+            BotCommandId targetCid = ParseBuiltinCommandId(targetCmdName.ToLowerInvariant());
+            if (targetCid < 0)
             {
-              s.SlowModeWaitTime = 3;
-              s.SlowMode = slowmode;
-              s.EmoteMode = slowmode;
-              s.FollowerMode = slowmode;
-              s.SubscriberMode = slowmode;
-            }).ThrowMainThread();
-            return;
-          case BotCommandId.SetTitle:
-            if (chatter.userLevel < UserLevel.Mod) return;
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.SetTitle);
-            _ = SetGameOrTitle.SetTitle(this, chatter, argsStr).ThrowMainThread();
-            return;
-          case BotCommandId.SetGame:
-            if (chatter.userLevel < UserLevel.Mod) return;
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.SetGame);
-            _ = SetGameOrTitle.SetGame(this, chatter, argsStr).ThrowMainThread();
-            return;
-          case BotCommandId.ShowBrb:
-            if (_isBrbEnabled || chatter.userLevel < UserLevel.Vip) return;
-            string brbFile = null;
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.ShowBrb);
-            if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
-            {
-              brbFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\brb.txt");
-              File.WriteAllText(brbFile, "BRB");
+              TwSendMsg($"No counter for {targetCmdName}", chatter);
+              return;
             }
-            _obs.SetInputMute("Audio Input Capture", true);
-            _isBrbEnabled = true;
-            _ = Task.Run(async () =>
+            Chatter targetChatter = chatter;
+            if (args.Count > 1)
             {
-              var p = Cursor.Position;
-              do { await Task.Delay(1000); } while (Cursor.Position == p);
-              if (brbFile != null)
-                File.WriteAllText(brbFile, "");
-              _obs.SetInputMute("Audio Input Capture", false);
-              _isBrbEnabled = false;
-            });
-            return;
-
-          // COMMON
-          case BotCommandId.SearchGame:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.SearchGame);
-            _ = SetGameOrTitle.SearchGame(this, chatter, argsStr).ThrowMainThread();
-            return;
-          case BotCommandId.GetCmdCounter:
-            {
-              if (args.Count == 0) return;
-              ChatActivity.IncCommandCounter(chatter, BotCommandId.GetCmdCounter);
-              string targetCmdName = args[0];
-              if (targetCmdName.StartsWith(CMD_PREFIX))
-                targetCmdName = targetCmdName[CMD_PREFIX.Length..];
-              BotCommandId targetCid = ParseCommandId(targetCmdName.ToLowerInvariant());
-              if (targetCid < 0)
+              var targetName = args[1].CleanUsername();
+              targetChatter = ChatterDataMgr.GetOrNull(targetName.CanonicalUsername());
+              if (targetChatter == null)
               {
-                TwSendMsg($"No such command '{targetCmdName}'", chatter);
+                TwSendMsg("Who the fuck is " + targetName, chatter);
                 return;
               }
-              Chatter targetChatter = chatter;
-              if (args.Count > 1)
-              {
-                var targetName = args[1].CleanUsername();
-                targetChatter = ChatterDataMgr.GetOrNull(targetName.CanonicalUsername());
-                if (targetChatter == null)
-                {
-                  TwSendMsg("Who the fuck is " + targetName, chatter);
-                  return;
-                }
-              }
-              var counter = targetChatter.GetCmdCounter(targetCid);
-              var whoStr = chatter == targetChatter ? "You" : "The user " + targetChatter.DisplayName;
-              TwSendMsg($"{whoStr} used the command '{targetCmdName}' {counter} time{(counter == 1 ? "" : "s")}", chatter);
-              return;
             }
-          case BotCommandId.FollowAge:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.FollowAge);
-            Task.Run(async () =>
-            {
-              string tagUser = chatter.DisplayName;
-              string uid = chatter.uid;
-              if (args.Count > 0)
-              {
-                tagUser = args[0].CleanUsername();
-                uid = await GetUserId(tagUser.CanonicalUsername()).ConfigureAwait(true);
-                if (uid == null)
-                {
-                  TwSendMsg("User not found: " + tagUser, chatter);
-                  return;
-                }
-              }
-              var res = await _twApi_More.GetAllFollowers(uid, CHANNEL_ID).ConfigureAwait(true);
-              if (res.Count == 0)
-                TwSendMsg(tagUser + " is not following D:");
-              else
-              {
-                var dur = DateTime.UtcNow.Subtract(DateTime.Parse(res[0].followed_at));
-                TwSendMsg(tagUser + " is following for " + dur.Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
-              }
-            }).ThrowMainThread();
+            var counter = targetChatter.GetCmdCounter(targetCid);
+            var whoStr = chatter == targetChatter ? "You" : "The user " + targetChatter.DisplayName;
+            TwSendMsg($"{whoStr} used the command '{targetCmdName}' {counter} time{(counter == 1 ? "" : "s")}", chatter);
             return;
-          case BotCommandId.WatchTime:
+          }
+        case BotCommandId.FollowAge:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.FollowAge);
+          Task.Run(async () =>
+          {
+            string tagUser = chatter.DisplayName;
+            string uid = chatter.uid;
+            if (args.Count > 0)
             {
-              ChatActivity.IncCommandCounter(chatter, BotCommandId.WatchTime);
-              Chatter target = chatter;
-              if (args.Count > 0)
+              tagUser = args[0].CleanUsername();
+              uid = await GetUserId(tagUser.CanonicalUsername()).ConfigureAwait(true);
+              if (uid == null)
               {
-                var name = args[0].CleanUsername();
-                target = ChatterDataMgr.GetOrNull(name.CanonicalUsername());
-                if (target == null)
-                {
-                  TwSendMsg("Who the fuck is " + name, chatter);
-                  return;
-                }
-              }
-              TwSendMsg(target.DisplayName + " has a watchtime of " + TimeSpan.FromMilliseconds(target.watchtime_ms).Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
-              return;
-            }
-          case BotCommandId.GetRedeemCounter:
-            return; // TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.GetRedeemCounter);
-            if (args.Count == 0)
-            {
-              TwSendMsg("Specify a reward title", chatter);
-              return;
-            }
-            Task.Run(async () =>
-            {
-              var customRewards = (await _twApi.Helix.ChannelPoints.GetCustomRewardAsync(CHANNEL_ID).ConfigureAwait(true)).Data;
-              var reward =
-                   customRewards.FirstOrDefault(x => x.Title.Equals(argsStr, StringComparison.InvariantCultureIgnoreCase))
-                ?? customRewards.FirstOrDefault(x => x.Title.Contains(argsStr, StringComparison.InvariantCultureIgnoreCase));
-              if (reward == null)
-              {
-                TwSendMsg("No such reward", chatter);
+                TwSendMsg("User not found: " + tagUser, chatter);
                 return;
               }
-              int count = _redeemCounts.TryGetValue(_rewardsKey(chatter.uid, reward.Id), out int v) ? v : 0;
-              TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
-            }).ThrowMainThread();
-            return;
-          case BotCommandId.Queue_Curr:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);
-            ViewersQueue.Curr(this, chatter);
-            return;
-          case BotCommandId.Queue_Next:
-            if (chatter.userLevel != UserLevel.Streamer) return;
-            ViewersQueue.Next(this);
-            _ = e.ChatMessage.Hide(this);
-            return;
-          case BotCommandId.Queue_All:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_All);
-            ViewersQueue.All(this, chatter);
-            return;
-          case BotCommandId.Queue_Clear:
-            if (chatter.userLevel != UserLevel.Streamer) return;
-            ViewersQueue.Clear(this);
-            _ = e.ChatMessage.Hide(this);
-            return;
-          case BotCommandId.Queue_Join:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Join);
-            ViewersQueue.Join(this, chatter, args.FirstOrDefault());
-            return;
-          case BotCommandId.Queue_Leave:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Leave);
-            ViewersQueue.Leave(this, chatter);
-            return;
-          case BotCommandId.Queue_Close:
-            if (chatter.userLevel != UserLevel.Streamer) return;
-            ViewersQueue.Close(this);
-            _ = e.ChatMessage.Hide(this);
-            return;
-          case BotCommandId.Queue_Open:
-            if (chatter.userLevel != UserLevel.Streamer) return;
-            ViewersQueue.Open(this);
-            _ = e.ChatMessage.Hide(this);
-            return;
-          case BotCommandId.SneakyJapan:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan);
-            SneakyJapan.Japan(chatter);
-            _ = e.ChatMessage.Hide(this);
-            return;
-          case BotCommandId.SneakyJapan_Stats:
-            {
-              ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_Stats);
-              var targetChatter = chatter;
-              if (args.Count > 0)
-              {
-                var targetName = args[0].CleanUsername();
-                targetChatter = ChatterDataMgr.GetOrNull(targetName.CanonicalUsername());
-                if (targetChatter == null)
-                {
-                  TwSendMsg("Who the fuck is " + targetName, chatter);
-                  return;
-                }
-              }
-              SneakyJapan.JapanStats(targetChatter);
-              return;
             }
-          case BotCommandId.Celsius2Fahrenheit:
-            {
-              ChatActivity.IncCommandCounter(chatter, BotCommandId.Celsius2Fahrenheit);
-              var deg = float.TryParse(args.Count > 0 ? args[0] : "", out float x) ? x : 0;
-              TwSendMsg($"{deg}°C = {deg * 9.0f / 5 + 32:F1}°F", chatter);
-              return;
-            }
-          case BotCommandId.Fahrenheit2Celsius:
-            {
-              ChatActivity.IncCommandCounter(chatter, BotCommandId.Fahrenheit2Celsius);
-              var deg = float.TryParse(args.Count > 0 ? args[0] : "", out float x) ? x : 0;
-              TwSendMsg($"{deg}°F = {(deg - 32) * 5.0f / 9:F1}°C", chatter);
-              return;
-            }
-          case BotCommandId.CoinFlip:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.CoinFlip);
-            TwSendMsg($"Coin flip: {(Rand.R.Next(2) == 0 ? "heads" : "tails")}");
-            return;
-          case BotCommandId.DiceRoll:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.DiceRoll);
-            int die;
-            if (!int.TryParse(args.FirstOrDefault(), out die)) die = 20;
-            int roll = Rand.R.Next(die) + 1;
-            TwSendMsg($"Rolling d{die}... you get {roll}!{(roll == 20 ? " Kreygasm" : "")}");
-            return;
-          case BotCommandId.Quote_Get:
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.Quote_Get);
-            if (int.TryParse(args.FirstOrDefault(), out int wisIdx))
-              TwSendMsg(Quotes.GetQuote(wisIdx - 1));
-            else if (args.Count > 0)
-            {
-              var query = argsStr;
-              var q = Quotes.FindQuote(query);
-              TwSendMsg(q ?? "No quote found with the search term: " + query);
-            }
+            var res = await _twApi_More.GetAllFollowers(uid, CHANNEL_ID).ConfigureAwait(true);
+            if (res.Count == 0)
+              TwSendMsg(tagUser + " is not following D:");
             else
-              TwSendMsg(Quotes.GetRandom());
+            {
+              var dur = DateTime.UtcNow.Subtract(DateTime.Parse(res[0].followed_at));
+              TwSendMsg(tagUser + " is following for " + dur.Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
+            }
+          }).ThrowMainThread();
+          return;
+        case BotCommandId.WatchTime:
+          {
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.WatchTime);
+            Chatter target = chatter;
+            if (args.Count > 0)
+            {
+              var name = args[0].CleanUsername();
+              target = ChatterDataMgr.GetOrNull(name.CanonicalUsername());
+              if (target == null)
+              {
+                TwSendMsg("Who the fuck is " + name, chatter);
+                return;
+              }
+            }
+            TwSendMsg(target.DisplayName + " has a watchtime of " + TimeSpan.FromMilliseconds(target.watchtime_ms).Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
             return;
-          case BotCommandId.Quote_Add:
-            if (chatter.userLevel < UserLevel.Vip) return;
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.Quote_Add);
-            int newWisdomIdx = Quotes.AddQuote(argsStr);
+          }
+        case BotCommandId.GetRedeemCounter:
+          return; // TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.GetRedeemCounter);
+          if (args.Count == 0)
+          {
+            TwSendMsg("Specify a reward title", chatter);
+            return;
+          }
+          Task.Run(async () =>
+          {
+            var customRewards = (await _twApi.Helix.ChannelPoints.GetCustomRewardAsync(CHANNEL_ID).ConfigureAwait(true)).Data;
+            var reward =
+                 customRewards.FirstOrDefault(x => x.Title.Equals(argsStr, StringComparison.InvariantCultureIgnoreCase))
+              ?? customRewards.FirstOrDefault(x => x.Title.Contains(argsStr, StringComparison.InvariantCultureIgnoreCase));
+            if (reward == null)
+            {
+              TwSendMsg("No such reward", chatter);
+              return;
+            }
+            int count = _redeemCounts.TryGetValue(_rewardsKey(chatter.uid, reward.Id), out int v) ? v : 0;
+            TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
+          }).ThrowMainThread();
+          return;
+        case BotCommandId.Queue_Curr:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);
+          ViewersQueue.Curr(this, chatter);
+          return;
+        case BotCommandId.Queue_Next:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          ViewersQueue.Next(this);
+          _ = e.ChatMessage.Hide(this);
+          return;
+        case BotCommandId.Queue_All:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_All);
+          ViewersQueue.All(this, chatter);
+          return;
+        case BotCommandId.Queue_Clear:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          ViewersQueue.Clear(this);
+          _ = e.ChatMessage.Hide(this);
+          return;
+        case BotCommandId.Queue_Join:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Join);
+          ViewersQueue.Join(this, chatter, args.FirstOrDefault());
+          return;
+        case BotCommandId.Queue_Leave:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Leave);
+          ViewersQueue.Leave(this, chatter);
+          return;
+        case BotCommandId.Queue_Close:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          ViewersQueue.Close(this);
+          _ = e.ChatMessage.Hide(this);
+          return;
+        case BotCommandId.Queue_Open:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          ViewersQueue.Open(this);
+          _ = e.ChatMessage.Hide(this);
+          return;
+        case BotCommandId.SneakyJapan:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan);
+          SneakyJapan.Japan(chatter);
+          _ = e.ChatMessage.Hide(this);
+          return;
+        case BotCommandId.SneakyJapan_Stats:
+          {
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_Stats);
+            var targetChatter = chatter;
+            if (args.Count > 0)
+            {
+              var targetName = args[0].CleanUsername();
+              targetChatter = ChatterDataMgr.GetOrNull(targetName.CanonicalUsername());
+              if (targetChatter == null)
+              {
+                TwSendMsg("Who the fuck is " + targetName, chatter);
+                return;
+              }
+            }
+            SneakyJapan.JapanStats(targetChatter);
+            return;
+          }
+        case BotCommandId.Celsius2Fahrenheit:
+          {
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.Celsius2Fahrenheit);
+            var deg = float.TryParse(args.Count > 0 ? args[0] : "", out float x) ? x : 0;
+            TwSendMsg($"{deg}°C = {deg * 9.0f / 5 + 32:F1}°F", chatter);
+            return;
+          }
+        case BotCommandId.Fahrenheit2Celsius:
+          {
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.Fahrenheit2Celsius);
+            var deg = float.TryParse(args.Count > 0 ? args[0] : "", out float x) ? x : 0;
+            TwSendMsg($"{deg}°F = {(deg - 32) * 5.0f / 9:F1}°C", chatter);
+            return;
+          }
+        case BotCommandId.CoinFlip:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.CoinFlip);
+          TwSendMsg($"Coin flip: {(Rand.R.Next(2) == 0 ? "heads" : "tails")}");
+          return;
+        case BotCommandId.DiceRoll:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.DiceRoll);
+          int die;
+          if (!int.TryParse(args.FirstOrDefault(), out die)) die = 20;
+          int roll = Rand.R.Next(die) + 1;
+          TwSendMsg($"Rolling d{die}... you get {roll}!{(roll == 20 ? " Kreygasm" : "")}");
+          return;
+        case BotCommandId.Quote_Get:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.Quote_Get);
+          if (int.TryParse(args.FirstOrDefault(), out int wisIdx))
+            TwSendMsg(Quotes.GetQuote(wisIdx - 1));
+          else if (args.Count > 0)
+          {
+            var query = argsStr;
+            var q = Quotes.FindQuote(query);
+            TwSendMsg(q ?? "No quote found with the search term: " + query);
+          }
+          else
+            TwSendMsg(Quotes.GetRandom());
+          return;
+        case BotCommandId.Quote_Add:
+          if (chatter.userLevel < UserLevel.VIP) return;
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.Quote_Add);
+          int newWisdomIdx = Quotes.AddQuote(argsStr);
+          Quotes.Save();
+          TwSendMsg("Quote " + newWisdomIdx + " added");
+          return;
+        case BotCommandId.Quote_Del:
+          if (chatter.userLevel < UserLevel.VIP) return;
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.Quote_Del);
+          if (!int.TryParse(args.FirstOrDefault(), out int delIdx))
+            return;
+          if (!Quotes.DelQuote(delIdx - 1))
+            TwSendMsg("There is no quote " + delIdx);
+          else
+          {
             Quotes.Save();
-            TwSendMsg("Quote " + newWisdomIdx + " added");
+            TwSendMsg("Quote " + delIdx + " deleted");
+          }
+          return;
+        case BotCommandId.LearnHiragana:
+          if (chatter.userLevel < UserLevel.VIP) return;
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.LearnHiragana);
+          if (args.Count == 0 || !(args[0] is "on" or "off"))
+          {
+            TwSendMsg("Expected a parameter 'on' or 'off'", chatter);
             return;
-          case BotCommandId.Quote_Del:
-            if (chatter.userLevel < UserLevel.Vip) return;
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.Quote_Del);
-            if (!int.TryParse(args.FirstOrDefault(), out int delIdx))
-              return;
-            if (!Quotes.DelQuote(delIdx - 1))
-              TwSendMsg("There is no quote " + delIdx);
-            else
+          }
+          LearnHiragana._task.Enabled = args[0] == "on";
+          TwSendMsg("SeemsGood", chatter);
+          return;
+        case BotCommandId.GetChessRatings:
+          {
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.GetChessRatings);
+            var targetName = args.FirstOrDefault()?.CleanUsername() ?? chatter.DisplayName;
+            bool found = false;
+            try
             {
-              Quotes.Save();
-              TwSendMsg("Quote " + delIdx + " deleted");
-            }
-            return;
-          case BotCommandId.LearnHiragana:
-            if (chatter.userLevel < UserLevel.Vip) return;
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.LearnHiragana);
-            if (args.Count == 0 || !(args[0] is "on" or "off"))
-            {
-              TwSendMsg("Expected a parameter 'on' or 'off'", chatter);
-              return;
-            }
-            LearnHiragana._task.Enabled = args[0] == "on";
-            TwSendMsg("SeemsGood", chatter);
-            return;
-          case BotCommandId.GetChessRatings:
-            {
-              ChatActivity.IncCommandCounter(chatter, BotCommandId.GetChessRatings);
-              var targetName = args.FirstOrDefault()?.CleanUsername() ?? chatter.DisplayName;
-              bool found = false;
-              try
+              using var http = new HttpClient();
+              var lichess = JToken.Parse(http.GetStringAsync("https://lichess.org/api/user/" + targetName).Result);
+              lichess = lichess["perfs"];
+              if (lichess != null)
               {
-                using var http = new HttpClient();
-                var lichess = JToken.Parse(http.GetStringAsync("https://lichess.org/api/user/" + targetName).Result);
-                lichess = lichess["perfs"];
-                if (lichess != null)
+                int bullet = lichess["bullet"]?["rating"]?.Value<int>() ?? 0;
+                int blitz = lichess["blitz"]?["rating"]?.Value<int>() ?? 0;
+                int rapid = lichess["rapid"]?["rating"]?.Value<int>() ?? 0;
+                int classical = lichess["classical"]?["rating"]?.Value<int>() ?? 0;
+                int daily = lichess["daily"]?["rating"]?.Value<int>() ?? 0;
+                int puzzle = lichess["puzzle"]?["rating"]?.Value<int>() ?? 0;
+                var sb = new StringBuilder();
+                if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
+                if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
+                if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
+                if (classical != 0) sb.Append("Classical ").Append(classical).Append(" | ");
+                if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
+                if (puzzle != 0) sb.Append("Puzzle ").Append(puzzle).Append(" | ");
+                if (sb.Length != 0)
                 {
-                  int bullet = lichess["bullet"]?["rating"]?.Value<int>() ?? 0;
-                  int blitz = lichess["blitz"]?["rating"]?.Value<int>() ?? 0;
-                  int rapid = lichess["rapid"]?["rating"]?.Value<int>() ?? 0;
-                  int classical = lichess["classical"]?["rating"]?.Value<int>() ?? 0;
-                  int daily = lichess["daily"]?["rating"]?.Value<int>() ?? 0;
-                  int puzzle = lichess["puzzle"]?["rating"]?.Value<int>() ?? 0;
-                  var sb = new StringBuilder();
-                  if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
-                  if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
-                  if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
-                  if (classical != 0) sb.Append("Classical ").Append(classical).Append(" | ");
-                  if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
-                  if (puzzle != 0) sb.Append("Puzzle ").Append(puzzle).Append(" | ");
-                  if (sb.Length != 0)
-                  {
-                    found = true;
-                    TwSendMsg(targetName + " (lichess) " + sb.ToString()[..^3]);
-                  }
+                  found = true;
+                  TwSendMsg(targetName + " (lichess) " + sb.ToString()[..^3]);
                 }
               }
-              catch { }
-              try
+            }
+            catch { }
+            try
+            {
+              using var http = new HttpClient();
+              var chesscum = JToken.Parse(http.GetStringAsync("https://api.chess.com/pub/player/" + targetName + "/stats").Result);
+              if (chesscum != null)
               {
-                using var http = new HttpClient();
-                var chesscum = JToken.Parse(http.GetStringAsync("https://api.chess.com/pub/player/" + targetName + "/stats").Result);
-                if (chesscum != null)
+                int bullet = chesscum["chess_bullet"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                int blitz = chesscum["chess_blitz"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                int rapid = chesscum["chess_rapid"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                int daily = chesscum["chess_daily"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                var sb = new StringBuilder();
+                if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
+                if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
+                if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
+                if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
+                if (sb.Length != 0)
                 {
-                  int bullet = chesscum["chess_bullet"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                  int blitz = chesscum["chess_blitz"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                  int rapid = chesscum["chess_rapid"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                  int daily = chesscum["chess_daily"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                  var sb = new StringBuilder();
-                  if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
-                  if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
-                  if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
-                  if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
-                  if (sb.Length != 0)
-                  {
-                    found = true;
-                    TwSendMsg(targetName + " (chesscom) " + sb.ToString()[..^3]);
-                  }
+                  found = true;
+                  TwSendMsg(targetName + " (chesscom) " + sb.ToString()[..^3]);
                 }
               }
-              catch { }
-              if (!found)
-                TwSendMsg(targetName + " was not found on lichess or chesscom");
-              return;
             }
-        }
+            catch { }
+            if (!found)
+              TwSendMsg(targetName + " was not found on lichess or chesscom");
+            return;
+          }
+      } // switch
 
-        // TODO change to work with BotCommandId.FIRST_CUSTOM_COMMAND
-        tryModCommand(cmd, e.ChatMessage, chatter, args, argsStr);
-      }
+      if (!_customCommands.TryGetValue(cmd, out string twFormat))
+        return;
+      var formatted = formatResponseText(twFormat, e.ChatMessage, chatter, args, argsStr, out string error);
+      TwSendMsg(formatted ?? ($"@{chatter.DisplayName} {error}"));
+      return;
     }
 
-    private bool tryModCommand(string cmd, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr)
+    string _customCommandsFile;
+    Dictionary<string, string> _customCommands = new();
+    private void LoadCustomCommands(string filePath)
     {
-      // TODO persist commands
-      string twFormat;
-      switch (cmd)
+      _customCommandsFile = filePath;
+      if (string.IsNullOrWhiteSpace(_customCommandsFile))
+        return;
+      try
       {
-        case "weather":
-          twFormat = "$(fetch https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/$(query)/today?unitGroup=metric&include=current&key=RK7YNMRSS664ZJZXWJHZZTF8W&contentType=json)"
-                   + "@$(user) Weather at $(res.resolvedAddress) - $(res.currentConditions.conditions) | humidity $(res.currentConditions.humidity)% | temp $(res.currentConditions.temp)°C | feels $(res.currentConditions.feelslike)°C";
-          break;
-        case "hug": twFormat = "$(user) is hugging $(target ? themselves) and its very wholesome..."; break;
-        case "time": twFormat = "$(channel)'s time is $(time)"; break;
-        case "winner": twFormat = "$(randomChatter) won, horrah!"; break;
-        case "kate": twFormat = "$(fetch https://twitch.center/customapi/quote?token=767931e8&data=$(input?))"; break;
-        default: return false;
+        _customCommands = File.ReadAllText(_customCommandsFile).FromJson<Dictionary<string, string>>();
       }
-      var formatted = formatResponseText(twFormat, msgData, chatter, args, argsStr, out string error);
-      TwSendMsg(formatted ?? ($"@{chatter.DisplayName} {error}"));
+      catch { } // TODO most empty catches all around should at least log the error probably
+    }
+    private void _saveCustomCommands()
+    {
+#if DEBUG
+      return;
+#endif
+      if (string.IsNullOrWhiteSpace(_customCommandsFile))
+        return;
+      try
+      {
+        File.WriteAllText(_customCommandsFile, _customCommands.ToJson());
+      }
+      catch { }
+    }
+    private bool DelCustomCommand(string command, Chatter mod)
+    {
+      command = command.ToLowerInvariant();
+      if (!_customCommands.TryGetValue(command, out var response))
+        return false;
+      _customCommands.Remove(command);
+      _saveCustomCommands();
+      Log($"[EVENT] {mod.DisplayName} deleted custom command {command}: {response}");
+      return true;
+    }
+    private bool AddCustomCommand(string command, string response, Chatter mod)
+    {
+      command = command.ToLowerInvariant();
+      if (_customCommands.ContainsKey(command))
+        return false;
+      _customCommands.Add(command, response);
+      _saveCustomCommands();
+      Log($"[EVENT] {mod.DisplayName} added custom command {command}: {response}");
+      return true;
+    }
+    private bool EditCustomCommand(string command, string response, Chatter mod)
+    {
+      command = command.ToLowerInvariant();
+      if (!_customCommands.TryGetValue(command, out var oldResponse))
+        return false;
+      _customCommands[command] = response;
+      _saveCustomCommands();
+      Log($"[EVENT] {mod.DisplayName} edited custom command {command}\n  old: {oldResponse}\n  new: {response}");
       return true;
     }
 
@@ -866,7 +974,7 @@ namespace SimpleBot
         catch (Exception ex)
         {
           Log("[[ Failed fetch ]] " + ex);
-          error = "[[ Failed fetch ]] couldn't reach the url, see logs";
+          error = "[ Failed to reach url ]";
           return null;
         }
         JToken jRes;
@@ -941,18 +1049,20 @@ namespace SimpleBot
         {
           "query" or "input" or "args" => argsStr,
           "channel" or "streamer" => CHANNEL,
-          "arg0" => args.Count > 0 ? args[0] : "",
-          "arg1" => args.Count > 1 ? args[1] : "",
-          "arg2" => args.Count > 2 ? args[2] : "",
-          "arg3" => args.Count > 3 ? args[3] : "",
-          "arg4" => args.Count > 4 ? args[4] : "",
-          "arg5" => args.Count > 5 ? args[5] : "",
-          "arg6" => args.Count > 6 ? args[6] : "",
-          "arg7" => args.Count > 7 ? args[7] : "",
-          "arg8" => args.Count > 8 ? args[8] : "",
-          "arg9" => args.Count > 9 ? args[9] : "",
-          "name" or "user" => chatter.DisplayName,
-          "user_id" => GetUserId(chatter.name).Result,
+          "channelid" or "channel_id" or "channel.id" or "streamerid" or "streamer_id" or "streamer.id" => CHANNEL_ID,
+          "name" or "user" or "username" or "user_name" or "user.name" => chatter.DisplayName,
+          "userid" or "user_id" or "user.id" => chatter.uid,
+          "userlevel" or "user_level" or "user.level" => chatter.userLevel.ToString(),
+          "arg0" or "0" => args.Count > 0 ? args[0] : "",
+          "arg1" or "1" => args.Count > 1 ? args[1] : "",
+          "arg2" or "2" => args.Count > 2 ? args[2] : "",
+          "arg3" or "3" => args.Count > 3 ? args[3] : "",
+          "arg4" or "4" => args.Count > 4 ? args[4] : "",
+          "arg5" or "5" => args.Count > 5 ? args[5] : "",
+          "arg6" or "6" => args.Count > 6 ? args[6] : "",
+          "arg7" or "7" => args.Count > 7 ? args[7] : "",
+          "arg8" or "8" => args.Count > 8 ? args[8] : "",
+          "arg9" or "9" => args.Count > 9 ? args[9] : "",
           "target" => args.FirstOrDefault()?.CleanUsername() ?? "",
           "randomchatter" => ChatActivity.RandomChatter(),
           "time" => DateTime.Now.ToShortTimeString(),
