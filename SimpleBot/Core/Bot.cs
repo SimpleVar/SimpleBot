@@ -3,10 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
 using System.Collections.Concurrent;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 using TwitchLib.Api;
 using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
@@ -884,7 +886,7 @@ namespace SimpleBot
     string formatResponseText(string text, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr, out string error, Dictionary<string, JToken> fetchResults = null)
     {
       // fetches must come at the beginning, and they accumulate results into $(res) or a $(namedVar)
-      // $(fetch:w www.example.com/q=$input) The weather at $(w.City) is $(w.WeatherText)
+      // $(fetch:w www.example.com/q=$(input)) The weather at $(w.City) is $(w.WeatherText)
       // $(fetch:0 url) $(fetch url/q=$(0.Name)) $(0.Name) is $(res.Coolness)% cool
       // TODO test advanced chaining and naming ^
       if (fetchResults != null && text.StartsWith("$(fetch", StringComparison.InvariantCultureIgnoreCase))
@@ -1045,14 +1047,11 @@ namespace SimpleBot
           particle = particle[..qi].TrimEnd();
         }
         particle = particle.ToLowerInvariant();
+        string tmp;
         var rep = particle switch
         {
-          "query" or "input" or "args" => argsStr,
-          "channel" or "streamer" => CHANNEL,
-          "channelid" or "channel_id" or "channel.id" or "streamerid" or "streamer_id" or "streamer.id" => CHANNEL_ID,
-          "name" or "user" or "username" or "user_name" or "user.name" => chatter.DisplayName,
-          "userid" or "user_id" or "user.id" => chatter.uid,
-          "userlevel" or "user_level" or "user.level" => chatter.userLevel.ToString(),
+          "input" or "args" => argsStr,
+          "query" or "querystring" => argsStr == null ? "" : HttpUtility.UrlEncode(argsStr),
           "arg0" or "0" => args.Count > 0 ? args[0] : "",
           "arg1" or "1" => args.Count > 1 ? args[1] : "",
           "arg2" or "2" => args.Count > 2 ? args[2] : "",
@@ -1063,11 +1062,20 @@ namespace SimpleBot
           "arg7" or "7" => args.Count > 7 ? args[7] : "",
           "arg8" or "8" => args.Count > 8 ? args[8] : "",
           "arg9" or "9" => args.Count > 9 ? args[9] : "",
+          "channel" or "streamer" => CHANNEL,
+          "channelid" or "channel_id" or "channel.id" or "streamerid" or "streamer_id" or "streamer.id" => CHANNEL_ID,
+          "name" or "user" or "username" or "user_name" or "user.name" => chatter.DisplayName,
+          "userid" or "user_id" or "user.id" => chatter.uid,
+          "userlevel" or "user_level" or "user.level" => chatter.userLevel.ToString(),
           "target" => args.FirstOrDefault()?.CleanUsername() ?? "",
+          "targetid" or "target_id" or "target.id" =>
+            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (GetUserId(tmp).Result ?? "<not found>"),
+          "targetlevel" or "target_level" or "target.level" =>
+            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString(),
           "randomchatter" => ChatActivity.RandomChatter(),
           "time" => DateTime.Now.ToShortTimeString(),
           "fetch" => "<invalid fetch usage>",
-          _ => m.Value, // original particle text e.g. '$unreal.42'
+          _ => m.Value, // original particle text e.g. '$(unreal.42)'
         };
         // shouldn't return an actual null here in regex replace
         if (string.IsNullOrWhiteSpace(rep))
