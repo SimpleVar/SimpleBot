@@ -1,5 +1,6 @@
 ﻿using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
+using Timer = System.Threading.Timer;
 
 namespace SimpleBot
 {
@@ -12,6 +13,8 @@ namespace SimpleBot
     static HashSet<string> _ignoredBotNames;
     static readonly HashSet<string> _usersInChat = new();
     static readonly List<(DateTime ts, Chatter chatter)> _activityHistory = new();
+    static Timer _updateWatchtimeTimer;
+    const int UPDATE_WATCHTIME_PERIOD_MS = 32700; // arbitrary around 30 sec
 
     public static event EventHandler UpdatedUsersInChat;
 
@@ -47,7 +50,26 @@ namespace SimpleBot
       _bot._tw.OnExistingUsersDetected += twOnExistingUsersDetected;
       _bot._tw.OnUserJoined += twOnUserJoined;
       _bot._tw.OnUserLeft += twOnUserLeft;
-      // TODO timer to accumulate watchtime by _usersInChat
+
+      HashSet<string> prevUsers = new();
+      HashSet<string> users = new();
+      _updateWatchtimeTimer = new Timer(_ =>
+      {
+        lock ( _lock)
+        {
+          users.UnionWith(_usersInChat);
+        }
+        foreach (var u in users)
+        {
+          if (!prevUsers.Contains(u))
+            continue;
+          var user = ChatterDataMgr.Get(u.CanonicalUsername());
+          user.watchtime_ms += UPDATE_WATCHTIME_PERIOD_MS;
+          ChatterDataMgr.Update();
+        }
+        (prevUsers, users) = (users, prevUsers);
+        users.Clear();
+      }, null, 10000, UPDATE_WATCHTIME_PERIOD_MS);
     }
 
     /// <summary>
@@ -171,7 +193,7 @@ namespace SimpleBot
           if (chatter.userLevel == UserLevel.Streamer)
             continue;
           res.Add(chatter);
-          if (res.Count > maxChattersNeeded)
+          if (res.Count >= maxChattersNeeded)
             break;
         }
       }

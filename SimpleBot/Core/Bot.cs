@@ -12,6 +12,7 @@ using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
 using TwitchLib.Api.Helix.Models.Chat;
 using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
+using TwitchLib.Api.Helix.Models.Moderation.BanUser;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -19,6 +20,7 @@ using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using TwitchLib.EventSub.Websockets;
 using TwitchLib.EventSub.Websockets.Extensions;
+using static System.Windows.Forms.DataFormats;
 
 namespace SimpleBot
 {
@@ -133,6 +135,8 @@ namespace SimpleBot
       LearnHiragana.Init(this);
       LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, _ =>
       {
+        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(1200123), maxChattersNeeded: 2).Count < 2)
+          return Task.CompletedTask;
         return _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID,
           "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
           AnnouncementColors.Blue);
@@ -284,6 +288,7 @@ namespace SimpleBot
 
     public static BotCommandId ParseCommandId(string cmd)
     {
+      // TODO 2-way dicts and !commands
       var cid = cmd switch
       {
         "ignore" or "addignore" => BotCommandId.AddIgnoredBot,
@@ -297,6 +302,7 @@ namespace SimpleBot
         "count" => BotCommandId.GetCmdCounter,
         "redeems" or "countredeem" or "countredeems" => BotCommandId.GetRedeemCounter,
         "followage" => BotCommandId.FollowAge,
+        "watchtime" => BotCommandId.WatchTime,
         "curr" or "current" => BotCommandId.Queue_Curr,
         "next" => BotCommandId.Queue_Next,
         "queue" => BotCommandId.Queue_All,
@@ -307,6 +313,8 @@ namespace SimpleBot
         "open" or "openqueue" => BotCommandId.Queue_Open,
         "japan" => BotCommandId.SneakyJapan,
         "japanstats" => BotCommandId.SneakyJapan_Stats,
+        "c2f" => BotCommandId.Celsius2Fahrenheit,
+        "f2c" => BotCommandId.Fahrenheit2Celsius,
         "coin" or "coinflip" => BotCommandId.CoinFlip,
         "roll" or "diceroll" or "rolldice" => BotCommandId.DiceRoll,
         "quote" or "wisdom" => BotCommandId.Quote_Get,
@@ -496,6 +504,23 @@ namespace SimpleBot
               }
             }).ThrowMainThread();
             return;
+          case BotCommandId.WatchTime:
+            {
+              ChatActivity.IncCommandCounter(chatter, BotCommandId.WatchTime);
+              Chatter target = chatter;
+              if (args.Count > 0)
+              {
+                var name = args[0].CleanUsername();
+                target = ChatterDataMgr.GetOrNull(name.CanonicalUsername());
+                if (target == null)
+                {
+                  TwSendMsg("Who the fuck is " + name, chatter);
+                  return;
+                }
+              }
+              TwSendMsg(target.DisplayName + " has a watchtime of " + TimeSpan.FromMilliseconds(target.watchtime_ms).Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
+              return;
+            }
           case BotCommandId.GetRedeemCounter:
             return; // TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
             ChatActivity.IncCommandCounter(chatter, BotCommandId.GetRedeemCounter);
@@ -575,6 +600,20 @@ namespace SimpleBot
                 }
               }
               SneakyJapan.JapanStats(targetChatter);
+              return;
+            }
+          case BotCommandId.Celsius2Fahrenheit:
+            {
+              ChatActivity.IncCommandCounter(chatter, BotCommandId.Celsius2Fahrenheit);
+              var deg = float.TryParse(args.Count > 0 ? args[0] : "", out float x) ? x : 0;
+              TwSendMsg($"{deg}°C = {deg * 9.0f / 5 + 32:F1}°F", chatter);
+              return;
+            }
+          case BotCommandId.Fahrenheit2Celsius:
+            {
+              ChatActivity.IncCommandCounter(chatter, BotCommandId.Fahrenheit2Celsius);
+              var deg = float.TryParse(args.Count > 0 ? args[0] : "", out float x) ? x : 0;
+              TwSendMsg($"{deg}°F = {(deg - 32) * 5.0f / 9:F1}°C", chatter);
               return;
             }
           case BotCommandId.CoinFlip:
@@ -706,38 +745,35 @@ namespace SimpleBot
       switch (cmd)
       {
         case "weather":
-          twFormat = "$(fetch https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/$(input)/today?unitGroup=metric&include=current&key=RK7YNMRSS664ZJZXWJHZZTF8W&contentType=json)"
+          twFormat = "$(fetch https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/$(query)/today?unitGroup=metric&include=current&key=RK7YNMRSS664ZJZXWJHZZTF8W&contentType=json)"
                    + "@$(user) Weather at $(res.resolvedAddress) - $(res.currentConditions.conditions) | humidity $(res.currentConditions.humidity)% | temp $(res.currentConditions.temp)°C | feels $(res.currentConditions.feelslike)°C";
           break;
-        case "hug": twFormat = "$(user) is hugging $(target) and its very wholesome..."; break;
-        case "time": twFormat = CHANNEL + "'s time is $(time)"; break;
+        case "hug": twFormat = "$(user) is hugging $(target ? themselves) and its very wholesome..."; break;
+        case "time": twFormat = "$(channel)'s time is $(time)"; break;
         case "winner": twFormat = "$(randomChatter) won, horrah!"; break;
-        case "kate": twFormat = "$(fetch https://twitch.center/customapi/quote?token=767931e8&data=$(input))"; break;
-        // TODO $(calc stuff)
-        //case "f2c": twFormat = "$(arg0)°F = $(calc ($(arg0)-32)*5/9)°C"; break;
-        case "c2f":
-          {
-            var deg = float.TryParse(formatResponseText("$(arg0)", msgData, chatter, args, argsStr), out float x) ? x : 0;
-            twFormat = $"{deg}°C = {deg * 9.0f / 5 + 32:F1}°F";
-            break;
-          }
-        case "f2c":
-          {
-            var deg = float.TryParse(formatResponseText("$(arg0)", msgData, chatter, args, argsStr), out float x) ? x : 0;
-            twFormat = $"{deg}°C = {(deg - 32) * 5.0f / 9:F1}°F";
-            break;
-          }
+        case "kate": twFormat = "$(fetch https://twitch.center/customapi/quote?token=767931e8&data=$(input?))"; break;
         default: return false;
       }
-
-      TwSendMsg(formatResponseText(twFormat, msgData, chatter, args, argsStr));
+      var formatted = formatResponseText(twFormat, msgData, chatter, args, argsStr, out string error);
+      TwSendMsg(formatted ?? ($"@{chatter.DisplayName} {error}"));
       return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
 
+    /// <summary>
+    /// Supports:
+    ///   - $(name) $(input) $(arg0) $(arg1) etc
+    ///   - $(arg0?)
+    ///   - $(arg0 ? fallback value)
+    ///   - $(fetch URL) $(res) $(res.data.name)
+    ///   - $(fetch:w URL) $(w) $(w.data.name)
+    /// Notes:
+    ///   - Fetches must preceed the actual message
+    ///   - Any particle without '?' is required
+    /// </summary>
     static readonly Regex rgxTwFormatParticle = new(@"\$\([^)]+\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    string formatResponseText(string text, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr, Dictionary<string, JToken> fetchResults = null)
+    string formatResponseText(string text, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr, out string error, Dictionary<string, JToken> fetchResults = null)
     {
       // fetches must come at the beginning, and they accumulate results into $(res) or a $(namedVar)
       // $(fetch:w www.example.com/q=$input) The weather at $(w.City) is $(w.WeatherText)
@@ -762,7 +798,10 @@ namespace SimpleBot
           {
             var c = text[j++];
             if (c != '_' && (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9'))
-              return BAD_SYNTAX_MSG;
+            {
+              error = BAD_SYNTAX_MSG;
+              return null;
+            }
           }
           varName = text[i..j];
           i = j;
@@ -777,30 +816,47 @@ namespace SimpleBot
             // skip over a basic $(x.y.z) particle
             i++;
             if (i < text.Length && text[i] != '(')
-              return "[[ Bad fetch syntax ]] Character '$' in the url should be encoded as '%24'";
+            {
+              error = "[[ Bad fetch syntax ]] Character '$' in the url should be encoded as '%24'";
+              return null;
+            }
             i++;
             // wait for closing ) but make sure simple variable
             while (i < text.Length && text[i] != ')')
             {
               if (text[i] == '$')
-                return "[[ Bad fetch syntax ]] The placeholder $() in the URL must be a basic variable name";
+              {
+                error = "[[ Bad fetch syntax ]] The placeholder $() in the URL must be a basic variable name";
+                return null;
+              }
               i++;
             }
           }
           i++;
         }
         if (text[i] != ')')
-          return BAD_SYNTAX_MSG;
+        {
+          error = BAD_SYNTAX_MSG;
+          return null;
+        }
         var url = text[urlStart..i].TrimEnd();
-        if (string.IsNullOrWhiteSpace(url) || url[0] == '$')
-          return BAD_SYNTAX_MSG;
+        if (string.IsNullOrWhiteSpace(url) || url[0] == '$') // makes sure url isn't $fetch itself, or smth stoopid
+        {
+          error = BAD_SYNTAX_MSG;
+          return null;
+        }
         i++;
         SkipSpace();
         // finished parsing the fetch
         text = text[i..];
 
         // FETCH
-        url = formatResponseText(url, msgData, chatter, args, argsStr, fetchResults);
+        url = formatResponseText(url, msgData, chatter, args, argsStr, out string innerError, fetchResults);
+        if (innerError != null)
+        {
+          error = "[[ Failed fetch ]] " + innerError;
+          return null;
+        }
         string json;
         using var http = new HttpClient();
         try
@@ -810,7 +866,8 @@ namespace SimpleBot
         catch (Exception ex)
         {
           Log("[[ Failed fetch ]] " + ex);
-          return "[[ Failed fetch ]] couldn't reach the url, see logs";
+          error = "[[ Failed fetch ]] couldn't reach the url, see logs";
+          return null;
         }
         JToken jRes;
         if (string.IsNullOrWhiteSpace(json))
@@ -833,13 +890,16 @@ namespace SimpleBot
       // after removing $(fetch url) we might have empty msg
       if (string.IsNullOrWhiteSpace(text))
       {
+        error = null;
         if (lastFetchResultName != null)
           return fetchResults[lastFetchResultName].ToString();
         return "";
       }
 
       // format particles
-      return rgxTwFormatParticle.Replace(text, m =>
+      string missingParticles = "";
+      const string MISSING_PARTICLE_SEP = ", ";
+      string formatted = rgxTwFormatParticle.Replace(text, m =>
       {
         var particle = m.Value[2..^1]; // $(name)
         // first try find fetch result under that name (case sensitive)
@@ -866,11 +926,21 @@ namespace SimpleBot
           }
           return res?.ToString() ?? "null";
         }
+
         // built-in particles (case insensitive)
+        int qi = particle.IndexOf('?');
+        string fallback = null;
+        if (qi >= 0)
+        {
+          // $(arg0 ? Some Fallback)
+          fallback = particle.Substring(qi + 1).TrimStart();
+          particle = particle[..qi].TrimEnd();
+        }
         particle = particle.ToLowerInvariant();
         var rep = particle switch
         {
-          "input" or "args" => argsStr,
+          "query" or "input" or "args" => argsStr,
+          "channel" or "streamer" => CHANNEL,
           "arg0" => args.Count > 0 ? args[0] : "",
           "arg1" => args.Count > 1 ? args[1] : "",
           "arg2" => args.Count > 2 ? args[2] : "",
@@ -883,14 +953,29 @@ namespace SimpleBot
           "arg9" => args.Count > 9 ? args[9] : "",
           "name" or "user" => chatter.DisplayName,
           "user_id" => GetUserId(chatter.name).Result,
-          "target" => args.FirstOrDefault()?.CleanUsername() ?? "<no target>",
+          "target" => args.FirstOrDefault()?.CleanUsername() ?? "",
           "randomchatter" => ChatActivity.RandomChatter(),
           "time" => DateTime.Now.ToShortTimeString(),
           "fetch" => "<invalid fetch usage>",
           _ => m.Value, // original particle text e.g. '$unreal.42'
         };
-        return string.IsNullOrWhiteSpace(rep) ? "null" : rep; // shouldn't return an actual null here
+        // shouldn't return an actual null here in regex replace
+        if (string.IsNullOrWhiteSpace(rep))
+        {
+          if (fallback == null)
+            missingParticles += particle + MISSING_PARTICLE_SEP;
+          rep = fallback ?? "null";
+        }
+        return rep;
       });
+
+      if (missingParticles.Length > 0)
+      {
+        error = $"Missing {missingParticles[..^MISSING_PARTICLE_SEP.Length]}";
+        return null;
+      }
+      error = null;
+      return formatted;
     }
 
   }

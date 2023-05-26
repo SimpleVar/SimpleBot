@@ -1,12 +1,10 @@
-﻿using System.Security.Cryptography;
-
-namespace SimpleBot
+﻿namespace SimpleBot
 {
   class Chatter
   {
     public string uid, name, displayName;
     public UserLevel userLevel;
-    public long watchtime_sec;
+    public long watchtime_ms;
     public Dictionary<BotCommandId, int> cmd_counters;
     public SneakyJapanStats sneakyJapanStats;
 

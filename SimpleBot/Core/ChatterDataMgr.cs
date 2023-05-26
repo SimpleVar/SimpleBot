@@ -1,4 +1,4 @@
-﻿using Timer = System.Windows.Forms.Timer;
+﻿using Timer = System.Threading.Timer;
 
 namespace SimpleBot
 {
@@ -17,8 +17,7 @@ namespace SimpleBot
       if (_saveFileTimer != null)
         throw new ApplicationException("Init should be called exactly once");
 
-      _saveFileTimer = new Timer { Interval = SAVE_INTERVAL_MS, Enabled = true };
-      _saveFileTimer.Tick += (o, e) => { ForceSave(); };
+      _saveFileTimer = new Timer(_ => ForceSave(), null, SAVE_INTERVAL_MS, SAVE_INTERVAL_MS);
     }
 
     public static void ForceSave()

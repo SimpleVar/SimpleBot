@@ -24,7 +24,7 @@
       _task = LongRunningPeriodicTask.Start(_currentRoundId, true, MS_AFTER_ROUND, MS_BEFORE_FIRST_ROUND, MS_BEFORE_FIRST_ROUND,
         async rid =>
       {
-        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 1).Count == 0)
+        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 1).Count < 1)
         {
           Bot.Log("Sneaky Japan delayed due to inactive chat");
           await Task.Delay(60000);
