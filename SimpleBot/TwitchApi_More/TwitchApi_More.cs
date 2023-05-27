@@ -4,12 +4,15 @@ using TwitchLib.Api.Core.HttpCallHandlers;
 using TwitchLib.Api.Core.Interfaces;
 using TwitchLib.Api.Core.RateLimiter;
 using TwitchLib.Api.Helix.Models.Chat;
+using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
+using TwitchLib.Api.Helix.Models.Polls;
+using TwitchLib.EventSub.Core.SubscriptionTypes.Channel;
 
 namespace SimpleBot
 {
-  public class TwitchApi_More : TwitchLib.Api.Core.ApiBase
+  public class TwitchApi_MoreEdges : TwitchLib.Api.Core.ApiBase
   {
-    public TwitchApi_More(IApiSettings settings) : base(settings, BypassLimiter.CreateLimiterBypassInstance(), new TwitchHttpClient())
+    public TwitchApi_MoreEdges(IApiSettings settings) : base(settings, BypassLimiter.CreateLimiterBypassInstance(), new TwitchHttpClient())
     {
       Settings.ClientId = settings.ClientId;
       Settings.AccessToken = settings.AccessToken;

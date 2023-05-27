@@ -55,7 +55,7 @@ namespace SimpleBot
         string CH_ID = (await api.Helix.Search.SearchChannelsAsync(ch).ConfigureAwait(false)).Channels
           .FirstOrDefault(x => x.DisplayName.ToLowerInvariant() == ch.ToLowerInvariant())?.Id;
 
-        var dd = await new TwitchApi_More(api.Settings).GetAllFollows(CH_ID, accessToken).ConfigureAwait(false);
+        var dd = await new TwitchApi_MoreEdges(api.Settings).GetAllFollows(CH_ID, accessToken).ConfigureAwait(false);
         var allFollows = string.Join(", ", dd.Select(x => x.broadcaster_name));
         txtAllFollows.Invoke(() => txtAllFollows.Text = allFollows);
         

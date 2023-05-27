@@ -12,8 +12,6 @@ using TwitchLib.Api;
 using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
 using TwitchLib.Api.Helix.Models.Chat;
-using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
-using TwitchLib.Api.Helix.Models.Polls;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -46,7 +44,7 @@ namespace SimpleBot
 
     public TwitchClient _tw;
     public TwitchAPI _twApi;
-    public TwitchApi_More _twApi_More;
+    public TwitchApi_MoreEdges _twApi_More;
     public OBSWebsocket _obs;
 
     public string CHANNEL_ID { get; private set; }
@@ -119,9 +117,9 @@ namespace SimpleBot
       };
       
       _twApi = new TwitchAPI(settings: new ApiSettings { ClientId = Settings.Default.TwitchClientId, AccessToken = File.ReadAllText(Settings.Default.TwitchOAuth) });
-      _twApi_More = new TwitchApi_More(_twApi.Settings);
-      CHANNEL_ID = await GetUserId(CHANNEL).ConfigureAwait(true);
-      BOT_ID = await GetUserId(BOT_NAME).ConfigureAwait(true);
+      _twApi_More = new TwitchApi_MoreEdges(_twApi.Settings);
+      CHANNEL_ID = await _twApi.GetUserId(CHANNEL).ConfigureAwait(true);
+      BOT_ID = await _twApi.GetUserId(BOT_NAME).ConfigureAwait(true);
       /* TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
       var customRewards = (await _twApi.Helix.ChannelPoints.GetCustomRewardAsync(CHANNEL_ID).ConfigureAwait(true)).Data;
       var redemptions = new List<RewardRedemption>();
@@ -256,73 +254,6 @@ namespace SimpleBot
       _tw.SendMessage(_twJC, msg);
     }
 
-    public async Task<Poll> GetLatestPoll() => (await _twApi.Helix.Polls.GetPollsAsync(CHANNEL_ID, first: 1).ConfigureAwait(true)).Data.FirstOrDefault();
-    
-    public async Task EndCurrentPoll(bool keepPublic)
-    {
-      var currPoll = await GetLatestPoll();
-      if (currPoll.Status == "ACTIVE" || (!keepPublic && currPoll.Status == "COMPLETED"))
-      {
-        var status = keepPublic ? PollStatusEnum.TERMINATED : PollStatusEnum.ARCHIVED;
-        _ = await _twApi.Helix.Polls.EndPollAsync(CHANNEL_ID, currPoll.Id, status).ConfigureAwait(true);
-      }
-    }
-
-    public async Task<bool> StartPoll(string title, int durationSecs, IEnumerable<string> choices)
-    {
-      try
-      {
-        var poll = (await _twApi.Helix.Polls.CreatePollAsync(new()
-        {
-          BroadcasterId = CHANNEL_ID,
-          Title = title,
-          DurationSeconds = durationSecs,
-          Choices = choices.Select(x => new TwitchLib.Api.Helix.Models.Polls.CreatePoll.Choice { Title = x }).ToArray()
-        })).Data[0];
-        return poll.Status == "ACTIVE";
-      }
-      catch { }
-      return false;
-    }
-
-    /// <summary>
-    /// Searches cache before hitting the api
-    /// </summary>
-    public async Task<string> GetUserId(string canonicalName)
-    {
-      var uid = ChatterDataMgr.GetOrNull(canonicalName)?.uid;
-      if (string.IsNullOrEmpty(uid))
-      {
-        var res = await _twApi.Helix.Users.GetUsersAsync(logins: new List<string> { canonicalName }).ConfigureAwait(true);
-        uid = res.Users.FirstOrDefault()?.Id;
-      }
-      return uid;
-    }
-
-    public async Task<ChatSettings> GetChatSettings()
-    {
-      var res = (await _twApi.Helix.Chat.GetChatSettingsAsync(CHANNEL_ID, CHANNEL_ID).ConfigureAwait(true)).Data[0];
-      return new ChatSettings
-      {
-        EmoteMode = res.EmoteMode,
-        FollowerMode = res.FollowerMode,
-        FollowerModeDuration = res.FollowerModeDuration,
-        NonModeratorChatDelay = res.NonModeratorChatDelay,
-        NonModeratorChatDelayDuration = res.NonModeratorChatDelayDuration,
-        SlowMode = res.SlowMode,
-        SlowModeWaitTime = res.SlowModeWaitDuration,
-        SubscriberMode = res.SubscriberMode,
-        UniqueChatMode = res.UniqueChatMode
-      };
-    }
-
-    public async Task ChangeChatSettings(Action<ChatSettings> doChanges)
-    {
-      var settings = await GetChatSettings().ConfigureAwait(true);
-      doChanges(settings);
-      await _twApi.Helix.Chat.UpdateChatSettingsAsync(CHANNEL_ID, CHANNEL_ID, settings).ConfigureAwait(true);
-    }
-
     public static BotCommandId ParseBuiltinCommandId(string cmd)
     {
       // TODO 2-way dicts and !commands
@@ -444,7 +375,7 @@ namespace SimpleBot
           if (chatter.userLevel < UserLevel.Moderator) return;
           slowmode = args.FirstOrDefault()?.ToLowerInvariant() != "off";
           ChatActivity.IncCommandCounter(chatter, slowmode ? BotCommandId.SlowMode : BotCommandId.SlowModeOff);
-          _ = ChangeChatSettings(s =>
+          _ = _twApi.ChangeChatSettings(CHANNEL_ID, CHANNEL_ID, s =>
           {
             s.SlowModeWaitTime = 3;
             s.SlowMode = slowmode;
@@ -469,7 +400,7 @@ namespace SimpleBot
             {
               _ = Task.Run(async () =>
               {
-                var poll = await GetLatestPoll();
+                var poll = await _twApi.GetLatestPoll(CHANNEL_ID);
                 var totVotes = poll.Choices.Sum(x => x.Votes);
                 var oneOverTotVotes = 1f / totVotes;
                 var res = string.Join(" | ", poll.Choices.OrderByDescending(x => x.Votes)
@@ -511,7 +442,7 @@ namespace SimpleBot
             ChatActivity.IncCommandCounter(chatter, BotCommandId.StartPoll);
             _ = Task.Run(async () =>
             {
-              var success = await StartPoll(titleAndOpts[0], durationSec, titleAndOpts.Skip(1));
+              var success = await _twApi.StartPoll(CHANNEL_ID, titleAndOpts[0], durationSec, titleAndOpts.Skip(1));
               if (!success)
                 TwSendMsg("Failed to start poll D:");
             }).ThrowMainThread();
@@ -520,12 +451,12 @@ namespace SimpleBot
         case BotCommandId.EndPoll:
           if (chatter.userLevel < UserLevel.Moderator) return;
             ChatActivity.IncCommandCounter(chatter, BotCommandId.EndPoll);
-          _ = EndCurrentPoll(true).ThrowMainThread();
+          _ = _twApi.EndCurrentPoll(CHANNEL_ID, true).ThrowMainThread();
           return;
         case BotCommandId.DelPoll:
           if (chatter.userLevel < UserLevel.Moderator) return;
             ChatActivity.IncCommandCounter(chatter, BotCommandId.DelPoll);
-          _ = EndCurrentPoll(false).ThrowMainThread();
+          _ = _twApi.EndCurrentPoll(CHANNEL_ID, false).ThrowMainThread();
           return;
         case BotCommandId.AddCustomCommand:
           {
@@ -702,7 +633,7 @@ namespace SimpleBot
             if (args.Count > 0)
             {
               tagUser = args[0].CleanUsername();
-              uid = await GetUserId(tagUser.CanonicalUsername()).ConfigureAwait(true);
+              uid = await _twApi.GetUserId(tagUser.CanonicalUsername()).ConfigureAwait(true);
               if (uid == null)
               {
                 TwSendMsg("User not found: " + tagUser, chatter);
@@ -1250,7 +1181,7 @@ namespace SimpleBot
           "userlevel" or "user_level" or "user.level" => chatter.userLevel.ToString(),
           "target" => args.FirstOrDefault()?.CleanUsername() ?? "",
           "targetid" or "target_id" or "target.id" =>
-            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (GetUserId(tmp).Result ?? "<not found>"),
+            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (_twApi.GetUserId(tmp).Result ?? "<not found>"),
           "targetlevel" or "target_level" or "target.level" =>
             string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : ((ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString() ?? ""),
           "randomchatter" => ChatActivity.RandomChatter(),
