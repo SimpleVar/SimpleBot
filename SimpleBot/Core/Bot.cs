@@ -13,6 +13,7 @@ using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
 using TwitchLib.Api.Helix.Models.Chat;
 using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
+using TwitchLib.Api.Helix.Models.Polls;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -96,6 +97,7 @@ namespace SimpleBot
       _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
       //_obs.SetInputSettings("VS", new JObject { { "text", "LETS FUCKING GO" } });
       // TODO test around obs disconnecting or not existing on init
+      // TODO when obs process closes, stop being a bot and maybe close
 
       _tw = new TwitchClient(new WebSocketClient(new ClientOptions { DisconnectWait = 5000 }));
       _tw.Initialize(new ConnectionCredentials(BOT_NAME, File.ReadAllText(Settings.Default.TwitchOAuthBot)), CHANNEL);
@@ -142,6 +144,7 @@ namespace SimpleBot
           "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
           AnnouncementColors.Blue);
       });
+      // TODO shoutouts
       //var yuli = GetUserId("zulu_gula7").ThrowMainThread().Result;
       //var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, yuli).Result;
 
@@ -253,6 +256,35 @@ namespace SimpleBot
       _tw.SendMessage(_twJC, msg);
     }
 
+    public async Task<Poll> GetLatestPoll() => (await _twApi.Helix.Polls.GetPollsAsync(CHANNEL_ID, first: 1).ConfigureAwait(true)).Data.FirstOrDefault();
+    
+    public async Task EndCurrentPoll(bool keepPublic)
+    {
+      var currPoll = await GetLatestPoll();
+      if (currPoll.Status == "ACTIVE" || (!keepPublic && currPoll.Status == "COMPLETED"))
+      {
+        var status = keepPublic ? PollStatusEnum.TERMINATED : PollStatusEnum.ARCHIVED;
+        _ = await _twApi.Helix.Polls.EndPollAsync(CHANNEL_ID, currPoll.Id, status).ConfigureAwait(true);
+      }
+    }
+
+    public async Task<bool> StartPoll(string title, int durationSecs, IEnumerable<string> choices)
+    {
+      try
+      {
+        var poll = (await _twApi.Helix.Polls.CreatePollAsync(new()
+        {
+          BroadcasterId = CHANNEL_ID,
+          Title = title,
+          DurationSeconds = durationSecs,
+          Choices = choices.Select(x => new TwitchLib.Api.Helix.Models.Polls.CreatePoll.Choice { Title = x }).ToArray()
+        })).Data[0];
+        return poll.Status == "ACTIVE";
+      }
+      catch { }
+      return false;
+    }
+
     /// <summary>
     /// Searches cache before hitting the api
     /// </summary>
@@ -302,6 +334,9 @@ namespace SimpleBot
         "slowmode" => BotCommandId.SlowMode,
         "title" or "settitle" => BotCommandId.SetTitle,
         "game" or "setgame" => BotCommandId.SetGame,
+        "poll" or "startpoll" or "pollstart" => BotCommandId.StartPoll,
+        "endpoll" or "pollend" => BotCommandId.EndPoll,
+        "delpoll" or "deletepoll" or "polldel" or "polldelete" => BotCommandId.DelPoll,
         "addcmd" or "addcommand" or "addcom" => BotCommandId.AddCustomCommand,
         "delcmd" or "delcommand" or "delcom" => BotCommandId.DelCustomCommand,
         "editcmd" or "editcommand" or "editcom" => BotCommandId.EditCustomCommand,
@@ -327,7 +362,7 @@ namespace SimpleBot
         "roll" or "diceroll" or "rolldice" => BotCommandId.DiceRoll,
         "quote" or "wisdom" => BotCommandId.Quote_Get,
         "addquote" or "addwisdom" => BotCommandId.Quote_Add,
-        "delquote" or "delwisdom" => BotCommandId.Quote_Del,
+        "delquote" or "deletequote" or "delwisdom" or "deletewisdom" or "removequote" or "removewisdom" => BotCommandId.Quote_Del,
         "hiragana" => BotCommandId.LearnHiragana,
         "elo" or "rating" => BotCommandId.GetChessRatings,
         _ => (BotCommandId)(-1),
@@ -368,6 +403,8 @@ namespace SimpleBot
 
       // general moderation
       if (msg.Contains("wow")) TwSendMsg("Mama mia");
+
+      // TODO alias (expandable, like !gc !game c)
 
       // commands
       var args = msg.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -426,11 +463,76 @@ namespace SimpleBot
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SetGame);
           _ = SetGameOrTitle.SetGame(this, chatter, argsStr).ThrowMainThread();
           return;
+        case BotCommandId.StartPoll:
+          {
+            if (args.Count == 0)
+            {
+              _ = Task.Run(async () =>
+              {
+                var poll = await GetLatestPoll();
+                var totVotes = poll.Choices.Sum(x => x.Votes);
+                var oneOverTotVotes = 1f / totVotes;
+                var res = string.Join(" | ", poll.Choices.OrderByDescending(x => x.Votes)
+                  .Select(x => $"{(x.Votes == 0 ? "0%" : (x.Votes * oneOverTotVotes).ToString("P2"))} {x.Title}"));
+                TwSendMsg($"[{(poll.Status == "ACTIVE" ? "current" : "last")} poll] {poll.Title} | {res}");
+              }).ThrowMainThread();
+              return;
+            }
+            if (chatter.userLevel < UserLevel.Moderator) return;
+            // !poll title | A | B | C
+            // !poll -5m title | A | B | C
+            // !poll -30s title | A | B | C
+            int durationSec = 120;
+            char durUnit;
+            string durStr = args.FirstOrDefault() ?? "";
+            int restIdx = 0; // in characters, not arguments
+            if (durStr[0] == '-' && durStr.Length > 2 && char.IsAsciiDigit(durStr[1]) && (durUnit = char.ToLowerInvariant(durStr[^1])) is 'm' or 's' && int.TryParse(durStr[1..^1], out durationSec))
+            {
+              restIdx = durStr.Length;
+              durationSec *= durUnit switch
+              {
+                'm' => 60,
+                's' => 1,
+                _ => throw new ApplicationException("Sanity Check failed - we're mad!")
+              };
+              durationSec = Math.Max(15, Math.Min(1800, durationSec));
+            }
+            var titleAndOpts = argsStr[restIdx..].Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (titleAndOpts.Length == 0)
+            {
+              TwSendMsg("Missing title and options, example usage: !poll title | one | two", chatter);
+              return;
+            }
+            if (titleAndOpts.Length < 3 || titleAndOpts.Length > 6)
+            {
+              TwSendMsg("Poll must have 2-5 options, example usage: !poll title | one | two", chatter);
+              return;
+            }
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.StartPoll);
+            _ = Task.Run(async () =>
+            {
+              var success = await StartPoll(titleAndOpts[0], durationSec, titleAndOpts.Skip(1));
+              if (!success)
+                TwSendMsg("Failed to start poll D:");
+            }).ThrowMainThread();
+            return;
+          }
+        case BotCommandId.EndPoll:
+          if (chatter.userLevel < UserLevel.Moderator) return;
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.EndPoll);
+          _ = EndCurrentPoll(true).ThrowMainThread();
+          return;
+        case BotCommandId.DelPoll:
+          if (chatter.userLevel < UserLevel.Moderator) return;
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.DelPoll);
+          _ = EndCurrentPoll(false).ThrowMainThread();
+          return;
         case BotCommandId.AddCustomCommand:
           {
             if (chatter.userLevel < UserLevel.Moderator) return;
             var cmdData = new CustomCommandData();
             // scan for flags
+            // TODO -cd cool down
             int cmdIdx = 0;
             for (; cmdIdx < args.Count; cmdIdx++)
             {
@@ -482,7 +584,7 @@ namespace SimpleBot
             }
             if (customCmd.StartsWith(CMD_PREFIX))
               customCmd = customCmd[CMD_PREFIX.Length..];
-            if (!char.IsLetterOrDigit(customCmd.FirstOrDefault()))
+            if (!char.IsAsciiLetterOrDigit(customCmd.FirstOrDefault()))
             {
               TwSendMsg("Custom command must begin with letter or digit", chatter);
               return;
@@ -500,7 +602,7 @@ namespace SimpleBot
             string customCmd = args[0];
             if (customCmd.StartsWith(CMD_PREFIX))
               customCmd = customCmd[CMD_PREFIX.Length..];
-            if (!char.IsLetterOrDigit(customCmd.FirstOrDefault()))
+            if (!char.IsAsciiLetterOrDigit(customCmd.FirstOrDefault()))
             {
               TwSendMsg("Custom command must begin with letter or digit", chatter);
               return;
@@ -523,7 +625,7 @@ namespace SimpleBot
             string customCmd = args[0];
             if (customCmd.StartsWith(CMD_PREFIX))
               customCmd = customCmd[CMD_PREFIX.Length..];
-            if (!char.IsLetterOrDigit(customCmd.FirstOrDefault()))
+            if (!char.IsAsciiLetterOrDigit(customCmd.FirstOrDefault()))
             {
               TwSendMsg("Custom command must begin with letter or digit", chatter);
               return;
@@ -536,6 +638,7 @@ namespace SimpleBot
           }
         case BotCommandId.ShowBrb:
           if (_isBrbEnabled || chatter.userLevel < UserLevel.VIP) return;
+          // TODO hotkey for this piece of code
           string brbFile = null;
           ChatActivity.IncCommandCounter(chatter, BotCommandId.ShowBrb);
           if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
@@ -592,7 +695,7 @@ namespace SimpleBot
           }
         case BotCommandId.FollowAge:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.FollowAge);
-          Task.Run(async () =>
+          _ = Task.Run(async () =>
           {
             string tagUser = chatter.DisplayName;
             string uid = chatter.uid;
@@ -641,7 +744,7 @@ namespace SimpleBot
             TwSendMsg("Specify a reward title", chatter);
             return;
           }
-          Task.Run(async () =>
+          _ = Task.Run(async () =>
           {
             var customRewards = (await _twApi.Helix.ChannelPoints.GetCustomRewardAsync(CHANNEL_ID).ConfigureAwait(true)).Data;
             var reward =
