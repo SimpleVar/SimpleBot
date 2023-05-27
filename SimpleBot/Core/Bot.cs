@@ -79,7 +79,6 @@ namespace SimpleBot
       ViewersQueue.Load(Path.Combine(USER_DATA_FOLDER, "data\\viewers_queue.txt"));
       Quotes.Load(Path.Combine(USER_DATA_FOLDER, "data\\quotes.txt"));
       LoadCustomCommands(Path.Combine(USER_DATA_FOLDER, "data\\custom_commands.txt"));
-      _saveCustomCommands();
     }
 
     bool _init = false;
@@ -248,7 +247,7 @@ namespace SimpleBot
       if (msg.Length > 490)
         msg = msg[0..490] + " .....";
 #if DEBUG
-      if (msg.Length != 0 && msg[0] != '.')
+      if (msg.Length != 0 && !(msg[0] is '.' or '/'))
         msg = "* " + msg;
 #endif
       _tw.SendMessage(_twJC, msg);
@@ -430,14 +429,57 @@ namespace SimpleBot
         case BotCommandId.AddCustomCommand:
           {
             if (chatter.userLevel < UserLevel.Moderator) return;
-            if (args.Count < 1) return;
-            if (args.Count < 2)
+            var cmdData = new CustomCommandData();
+            // scan for flags
+            int cmdIdx = 0;
+            for (; cmdIdx < args.Count; cmdIdx++)
             {
-              TwSendMsg($"Missing response, example usage: {CMD_PREFIX}{cmd} hi Hello $(user)", chatter);
+              var arg = args[cmdIdx];
+              if (arg[0] != '-')
+                break;
+
+              if (arg.Length == 1)
+                continue; // forgiving a situtation like !addcmd - - -ul=mod !hi hi
+              int j = 1;
+              if (arg[j++] is 'u' or 'U' && arg[j++] is 'l' or 'L')
+              {
+                if (j + 1 >= arg.Length || arg[j] != '=')
+                {
+                  TwSendMsg("-ul expects a value without spaces, e.g: -ul=mod", chatter);
+                  return;
+                }
+                j++; // =
+                var ul = arg[j..].ToLowerInvariant();
+                switch (ul)
+                {
+                  case "all" or "everyone" or "normal" or "normals" or "viewer" or "viewers": cmdData.ReqLevel = UserLevel.Normal; break;
+                  case "sub" or "subs" or "subscriber" or "subscribers": cmdData.ReqLevel = UserLevel.Subscriber; break;
+                  case "vip" or "vips" or "twitch_vip" or "twitch_vips": cmdData.ReqLevel = UserLevel.VIP; break;
+                  case "mod" or "mods" or "moderator" or "moderators": cmdData.ReqLevel = UserLevel.Moderator; break;
+                  case "owner" or "streamer" or "broadcaster": cmdData.ReqLevel = UserLevel.Streamer; break;
+                  default:
+                    TwSendMsg($"Invalid UserLevel '{ul}', valid values: all/sub/vip/mod/owner", chatter);
+                    return;
+                }
+              }
+              else
+              {
+                TwSendMsg($"Invalid flag {arg}", chatter);
+                return;
+              }
+            }
+            string customCmd = null;
+            if (cmdIdx < args.Count)
+            {
+              customCmd = args[cmdIdx];
+              if (cmdIdx + 1 < args.Count)
+                cmdData.Response = string.Join(' ', args.Skip(cmdIdx + 1));
+            }
+            if (customCmd == null || cmdData.Response == null)
+            {
+              TwSendMsg($"{(cmdData.Response == null ? "Missing response, e" : "E")}xample usage: {CMD_PREFIX}{cmd} {CMD_PREFIX}hi Hello $(user)", chatter);
               return;
             }
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.AddCustomCommand);
-            string customCmd = args[0];
             if (customCmd.StartsWith(CMD_PREFIX))
               customCmd = customCmd[CMD_PREFIX.Length..];
             if (!char.IsLetterOrDigit(customCmd.FirstOrDefault()))
@@ -445,16 +487,16 @@ namespace SimpleBot
               TwSendMsg("Custom command must begin with letter or digit", chatter);
               return;
             }
-            var res = AddCustomCommand(customCmd, argsStr[(args[0].Length + 1)..], chatter)
-              ? $"Added command {customCmd} SeemsGood" : $"The command {customCmd} already exists";
-            TwSendMsg(res, chatter);
+            var success = AddCustomCommand(customCmd, cmdData, chatter);
+            if (success)
+              ChatActivity.IncCommandCounter(chatter, BotCommandId.AddCustomCommand);
+            TwSendMsg(success ? $"Added command {customCmd} SeemsGood" : $"The command {customCmd} already exists", chatter);
             return;
           }
         case BotCommandId.DelCustomCommand:
           {
             if (chatter.userLevel < UserLevel.Moderator) return;
             if (args.Count < 1) return;
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.DelCustomCommand);
             string customCmd = args[0];
             if (customCmd.StartsWith(CMD_PREFIX))
               customCmd = customCmd[CMD_PREFIX.Length..];
@@ -463,9 +505,10 @@ namespace SimpleBot
               TwSendMsg("Custom command must begin with letter or digit", chatter);
               return;
             }
-            var res = DelCustomCommand(customCmd, chatter)
-              ? $"Deleted command {customCmd} SeemsGood" : $"The command {customCmd} does not exist";
-            TwSendMsg(res, chatter);
+            var success = DelCustomCommand(customCmd, chatter);
+            if (success)
+              ChatActivity.IncCommandCounter(chatter, BotCommandId.DelCustomCommand);
+            TwSendMsg(success ? $"Deleted command {customCmd} SeemsGood" : $"The command {customCmd} does not exist", chatter);
             return;
           }
         case BotCommandId.EditCustomCommand:
@@ -474,10 +517,9 @@ namespace SimpleBot
             if (args.Count < 1) return;
             if (args.Count < 2)
             {
-              TwSendMsg($"Missing response, example usage: {CMD_PREFIX}{cmd} hi Hello $(user)", chatter);
+              TwSendMsg($"Missing response, example usage: {CMD_PREFIX}{cmd} {CMD_PREFIX}hi Hello $(user)", chatter);
               return;
             }
-            ChatActivity.IncCommandCounter(chatter, BotCommandId.EditCustomCommand);
             string customCmd = args[0];
             if (customCmd.StartsWith(CMD_PREFIX))
               customCmd = customCmd[CMD_PREFIX.Length..];
@@ -486,9 +528,10 @@ namespace SimpleBot
               TwSendMsg("Custom command must begin with letter or digit", chatter);
               return;
             }
-            var res = EditCustomCommand(customCmd, argsStr[(args[0].Length + 1)..], chatter)
-              ? $"Edited command {customCmd} SeemsGood" : $"The command {customCmd} does not exists";
-            TwSendMsg(res, chatter);
+            var success = EditCustomCommand(customCmd, argsStr[(args[0].Length + 1)..], chatter);
+            if (success)
+              ChatActivity.IncCommandCounter(chatter, BotCommandId.EditCustomCommand);
+            TwSendMsg(success ? $"Edited command {customCmd} SeemsGood" : $"The command {customCmd} does not exists", chatter);
             return;
           }
         case BotCommandId.ShowBrb:
@@ -800,17 +843,30 @@ namespace SimpleBot
               TwSendMsg(targetName + " was not found on lichess or chesscom");
             return;
           }
-      } // switch
+      } // switch (built-in commands)
 
-      if (!_customCommands.TryGetValue(cmd, out string twFormat))
-        return;
-      var formatted = formatResponseText(twFormat, e.ChatMessage, chatter, args, argsStr, out string error);
+      // custom commands
+      CustomCommandData cc;
+      lock (_customCommandsLock)
+      {
+        if (!_customCommands.TryGetValue(cmd, out cc))
+          return;
+        if (chatter.userLevel < cc.ReqLevel)
+          return;
+        cc.TotalTimesUsed++;
+        _customCommands[cmd] = cc;
+        _saveCustomCommands_noLock();
+      }
+      var formatted = formatResponseText(cc.Response, e.ChatMessage, chatter, args, argsStr, cc, out string error);
       TwSendMsg(formatted ?? ($"@{chatter.DisplayName} {error}"));
       return;
     }
 
+    #region Custom Commands
+
     string _customCommandsFile;
-    Dictionary<string, string> _customCommands = new();
+    Dictionary<string, CustomCommandData> _customCommands = new();
+    readonly object _customCommandsLock = new();
     struct CustomCommandData
     {
       public string Response;
@@ -823,13 +879,16 @@ namespace SimpleBot
       _customCommandsFile = filePath;
       if (string.IsNullOrWhiteSpace(_customCommandsFile))
         return;
-      try
+      lock (_customCommandsLock)
       {
-        _customCommands = File.ReadAllText(_customCommandsFile).FromJson<Dictionary<string, string>>();
+        try
+        {
+          _customCommands = File.ReadAllText(_customCommandsFile).FromJson<Dictionary<string, CustomCommandData>>();
+        }
+        catch { } // TODO most empty catches all around should at least log the error probably
       }
-      catch { } // TODO most empty catches all around should at least log the error probably
     }
-    private void _saveCustomCommands()
+    private void _saveCustomCommands_noLock()
     {
 #if DEBUG
       return;
@@ -845,33 +904,48 @@ namespace SimpleBot
     private bool DelCustomCommand(string command, Chatter mod)
     {
       command = command.ToLowerInvariant();
-      if (!_customCommands.TryGetValue(command, out var response))
-        return false;
-      _customCommands.Remove(command);
-      _saveCustomCommands();
-      Log($"[EVENT] {mod.DisplayName} deleted custom command {command}: {response}");
+      CustomCommandData cc;
+      lock (_customCommandsLock)
+      {
+        if (!_customCommands.TryGetValue(command, out cc))
+          return false;
+        _customCommands.Remove(command);
+        _saveCustomCommands_noLock();
+      }
+      Log($"[EVENT] {mod.DisplayName} deleted custom command {command}: {cc.ToJson()}");
       return true;
     }
-    private bool AddCustomCommand(string command, string response, Chatter mod)
+    private bool AddCustomCommand(string command, CustomCommandData cc, Chatter mod)
     {
       command = command.ToLowerInvariant();
-      if (_customCommands.ContainsKey(command))
-        return false;
-      _customCommands.Add(command, response);
-      _saveCustomCommands();
-      Log($"[EVENT] {mod.DisplayName} added custom command {command}: {response}");
+      lock (_customCommandsLock)
+      {
+        if (_customCommands.ContainsKey(command))
+          return false;
+        _customCommands.Add(command, cc);
+        _saveCustomCommands_noLock();
+      }
+      Log($"[EVENT] {mod.DisplayName} added custom command {command}: {cc.ToJson()}");
       return true;
     }
     private bool EditCustomCommand(string command, string response, Chatter mod)
     {
       command = command.ToLowerInvariant();
-      if (!_customCommands.TryGetValue(command, out var oldResponse))
-        return false;
-      _customCommands[command] = response;
-      _saveCustomCommands();
+      string oldResponse;
+      lock (_customCommandsLock)
+      {
+        if (!_customCommands.TryGetValue(command, out var cc))
+          return false;
+        oldResponse = cc.Response;
+        cc.Response = response;
+        _customCommands[command] = cc;
+        _saveCustomCommands_noLock();
+      }
       Log($"[EVENT] {mod.DisplayName} edited custom command {command}\n  old: {oldResponse}\n  new: {response}");
       return true;
     }
+
+    #endregion
 
     ////////////////////////////////////////////////////////////////////////////////////
 
@@ -887,7 +961,7 @@ namespace SimpleBot
     ///   - Any particle without '?' is required
     /// </summary>
     static readonly Regex rgxTwFormatParticle = new(@"\$\([^)]+\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    string formatResponseText(string text, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr, out string error, Dictionary<string, JToken> fetchResults = null)
+    string formatResponseText(string text, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr, CustomCommandData? customCmd, out string error, Dictionary<string, JToken> fetchResults = null)
     {
       // fetches must come at the beginning, and they accumulate results into $(res) or a $(namedVar)
       // $(fetch:w www.example.com/q=$(input)) The weather at $(w.City) is $(w.WeatherText)
@@ -965,7 +1039,7 @@ namespace SimpleBot
         text = text[i..];
 
         // FETCH
-        url = formatResponseText(url, msgData, chatter, args, argsStr, out string innerError, fetchResults);
+        url = formatResponseText(url, msgData, chatter, args, argsStr, null, out string innerError, fetchResults);
         if (innerError != null)
         {
           error = "[[ Failed fetch ]] " + innerError;
@@ -1075,9 +1149,10 @@ namespace SimpleBot
           "targetid" or "target_id" or "target.id" =>
             string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (GetUserId(tmp).Result ?? "<not found>"),
           "targetlevel" or "target_level" or "target.level" =>
-            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString(),
+            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : ((ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString() ?? ""),
           "randomchatter" => ChatActivity.RandomChatter(),
           "time" => DateTime.Now.ToShortTimeString(),
+          "count" or "counter" => (customCmd?.TotalTimesUsed).ToString() ?? "",
           "fetch" => "<invalid fetch usage>",
           _ => m.Value, // original particle text e.g. '$(unreal.42)'
         };
