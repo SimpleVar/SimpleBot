@@ -10,6 +10,6 @@
 
     public string DisplayName => displayName ?? name;
     public SneakyJapanStats SneakyJapanStats => sneakyJapanStats ??= new();
-    public int GetCmdCounter(BotCommandId cid) => cmd_counters == null ? 0 : cmd_counters.TryGetValue(cid, out int c) ? c : 0;
+    public int GetCmdCounter(BotCommandId cid) => (cmd_counters ??= new()).TryGetValue(cid, out int c) ? c : 0;
   }
 }

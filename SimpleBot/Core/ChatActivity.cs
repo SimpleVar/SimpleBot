@@ -78,6 +78,7 @@ namespace SimpleBot
     /// </summary>
     public static Chatter OnMessage(ChatMessage msg)
     {
+      // TODO? log all chat
       var name = msg.Username.ToLowerInvariant();
       if (IsIgnoredBot(name))
         return null;
@@ -103,7 +104,8 @@ namespace SimpleBot
 
     public static void IncCommandCounter(Chatter chatter, BotCommandId cid)
     {
-      (chatter.cmd_counters ??= new())[cid] = chatter.GetCmdCounter(cid) + 1;
+      var counter = chatter.GetCmdCounter(cid) + 1; // this creates the dictionary if null
+      chatter.cmd_counters[cid] = counter;
       ChatterDataMgr.Update();
     }
 

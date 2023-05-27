@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
 using System.Collections.Concurrent;
-using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -14,7 +13,6 @@ using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
 using TwitchLib.Api.Helix.Models.Chat;
 using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
-using TwitchLib.Api.Helix.Models.Moderation.BanUser;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -22,7 +20,6 @@ using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using TwitchLib.EventSub.Websockets;
 using TwitchLib.EventSub.Websockets.Extensions;
-using static System.Windows.Forms.DataFormats;
 
 namespace SimpleBot
 {
@@ -814,6 +811,13 @@ namespace SimpleBot
 
     string _customCommandsFile;
     Dictionary<string, string> _customCommands = new();
+    struct CustomCommandData
+    {
+      public string Response;
+      public int TotalTimesUsed;
+      public UserLevel ReqLevel;
+      //public int CooldownSecs; // TODO
+    }
     private void LoadCustomCommands(string filePath)
     {
       _customCommandsFile = filePath;
