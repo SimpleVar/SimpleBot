@@ -333,7 +333,8 @@ namespace SimpleBot
         return;
 
       // general moderation
-      if (msg.Contains("wow")) TwSendMsg("Mama mia");
+      if (msg.Contains("BANGER", StringComparison.InvariantCulture)) TwSendMsg("It's aaameee!! MARIO");
+      else if (msg.Contains("wow", StringComparison.InvariantCultureIgnoreCase)) TwSendMsg("Mama mia");
 
       // TODO alias (expandable, like !gc !game c)
 
