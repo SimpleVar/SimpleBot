@@ -33,6 +33,8 @@
       this.btnUpdateChatters = new System.Windows.Forms.Button();
       this.lblTwConnected = new System.Windows.Forms.Label();
       this.dialogUserDataFolder = new System.Windows.Forms.FolderBrowserDialog();
+      this.btnMassBan = new System.Windows.Forms.Button();
+      this.ofd = new System.Windows.Forms.OpenFileDialog();
       this.SuspendLayout();
       // 
       // listChatters
@@ -77,11 +79,28 @@
       // 
       this.dialogUserDataFolder.Description = "Choose where your user preferences and persistent data will be stored";
       // 
+      // btnMassBan
+      // 
+      this.btnMassBan.Location = new System.Drawing.Point(286, 89);
+      this.btnMassBan.Name = "btnMassBan";
+      this.btnMassBan.Size = new System.Drawing.Size(337, 59);
+      this.btnMassBan.TabIndex = 7;
+      this.btnMassBan.Text = "Mass Ban from list";
+      this.btnMassBan.UseVisualStyleBackColor = true;
+      this.btnMassBan.Click += new System.EventHandler(this.btnMassBan_Click);
+      // 
+      // ofd
+      // 
+      this.ofd.AddToRecent = false;
+      this.ofd.Filter = "Text files|*.txt|All files|*.*";
+      this.ofd.SupportMultiDottedExtensions = true;
+      // 
       // MainForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(674, 355);
+      this.Controls.Add(this.btnMassBan);
       this.Controls.Add(this.lblTwConnected);
       this.Controls.Add(this.label1);
       this.Controls.Add(this.listChatters);
@@ -100,5 +119,7 @@
     private Button btnUpdateChatters;
     private Label lblTwConnected;
     private FolderBrowserDialog dialogUserDataFolder;
+    private Button btnMassBan;
+    private OpenFileDialog ofd;
   }
 }
