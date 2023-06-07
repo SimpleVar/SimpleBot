@@ -24,11 +24,11 @@
       _task = LongRunningPeriodicTask.Start(_currentRoundId, true, MS_AFTER_ROUND, MS_BEFORE_FIRST_ROUND, MS_BEFORE_FIRST_ROUND,
         async rid =>
       {
+        if (!_bot.IsOnline) return MS_BEFORE_FIRST_ROUND;
         if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 1).Count < 1)
         {
           Bot.Log("Sneaky Japan delayed due to inactive chat");
-          await Task.Delay(60000);
-          return;
+          return MS_ROUND_DURATION;
         }
         lock (_lock)
         {
@@ -84,6 +84,7 @@
           var winnersText = winners.Count == 1 ? winners[0] : winners.Count + " pro gamers!";
           bot.TwSendMsg($"/me peepoJapan This Japan wasn't sneaky enough and with brilliant observation was spotted by {winnersText} Clap The sneak roll was {sneakRoll}{(sneakRoll == 0 ? " LUL" : "")}");
         }
+        return MS_AFTER_ROUND;
       });
     }
 

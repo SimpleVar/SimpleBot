@@ -47,6 +47,7 @@ namespace SimpleBot
     public TwitchApi_MoreEdges _twApi_More;
     public OBSWebsocket _obs;
 
+    public bool IsOnline { get; private set; } = true;
     public string CHANNEL_ID { get; private set; }
     public string BOT_ID { get; private set; }
     readonly JoinedChannel _twJC; // fake object with no data for quick TwSendMessage
@@ -89,18 +90,37 @@ namespace SimpleBot
       ChatterDataMgr.Init();
 
       _obs = new OBSWebsocket();
-      _obs.Connected += (o, e) => { Log("obs connected"); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty); };
-      _obs.Disconnected += (o, e) => { Log("obs disconnected: " + e.ToJson()); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty); };
-      _obs.StreamStateChanged += (o, e) => { Log("obs state change: " + e.OutputState.StateStr); }; // TODO
+      _obs.Connected += (o, e) =>
+      {
+        Log("[OBS] connected"); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
+        IsOnline = _obs.GetStreamStatus().IsActive;
+      };
+      _obs.Disconnected += (o, e) =>
+      {
+        Log("[OBS] disconnected: " + e.ToJson()); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
+      };
+      _obs.StreamStateChanged += (o, e) =>
+      {
+        Log("[OBS] state changed: " + e.OutputState.StateStr);
+        switch (e.OutputState.State)
+        {
+          case OBSWebsocketDotNet.Types.OutputState.OBS_WEBSOCKET_OUTPUT_STARTED:
+            IsOnline = true;
+            break;
+          case OBSWebsocketDotNet.Types.OutputState.OBS_WEBSOCKET_OUTPUT_STOPPED:
+            IsOnline = false;
+            break;
+        }
+      };
       _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
       //_obs.SetInputSettings("VS", new JObject { { "text", "LETS FUCKING GO" } });
       // TODO test around obs disconnecting or not existing on init
-      // TODO when obs process closes, stop being a bot and maybe close
+      // TODO? when obs process closes, stop being a bot and maybe close -- _obs.ExitStarted
 
       _tw = new TwitchClient(new WebSocketClient(new ClientOptions { DisconnectWait = 5000 }));
       _tw.Initialize(new ConnectionCredentials(BOT_NAME, File.ReadAllText(Settings.Default.TwitchOAuthBot)), CHANNEL);
 
-      _tw.OnLog += (o, e) => Log("twitch log: " + e.Data);
+      _tw.OnLog += (o, e) => Log("[twLog] " + e.Data);
       _tw.OnConnected += (o, e) => { Log("twitch connected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
       _tw.OnReconnected += (o, e) => { Log("twitch reconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
       _tw.OnDisconnected += (o, e) => { Log("twitch disconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
@@ -134,11 +154,12 @@ namespace SimpleBot
       ChatActivity.Init(this);
       SneakyJapan.Init(this);
       LearnHiragana.Init(this);
-      LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, _ =>
+      LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, async _ =>
       {
+        if (!IsOnline) return;
         if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(1200123), maxChattersNeeded: 2).Count < 2)
-          return Task.CompletedTask;
-        return _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID,
+          return;
+        await _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID,
           "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
           AnnouncementColors.Blue);
       });
@@ -174,6 +195,9 @@ namespace SimpleBot
 #endif
 
       _tw.Connect();
+
+      // Event Subs continue reacting to events even when offline
+      #region Events Sub
 
       var existingEventSubs = await TwitchApiExtensions.AggregatePages(after => _twApi.Helix.EventSub.GetEventSubSubscriptionsAsync(after: after), x => x.Pagination, x => x.Subscriptions).ConfigureAwait(true);
       try
@@ -238,6 +262,8 @@ namespace SimpleBot
         }
       };
       _ = await cc.ConnectAsync().ThrowMainThread();
+
+      #endregion
     }
 
     public static void Log(string msg)
@@ -311,8 +337,11 @@ namespace SimpleBot
     private void twOnMessage(object sender, OnMessageReceivedArgs e)
     {
       Chatter chatter = ChatActivity.OnMessage(e.ChatMessage);
-      if (chatter == null)
-        return; // ignored bot user
+      if (chatter == null) return; // ignored bot user
+      
+      // ignore commands when offline
+      if (!IsOnline) return;
+
       // TODO use nicknames and mgr for display names and stuff
 
       var msg = e.ChatMessage.Message;

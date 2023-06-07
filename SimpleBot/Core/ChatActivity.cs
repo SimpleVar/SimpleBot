@@ -55,6 +55,7 @@ namespace SimpleBot
       HashSet<string> users = new();
       _updateWatchtimeTimer = new Timer(_ =>
       {
+        if (!_bot.IsOnline) return;
         lock ( _lock)
         {
           users.UnionWith(_usersInChat);

@@ -11,11 +11,13 @@
 #endif
       _task = LongRunningPeriodicTask.Start(0, false, 60000, 3000, 10000, async rid =>
       {
+        if (!bot.IsOnline) return 10000;
         var q = _questions[Rand.R.Next(_questions.Length)];
         // TODO? play an alert, and read the answer?
         bot.TwSendMsg("▀▄▀▄▀▄ 𝐻𝒾𝓇𝒶𝑔𝒶𝓃𝒶 𝒫𝑜𝓅 𝒬𝓊𝒾𝓏 ▄▀▄▀▄▀ " + q.Q);
         await Task.Delay(15000);
         bot.TwSendMsg("▀▄▀▄▀▄ 𝐻𝒾𝓇𝒶𝑔𝒶𝓃𝒶 𝒜𝓃𝓈𝓌𝑒𝓇 ▄▀▄▀▄▀ " + q.A);
+        return null;
       });
     }
 
