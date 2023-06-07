@@ -207,7 +207,7 @@ namespace SimpleBot
           EventSubTransportMethod.Websocket,
           cc.SessionId
         ).ThrowMainThread().ConfigureAwait(true);
-        //Debug.WriteLine(res.ToJson());
+        Debug.WriteLine("[CC INIT] " + res.ToJson());
       };
       int ccReconnectTime = 1000;
       cc.WebsocketDisconnected += async (o , e)=>
@@ -1163,7 +1163,7 @@ namespace SimpleBot
         if (qi >= 0)
         {
           // $(arg0 ? Some Fallback)
-          fallback = particle.Substring(qi + 1).TrimStart();
+          fallback = particle[(qi + 1)..].TrimStart();
           particle = particle[..qi].TrimEnd();
         }
         particle = particle.ToLowerInvariant();

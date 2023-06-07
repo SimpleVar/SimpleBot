@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TwitchLib.EventSub.Websockets\TwitchLib.EventSub.Websockets.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Util_ModCheck.cs">
       <SubType>Form</SubType>
     </Compile>
