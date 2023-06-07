@@ -6,14 +6,15 @@ namespace SimpleBot
 {
   static class SetGameOrTitle
   {
-    enum KnownGame { Chess, Tetrio, GeoGuessr, Coding, JustChatting };
+    enum KnownGame { Chess, Poker, Tetrio, GeoGuessr, Coding, JustChatting };
     static KnownGame? TryGetKnownGame(string name) => name.ToLowerInvariant() switch
     {
-      "chess" or "ch" or "c" => (KnownGame?)KnownGame.Chess,
-      "tetr.io" or "tetrio" or "tetris" or "tet" or "t" => (KnownGame?)KnownGame.Tetrio,
-      "geoguessr" or "geoguesser" or "gg" or "g" => (KnownGame?)KnownGame.GeoGuessr,
-      "coding" or "code" or "software" or "dev" => (KnownGame?)KnownGame.Coding,
-      "just chatting" or "justchatting" or "chatting" or "jc" => (KnownGame?)KnownGame.JustChatting,
+      "chess" or "ch" or "c" => KnownGame.Chess,
+      "poker" or "p" => KnownGame.Poker,
+      "tetr.io" or "tetrio" or "tetris" or "tet" or "t" => KnownGame.Tetrio,
+      "geoguessr" or "geoguesser" or "gg" or "g" => KnownGame.GeoGuessr,
+      "coding" or "code" or "software" or "dev" => KnownGame.Coding,
+      "just chatting" or "justchatting" or "chatting" or "jc" => KnownGame.JustChatting,
       _ => null,
     };
 
@@ -48,6 +49,12 @@ namespace SimpleBot
 
     static async Task<(string id, string name)> _searchGame(Bot bot, Chatter tagUser, string query)
     {
+      if (string.IsNullOrWhiteSpace(query))
+      {
+        bot.TwSendMsg("No search query? NO RESULTS!!", tagUser);
+        return (null, null);
+      }
+
       KnownGame? knownGame = TryGetKnownGame(query);
       if (knownGame != null)
       {
@@ -55,11 +62,12 @@ namespace SimpleBot
         switch (knownGame)
         {
           case KnownGame.Chess: id = "743"; name = "Chess"; break;
+          case KnownGame.Poker: id = "488190"; name = "Poker"; break;
           case KnownGame.Tetrio: id = "517447"; name = "TETR.IO"; break;
           case KnownGame.GeoGuessr: id = "369418"; name = "GeoGuessr"; break;
           case KnownGame.Coding: id = "1469308723"; name = "Software and Game Development"; break;
           case KnownGame.JustChatting: id = "509658"; name = "Just Chatting"; break;
-          default: throw new ApplicationException();
+          default: throw new ApplicationException("Forgot to add hardcoded game id for game: " + knownGame);
         }
         return (id, name);
       }
