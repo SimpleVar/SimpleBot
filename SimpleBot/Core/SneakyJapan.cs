@@ -5,12 +5,15 @@
     const int MS_BEFORE_FIRST_ROUND = 32000;
     const int MS_ROUND_DURATION = 60000;
     const int MS_AFTER_ROUND = 300000;
-    
+    const int MS_QUICKNESS_THRESHOLD = 3200;
+    const int QUICKNESS_BUFF = 5;
+
     public static LongRunningPeriodicTask _task;
     static readonly object _lock = new();
     static Bot _bot;
     static long _currentRoundId;
     static bool _currentRoundOpen;
+    static DateTime _currentRoundOpenTime;
 
     public static void Init(Bot bot)
     {
@@ -34,6 +37,7 @@
         {
           _currentRoundId = rid;
           _currentRoundOpen = true;
+          _currentRoundOpenTime = DateTime.UtcNow;
           Settings.Default.SneakyJapanRound = rid + "";
           Settings.Default.Save();
         }
@@ -98,6 +102,7 @@
     {
       lock (_lock)
       {
+        var quickly = DateTime.UtcNow.Subtract(_currentRoundOpenTime).TotalMilliseconds < MS_QUICKNESS_THRESHOLD;
         var japan = chatter.SneakyJapanStats;
         var buff = CalcBuff(japan.Exp);
         var tagUser = FullJapanName(chatter);
@@ -120,8 +125,9 @@
           japan.TotalCrits++;
         }
         japan.LastRoll += buff;
+        japan.LastRoll += quickly ? QUICKNESS_BUFF : 0;
         ChatterDataMgr.Update();
-        _bot.TwSendMsg($"/me {tagUser} rolled a {(crit ? "CRIT " : "")}{japan.LastRoll}{(crit ? " Kreygasm" : "")}");
+        _bot.TwSendMsg($"/me {tagUser} {(quickly ? "QUICKLY " : "")}rolled a {(crit ? "CRIT " : "")}{japan.LastRoll}{(crit ? " Kreygasm" : "")}");
       }
     }
 
