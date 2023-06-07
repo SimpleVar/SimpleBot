@@ -44,6 +44,7 @@ namespace SimpleBot
     private void Bot_UpdatedUsersInChat(object sender, EventArgs e)
     {
       var users = ChatActivity.UsersInChat();
+      Array.Sort(users);
       this.Invoke(() =>
       {
         listChatters.Items.Clear();
@@ -54,7 +55,7 @@ namespace SimpleBot
       });
     }
 
-    async Task<bool> Ban(string name)
+    async Task<bool> Ban(string name, string reason)
     {
       var success = false;
       try
@@ -73,7 +74,7 @@ namespace SimpleBot
         var res = await bot._twApi.Helix.Moderation.BanUserAsync(bot.CHANNEL_ID, bot.CHANNEL_ID, new()
         {
           UserId = uid,
-          Reason = "in mass ban list"
+          Reason = reason
         }).ConfigureAwait(true);
         success = res.Data.Length > 0;
       }
@@ -99,6 +100,7 @@ namespace SimpleBot
       int totFails = 0;
       var fileName = ofd.FileName;
       var listName = Path.GetFileNameWithoutExtension(fileName) ?? fileName;
+      var reason = "mass ban list: " + listName;
       try
       {
         foreach (var line in File.ReadLines(fileName))
@@ -110,7 +112,7 @@ namespace SimpleBot
               continue;
             if (i != j)
             {
-              if (await Ban(line[i..j]).ConfigureAwait(true))
+              if (await Ban(line[i..j], reason).ConfigureAwait(true))
                 totBans++;
               else
                 totFails++;
@@ -120,7 +122,7 @@ namespace SimpleBot
           }
           if (i != line.Length)
           {
-            if (await Ban(line[i..]).ConfigureAwait(true))
+            if (await Ban(line[i..], reason).ConfigureAwait(true))
               totBans++;
             else
               totFails++;

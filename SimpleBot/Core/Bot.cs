@@ -146,10 +146,11 @@ namespace SimpleBot
       //var yuli = GetUserId("zulu_gula7").ThrowMainThread().Result;
       //var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, yuli).Result;
 
+#if !DEBUG
+      ForegroundWinUtil.Init();
       bool isVsVisible = false;
       int vsItemId = -1;
       int browserItemId = -1;
-      ForegroundWinUtil.Init();
       ForegroundWinUtil.ForgroundWindowChanged += (o, e) =>
       {
         var TWITCH_CHAT_TITLE = CHANNEL + " - Chat - Twitch";
@@ -170,7 +171,8 @@ namespace SimpleBot
         var newVsIdx = browserIdx + (shouldShowVS ? (vsIdx > browserIdx ? 1 : 0) : (vsIdx > browserIdx ? 0 : -1));
         _obs.SetSceneItemIndex("CODE", vsItemId, newVsIdx);
       };
-      
+#endif
+
       _tw.Connect();
 
       var existingEventSubs = await TwitchApiExtensions.AggregatePages(after => _twApi.Helix.EventSub.GetEventSubSubscriptionsAsync(after: after), x => x.Pagination, x => x.Subscriptions).ConfigureAwait(true);
@@ -189,6 +191,10 @@ namespace SimpleBot
       }
       var serviceProvider = new ServiceCollection().AddLogging().AddTwitchLibEventSubWebsockets().BuildServiceProvider();
       var cc = serviceProvider.GetService<EventSubWebsocketClient>();
+      cc.ErrorOccurred += (o, e) =>
+      {
+        Log("[CCErr] " + e.ToJson());
+      };
       cc.WebsocketConnected += async (o, e) =>
       {
         if (e.IsRequestedReconnect)
@@ -216,8 +222,9 @@ namespace SimpleBot
       cc.ChannelPointsCustomRewardRedemptionAdd += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
-        _redeemCounts.AddOrUpdate(_rewardsKey(ev.UserId, ev.Reward.Id), 1, (k, v) => v + 1);
+        //_redeemCounts.AddOrUpdate(_rewardsKey(ev.UserId, ev.Reward.Id), 1, (k, v) => v + 1);
         // handle redeems that have NO input
+        Log("[Redeem] " + ev.ToJson());
         switch (ev.Reward.Title)
         {
           case "FIRST":
@@ -230,7 +237,7 @@ namespace SimpleBot
             break;
         }
       };
-      _ = await cc.ConnectAsync().ConfigureAwait(true);
+      _ = await cc.ConnectAsync().ThrowMainThread();
     }
 
     public static void Log(string msg)
