@@ -3,6 +3,7 @@
   // NOTE: THESE VALUES MUST BE SET IN STONE (for counting uses per user)
   enum BotCommandId : long
   {
+    ListCommands = 50,
     AddIgnoredBot = 100,
     RemoveIgnoredBot = 110,
     SlowMode = 120,
@@ -15,6 +16,7 @@
     AddCustomCommand = 300,
     DelCustomCommand = 301,
     EditCustomCommand = 302,
+    ShowCustomCommand = 303,
     ShowBrb = 750,
     SearchGame = 1000,
     GetCmdCounter = 1005,

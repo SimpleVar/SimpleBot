@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -11,6 +12,7 @@ using System.Web;
 using TwitchLib.Api;
 using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
+using TwitchLib.Api.Helix.Models.Channels.GetChannelInformation;
 using TwitchLib.Api.Helix.Models.Chat;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
@@ -287,51 +289,58 @@ namespace SimpleBot
       _tw.SendMessage(_twJC, msg);
     }
 
+    static readonly ReadOnlyDictionary<BotCommandId, string[]> _builtinCommandsAliases =
+      new(new Dictionary<BotCommandId, string[]>()
+      {
+        [BotCommandId.ListCommands] = new[] { "commands" },
+        [BotCommandId.AddIgnoredBot] = new[] { "ignore", "addignore" },
+        [BotCommandId.RemoveIgnoredBot] = new[] { "unignore", "remignore" },
+        [BotCommandId.SlowModeOff] = new[] { "slowmodeoff"},
+        [BotCommandId.SlowMode] = new[] { "slowmode"},
+        [BotCommandId.SetTitle] = new[] { "title", "settitle"},
+        [BotCommandId.SetGame] = new[] { "game", "setgame"},
+        [BotCommandId.StartPoll] = new[] { "poll", "startpoll", "pollstart"},
+        [BotCommandId.EndPoll] = new[] { "endpoll", "pollend"},
+        [BotCommandId.DelPoll] = new[] { "delpoll", "deletepoll", "polldel", "polldelete"},
+        [BotCommandId.AddCustomCommand] = new[] { "addcmd", "addcommand", "addcom"},
+        [BotCommandId.DelCustomCommand] = new[] { "delcmd", "delcommand", "delcom"},
+        [BotCommandId.EditCustomCommand] = new[] { "editcmd", "editcommand", "editcom"},
+        [BotCommandId.ShowCustomCommand] = new[] { "showcmd", "showcommand", "showcom"},
+        [BotCommandId.ShowBrb] = new[] { "brb"},
+        [BotCommandId.SearchGame] = new[] { "searchgame"},
+        [BotCommandId.GetCmdCounter] = new[] { "count"},
+        [BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems"},
+        [BotCommandId.FollowAge] = new[] { "followage"},
+        [BotCommandId.WatchTime] = new[] { "watchtime"},
+        [BotCommandId.Queue_Curr] = new[] { "curr", "current"},
+        [BotCommandId.Queue_Next] = new[] { "next"},
+        [BotCommandId.Queue_All] = new[] { "queue"},
+        [BotCommandId.Queue_Clear] = new[] { "clear"},
+        [BotCommandId.Queue_Join] = new[] { "join"},
+        [BotCommandId.Queue_Leave] = new[] { "leave"},
+        [BotCommandId.Queue_Close] = new[] { "close", "closequeue"},
+        [BotCommandId.Queue_Open] = new[] { "open", "openqueue"},
+        [BotCommandId.SneakyJapan] = new[] { "japan"},
+        [BotCommandId.SneakyJapan_Stats] = new[] { "japanstats"},
+        [BotCommandId.Celsius2Fahrenheit] = new[] { "c2f"},
+        [BotCommandId.Fahrenheit2Celsius] = new[] { "f2c"},
+        [BotCommandId.CoinFlip] = new[] { "coin", "coinflip"},
+        [BotCommandId.DiceRoll] = new[] { "roll", "diceroll", "rolldice"},
+        [BotCommandId.Quote_Get] = new[] { "quote", "wisdom"},
+        [BotCommandId.Quote_Add] = new[] { "addquote", "addwisdom"},
+        [BotCommandId.Quote_Del] = new[] { "delquote", "deletequote", "delwisdom", "deletewisdom", "removequote", "removewisdom"},
+        [BotCommandId.LearnHiragana] = new[] { "hiragana"},
+        [BotCommandId.GetChessRatings] = new[] { "elo", "rating"},
+      });
+    static readonly ReadOnlyDictionary<string, BotCommandId> _cmdStr2Cid =
+      new(new Dictionary<string, BotCommandId>(_builtinCommandsAliases.SelectMany(x => x.Value.Select(alias => new KeyValuePair<string, BotCommandId>(alias, x.Key)))));
+    static readonly string _allBuiltinCommands = string.Join(' ', _builtinCommandsAliases.Where(x => x.Key != BotCommandId.ListCommands).Select(x => x.Value[0]));
+
     public static BotCommandId ParseBuiltinCommandId(string cmd)
     {
-      // TODO 2-way dicts and !commands
-      var cid = cmd switch
-      {
-        "ignore" or "addignore" => BotCommandId.AddIgnoredBot,
-        "unignore" or "remignore" => BotCommandId.RemoveIgnoredBot,
-        "slowmodeoff" => BotCommandId.SlowModeOff,
-        "slowmode" => BotCommandId.SlowMode,
-        "title" or "settitle" => BotCommandId.SetTitle,
-        "game" or "setgame" => BotCommandId.SetGame,
-        "poll" or "startpoll" or "pollstart" => BotCommandId.StartPoll,
-        "endpoll" or "pollend" => BotCommandId.EndPoll,
-        "delpoll" or "deletepoll" or "polldel" or "polldelete" => BotCommandId.DelPoll,
-        "addcmd" or "addcommand" or "addcom" => BotCommandId.AddCustomCommand,
-        "delcmd" or "delcommand" or "delcom" => BotCommandId.DelCustomCommand,
-        "editcmd" or "editcommand" or "editcom" => BotCommandId.EditCustomCommand,
-        "brb" => BotCommandId.ShowBrb,
-        "searchgame" => BotCommandId.SearchGame,
-        "count" => BotCommandId.GetCmdCounter,
-        "redeems" or "countredeem" or "countredeems" => BotCommandId.GetRedeemCounter,
-        "followage" => BotCommandId.FollowAge,
-        "watchtime" => BotCommandId.WatchTime,
-        "curr" or "current" => BotCommandId.Queue_Curr,
-        "next" => BotCommandId.Queue_Next,
-        "queue" => BotCommandId.Queue_All,
-        "clear" => BotCommandId.Queue_Clear,
-        "join" => BotCommandId.Queue_Join,
-        "leave" => BotCommandId.Queue_Leave,
-        "close" or "closequeue" => BotCommandId.Queue_Close,
-        "open" or "openqueue" => BotCommandId.Queue_Open,
-        "japan" => BotCommandId.SneakyJapan,
-        "japanstats" => BotCommandId.SneakyJapan_Stats,
-        "c2f" => BotCommandId.Celsius2Fahrenheit,
-        "f2c" => BotCommandId.Fahrenheit2Celsius,
-        "coin" or "coinflip" => BotCommandId.CoinFlip,
-        "roll" or "diceroll" or "rolldice" => BotCommandId.DiceRoll,
-        "quote" or "wisdom" => BotCommandId.Quote_Get,
-        "addquote" or "addwisdom" => BotCommandId.Quote_Add,
-        "delquote" or "deletequote" or "delwisdom" or "deletewisdom" or "removequote" or "removewisdom" => BotCommandId.Quote_Del,
-        "hiragana" => BotCommandId.LearnHiragana,
-        "elo" or "rating" => BotCommandId.GetChessRatings,
-        _ => (BotCommandId)(-1),
-      };
-      return cid;
+      if (_cmdStr2Cid.TryGetValue(cmd, out var cid))
+        return cid;
+      return (BotCommandId)(-1);
     }
 
     private void twOnMessage(object sender, OnMessageReceivedArgs e)
@@ -340,7 +349,7 @@ namespace SimpleBot
       if (chatter == null) return; // ignored bot user
       
       // ignore commands when offline
-      if (!IsOnline) return;
+      if (!IsOnline && chatter.userLevel != UserLevel.Streamer) return;
 
       // TODO use nicknames and mgr for display names and stuff
 
@@ -388,6 +397,10 @@ namespace SimpleBot
       // TODO commands that change the scene like !bigcam
       switch (cid)
       {
+        case BotCommandId.ListCommands:
+          TwSendMsg("builtin commands: " + _allBuiltinCommands, chatter);
+          TwSendMsg("editable commands: " + GetAllCustomCommands(), chatter);
+          return;
         // MOD
         case BotCommandId.AddIgnoredBot:
         case BotCommandId.RemoveIgnoredBot:
@@ -604,6 +617,22 @@ namespace SimpleBot
             TwSendMsg(success ? $"Edited command {customCmd} SeemsGood" : $"The command {customCmd} does not exists", chatter);
             return;
           }
+        case BotCommandId.ShowCustomCommand:
+          {
+            if (chatter.userLevel < UserLevel.Moderator) return;
+            if (args.Count < 1) return;
+            string customCmd = args[0];
+            if (customCmd.StartsWith(CMD_PREFIX))
+              customCmd = customCmd[CMD_PREFIX.Length..];
+            CustomCommandData? cc = null;
+            lock (_customCommandsLock)
+            {
+              if (_customCommands.TryGetValue(customCmd.ToLowerInvariant(), out var ccc))
+                cc = ccc;
+            }
+            TwSendMsg(cc == null ? $"command {customCmd} not found" : $"{CMD_PREFIX}{customCmd} :: {cc.Value.Response}");
+            return;
+          }
         case BotCommandId.ShowBrb:
           if (_isBrbEnabled || chatter.userLevel < UserLevel.VIP) return;
           // TODO hotkey for this piece of code
@@ -705,6 +734,7 @@ namespace SimpleBot
             return;
           }
         case BotCommandId.GetRedeemCounter:
+          TwSendMsg("Currently broken Sadge");
           return; // TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
           ChatActivity.IncCommandCounter(chatter, BotCommandId.GetRedeemCounter);
           if (args.Count == 0)
@@ -870,7 +900,7 @@ namespace SimpleBot
                 int blitz = lichess["blitz"]?["rating"]?.Value<int>() ?? 0;
                 int rapid = lichess["rapid"]?["rating"]?.Value<int>() ?? 0;
                 int classical = lichess["classical"]?["rating"]?.Value<int>() ?? 0;
-                int daily = lichess["daily"]?["rating"]?.Value<int>() ?? 0;
+                int daily = (lichess["daily"] ?? lichess["correspondence"])?["rating"]?.Value<int>() ?? 0;
                 int puzzle = lichess["puzzle"]?["rating"]?.Value<int>() ?? 0;
                 var sb = new StringBuilder();
                 if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
@@ -897,11 +927,13 @@ namespace SimpleBot
                 int blitz = chesscum["chess_blitz"]?["last"]?["rating"]?.Value<int>() ?? 0;
                 int rapid = chesscum["chess_rapid"]?["last"]?["rating"]?.Value<int>() ?? 0;
                 int daily = chesscum["chess_daily"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                int puzzle = (chesscum["tactics"]?["last"] ?? chesscum["tactics"]?["highest"])?["rating"]?.Value<int>() ?? 0;
                 var sb = new StringBuilder();
                 if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
                 if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
                 if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
                 if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
+                if (puzzle != 0) sb.Append("Puzzle ").Append(puzzle).Append(" | ");
                 if (sb.Length != 0)
                 {
                   found = true;
@@ -917,20 +949,21 @@ namespace SimpleBot
       } // switch (built-in commands)
 
       // custom commands
-      CustomCommandData cc;
-      lock (_customCommandsLock)
       {
-        if (!_customCommands.TryGetValue(cmd, out cc))
-          return;
-        if (chatter.userLevel < cc.ReqLevel)
-          return;
-        cc.TotalTimesUsed++;
-        _customCommands[cmd] = cc;
-        _saveCustomCommands_noLock();
+        CustomCommandData cc;
+        lock (_customCommandsLock)
+        {
+          if (!_customCommands.TryGetValue(cmd, out cc))
+            return;
+          if (chatter.userLevel < cc.ReqLevel)
+            return;
+          cc.TotalTimesUsed++;
+          _customCommands[cmd] = cc;
+          _saveCustomCommands_noLock();
+        }
+        var formatted = formatResponseText(cc.Response, e.ChatMessage, chatter, args, argsStr, cc, out string error);
+        TwSendMsg(formatted ?? ($"@{chatter.DisplayName} {error}"));
       }
-      var formatted = formatResponseText(cc.Response, e.ChatMessage, chatter, args, argsStr, cc, out string error);
-      TwSendMsg(formatted ?? ($"@{chatter.DisplayName} {error}"));
-      return;
     }
 
     #region Custom Commands
@@ -944,6 +977,13 @@ namespace SimpleBot
       public int TotalTimesUsed;
       public UserLevel ReqLevel;
       //public int CooldownSecs; // TODO
+    }
+    private string GetAllCustomCommands()
+    {
+      lock (_customCommandsLock)
+      {
+        return string.Join(' ', _customCommands.Select(x => x.Key));
+      }
     }
     private void LoadCustomCommands(string filePath)
     {
@@ -1197,6 +1237,37 @@ namespace SimpleBot
         }
         particle = particle.ToLowerInvariant();
         string tmp;
+        string getId(string name)
+        {
+          name = name?.CanonicalUsername();
+          if (string.IsNullOrWhiteSpace(name))
+            return null;
+          return _twApi.GetUserId(name).Result;
+        }
+        ChannelInformation getChannelInfo(string channelName)
+        {
+          string id = getId(channelName);
+          if (string.IsNullOrEmpty(id)) return null;
+          return _twApi.Helix.Channels.GetChannelInformationAsync(id).Result?.Data?[0];
+        }
+        ChannelInformation _targetInfo = null;
+        bool _targetInfoIsFetched = false;
+        ChannelInformation getTargetInfo()
+        {
+          if (_targetInfoIsFetched)
+            return _targetInfo;
+          _targetInfoIsFetched = true;
+          return (_targetInfo = getChannelInfo(args.FirstOrDefault()));
+        }
+        ChannelInformation _chatterInfo = null;
+        bool _chatterInfoIsFetched = false;
+        ChannelInformation getChatterInfo()
+        {
+          if (_chatterInfoIsFetched)
+            return _chatterInfo;
+          _chatterInfoIsFetched = true;
+          return (_chatterInfo = getChannelInfo(chatter.name));
+        }
         var rep = particle switch
         {
           "input" or "args" => argsStr,
@@ -1213,14 +1284,25 @@ namespace SimpleBot
           "arg9" or "9" => args.Count > 9 ? args[9] : "",
           "channel" or "streamer" => CHANNEL,
           "channelid" or "channel_id" or "channel.id" or "streamerid" or "streamer_id" or "streamer.id" => CHANNEL_ID,
-          "name" or "user" or "username" or "user_name" or "user.name" => chatter.DisplayName,
+          
+          "targetorself_name" or "targetorself.name" => args.Count == 0 ? chatter.DisplayName : ChatterDataMgr.GetOrNull(args[0].CanonicalUsername())?.DisplayName ?? args[0].CleanUsername(),
+          "targetorself_id" or "targetorself.id" => args.Count == 0 ? chatter.uid : getId(args[0]),
+          "targetorself_game" or "targetorself.game" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.GameName ?? "<not found>",
+          "targetorself_title" or "targetorself.title" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.Title ?? "<not found>",
+          "targetorself_level" or "targetorself.level" => args.Count == 0 ? chatter.userLevel.ToString() : (ChatterDataMgr.GetOrNull(args[0].CanonicalUsername())?.userLevel ?? default).ToString(),
+          
+          "username" or "user_name" or "user.name" or "name" or "user" => chatter.DisplayName,
           "userid" or "user_id" or "user.id" => chatter.uid,
+          "usergame" or "user_game" or "user.game" => getChatterInfo()?.GameName ?? "<not found>",
+          "usertitle" or "user_title" or "user.title" => getChatterInfo()?.Title ?? "<not found>",
           "userlevel" or "user_level" or "user.level" => chatter.userLevel.ToString(),
-          "target" => args.FirstOrDefault()?.CleanUsername() ?? "",
-          "targetid" or "target_id" or "target.id" =>
-            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (_twApi.GetUserId(tmp).Result ?? "<not found>"),
-          "targetlevel" or "target_level" or "target.level" =>
-            string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : ((ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString() ?? ""),
+          
+          "target" or "targetname" or "target.name" => ChatterDataMgr.GetOrNull(args.FirstOrDefault()?.CanonicalUsername())?.DisplayName ?? args.FirstOrDefault()?.CleanUsername() ?? "",
+          "targetid" or "target_id" or "target.id" => getId(args.FirstOrDefault()) ?? "<not found>",
+          "targetlevel" or "target_level" or "target.level" => string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString(),
+          "targetgame" or "target_game" or "target.game" => getTargetInfo()?.GameName ?? "<not found>",
+          "targettitle" or "target_title" or "target.title" => getTargetInfo()?.Title ?? "<not found>",
+
           "randomchatter" => ChatActivity.RandomChatter(),
           "time" => DateTime.Now.ToShortTimeString(),
           "count" or "counter" => (customCmd?.TotalTimesUsed).ToString() ?? "",
