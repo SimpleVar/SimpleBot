@@ -39,6 +39,7 @@ namespace SimpleBot
 
     #region UI events
 
+    public event EventHandler BadCredentials;
     public event EventHandler UpdatedTwitchConnected;
     public event EventHandler UpdatedOBSConnected;
 
@@ -126,6 +127,10 @@ namespace SimpleBot
       _tw.OnConnected += (o, e) => { Log("twitch connected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
       _tw.OnReconnected += (o, e) => { Log("twitch reconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
       _tw.OnDisconnected += (o, e) => { Log("twitch disconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
+      _tw.OnError += (o, e) => { Log("[twErr] " + e.Exception); };
+      _tw.OnConnectionError += (o, e) => { Log("[twErr]:conn " + e?.Error?.Message); };
+      _tw.OnNoPermissionError += (o, e) => { Log("[twErr]:perm"); };
+      _tw.OnIncorrectLogin += (o, e) => { Log("[twErr]:login"); BadCredentials?.Invoke(this, EventArgs.Empty); };
       _tw.OnMessageReceived += (o, e) =>
       {
         try

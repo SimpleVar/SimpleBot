@@ -28,94 +28,93 @@
     /// </summary>
     private void InitializeComponent()
     {
-      this.listChatters = new System.Windows.Forms.ListBox();
-      this.label1 = new System.Windows.Forms.Label();
-      this.btnUpdateChatters = new System.Windows.Forms.Button();
-      this.lblTwConnected = new System.Windows.Forms.Label();
-      this.dialogUserDataFolder = new System.Windows.Forms.FolderBrowserDialog();
-      this.btnMassBan = new System.Windows.Forms.Button();
-      this.ofd = new System.Windows.Forms.OpenFileDialog();
-      this.SuspendLayout();
+      listChatters = new ListBox();
+      labelChatters = new Label();
+      btnUpdateChatters = new Button();
+      lblTwConnected = new Label();
+      dialogUserDataFolder = new FolderBrowserDialog();
+      btnMassBan = new Button();
+      ofd = new OpenFileDialog();
+      SuspendLayout();
       // 
       // listChatters
       // 
-      this.listChatters.ItemHeight = 15;
-      this.listChatters.Location = new System.Drawing.Point(12, 63);
-      this.listChatters.Name = "listChatters";
-      this.listChatters.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-      this.listChatters.Size = new System.Drawing.Size(169, 244);
-      this.listChatters.TabIndex = 6;
+      listChatters.ItemHeight = 15;
+      listChatters.Location = new Point(12, 63);
+      listChatters.Name = "listChatters";
+      listChatters.SelectionMode = SelectionMode.MultiExtended;
+      listChatters.Size = new Size(169, 244);
+      listChatters.TabIndex = 6;
       // 
-      // label1
+      // labelChatters
       // 
-      this.label1.AutoSize = true;
-      this.label1.Location = new System.Drawing.Point(12, 45);
-      this.label1.Name = "label1";
-      this.label1.Size = new System.Drawing.Size(54, 15);
-      this.label1.TabIndex = 4;
-      this.label1.Text = "Chatters:";
+      labelChatters.AutoSize = true;
+      labelChatters.Location = new Point(12, 45);
+      labelChatters.Name = "labelChatters";
+      labelChatters.Size = new Size(54, 15);
+      labelChatters.TabIndex = 4;
+      labelChatters.Text = "Chatters:";
       // 
       // btnUpdateChatters
       // 
-      this.btnUpdateChatters.Location = new System.Drawing.Point(123, 41);
-      this.btnUpdateChatters.Name = "btnUpdateChatters";
-      this.btnUpdateChatters.Size = new System.Drawing.Size(58, 23);
-      this.btnUpdateChatters.TabIndex = 5;
-      this.btnUpdateChatters.Text = "Update";
-      this.btnUpdateChatters.UseVisualStyleBackColor = true;
-      this.btnUpdateChatters.Click += new System.EventHandler(this.Bot_UpdatedUsersInChat);
+      btnUpdateChatters.Location = new Point(123, 41);
+      btnUpdateChatters.Name = "btnUpdateChatters";
+      btnUpdateChatters.Size = new Size(58, 23);
+      btnUpdateChatters.TabIndex = 5;
+      btnUpdateChatters.Text = "Update";
+      btnUpdateChatters.UseVisualStyleBackColor = true;
+      btnUpdateChatters.Click += Bot_UpdatedUsersInChat;
       // 
       // lblTwConnected
       // 
-      this.lblTwConnected.AutoSize = true;
-      this.lblTwConnected.ForeColor = System.Drawing.SystemColors.GrayText;
-      this.lblTwConnected.Location = new System.Drawing.Point(12, 16);
-      this.lblTwConnected.Name = "lblTwConnected";
-      this.lblTwConnected.Size = new System.Drawing.Size(113, 15);
-      this.lblTwConnected.TabIndex = 0;
-      this.lblTwConnected.Text = "Twitch connecting...";
+      lblTwConnected.AutoSize = true;
+      lblTwConnected.ForeColor = SystemColors.GrayText;
+      lblTwConnected.Location = new Point(12, 16);
+      lblTwConnected.Name = "lblTwConnected";
+      lblTwConnected.Size = new Size(113, 15);
+      lblTwConnected.TabIndex = 0;
+      lblTwConnected.Text = "Twitch connecting...";
       // 
       // dialogUserDataFolder
       // 
-      this.dialogUserDataFolder.Description = "Choose where your user preferences and persistent data will be stored";
+      dialogUserDataFolder.Description = "Choose where your user preferences and persistent data will be stored";
       // 
       // btnMassBan
       // 
-      this.btnMassBan.Location = new System.Drawing.Point(286, 89);
-      this.btnMassBan.Name = "btnMassBan";
-      this.btnMassBan.Size = new System.Drawing.Size(337, 59);
-      this.btnMassBan.TabIndex = 7;
-      this.btnMassBan.Text = "Mass Ban from list";
-      this.btnMassBan.UseVisualStyleBackColor = true;
-      this.btnMassBan.Click += new System.EventHandler(this.btnMassBan_Click);
+      btnMassBan.Location = new Point(286, 89);
+      btnMassBan.Name = "btnMassBan";
+      btnMassBan.Size = new Size(337, 59);
+      btnMassBan.TabIndex = 7;
+      btnMassBan.Text = "Mass Ban from list";
+      btnMassBan.UseVisualStyleBackColor = true;
+      btnMassBan.Click += btnMassBan_Click;
       // 
       // ofd
       // 
-      this.ofd.AddToRecent = false;
-      this.ofd.Filter = "Text files|*.txt|All files|*.*";
-      this.ofd.SupportMultiDottedExtensions = true;
+      ofd.AddToRecent = false;
+      ofd.Filter = "Text files|*.txt|All files|*.*";
+      ofd.SupportMultiDottedExtensions = true;
       // 
       // MainForm
       // 
-      this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-      this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.ClientSize = new System.Drawing.Size(674, 355);
-      this.Controls.Add(this.btnMassBan);
-      this.Controls.Add(this.lblTwConnected);
-      this.Controls.Add(this.label1);
-      this.Controls.Add(this.listChatters);
-      this.Controls.Add(this.btnUpdateChatters);
-      this.Name = "MainForm";
-      this.Text = "SimpleBot";
-      this.ResumeLayout(false);
-      this.PerformLayout();
-
+      AutoScaleDimensions = new SizeF(7F, 15F);
+      AutoScaleMode = AutoScaleMode.Font;
+      ClientSize = new Size(674, 355);
+      Controls.Add(btnMassBan);
+      Controls.Add(lblTwConnected);
+      Controls.Add(labelChatters);
+      Controls.Add(listChatters);
+      Controls.Add(btnUpdateChatters);
+      Name = "MainForm";
+      Text = "SimpleBot";
+      ResumeLayout(false);
+      PerformLayout();
     }
 
     #endregion
 
     private ListBox listChatters;
-    private Label label1;
+    private Label labelChatters;
     private Button btnUpdateChatters;
     private Label lblTwConnected;
     private FolderBrowserDialog dialogUserDataFolder;

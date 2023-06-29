@@ -18,8 +18,15 @@ namespace SimpleBot
 
       bot = new Bot();
       bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;
+      bot.BadCredentials += Bot_BadCredentials;
       ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
       _ = bot.Init().ThrowMainThread();
+    }
+
+    private void Bot_BadCredentials(object sender, EventArgs e)
+    {
+      MessageBox.Show("Failed to authenticate or something like that, closing now...");
+      Application.Exit();
     }
 
     private async void Bot_UpdatedTwitchConnected(object sender, EventArgs e)
@@ -47,6 +54,7 @@ namespace SimpleBot
       Array.Sort(users);
       this.Invoke(() =>
       {
+        labelChatters.Text = $"Chatters: ({users.Length})";
         listChatters.Items.Clear();
         listChatters.SuspendLayout();
         foreach (var user in users)
