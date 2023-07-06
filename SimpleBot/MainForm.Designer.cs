@@ -35,6 +35,8 @@
       dialogUserDataFolder = new FolderBrowserDialog();
       btnMassBan = new Button();
       ofd = new OpenFileDialog();
+      cbFreezeChattersList = new CheckBox();
+      btnBanKnownBotsInChat = new Button();
       SuspendLayout();
       // 
       // listChatters
@@ -43,8 +45,10 @@
       listChatters.Location = new Point(12, 63);
       listChatters.Name = "listChatters";
       listChatters.SelectionMode = SelectionMode.MultiExtended;
-      listChatters.Size = new Size(169, 244);
-      listChatters.TabIndex = 6;
+      listChatters.Size = new Size(196, 244);
+      listChatters.TabIndex = 4;
+      listChatters.SelectedIndexChanged += listChatters_SelectedIndexChanged;
+      listChatters.KeyDown += listChatters_KeyDown;
       // 
       // labelChatters
       // 
@@ -52,15 +56,15 @@
       labelChatters.Location = new Point(12, 45);
       labelChatters.Name = "labelChatters";
       labelChatters.Size = new Size(54, 15);
-      labelChatters.TabIndex = 4;
+      labelChatters.TabIndex = 1;
       labelChatters.Text = "Chatters:";
       // 
       // btnUpdateChatters
       // 
-      btnUpdateChatters.Location = new Point(123, 41);
+      btnUpdateChatters.Location = new Point(100, 41);
       btnUpdateChatters.Name = "btnUpdateChatters";
       btnUpdateChatters.Size = new Size(58, 23);
-      btnUpdateChatters.TabIndex = 5;
+      btnUpdateChatters.TabIndex = 2;
       btnUpdateChatters.Text = "Update";
       btnUpdateChatters.UseVisualStyleBackColor = true;
       btnUpdateChatters.Click += Bot_UpdatedUsersInChat;
@@ -84,7 +88,7 @@
       btnMassBan.Location = new Point(286, 89);
       btnMassBan.Name = "btnMassBan";
       btnMassBan.Size = new Size(337, 59);
-      btnMassBan.TabIndex = 7;
+      btnMassBan.TabIndex = 5;
       btnMassBan.Text = "Mass Ban from list";
       btnMassBan.UseVisualStyleBackColor = true;
       btnMassBan.Click += btnMassBan_Click;
@@ -95,16 +99,40 @@
       ofd.Filter = "Text files|*.txt|All files|*.*";
       ofd.SupportMultiDottedExtensions = true;
       // 
+      // cbFreezeChattersList
+      // 
+      cbFreezeChattersList.AutoSize = true;
+      cbFreezeChattersList.CheckAlign = ContentAlignment.TopCenter;
+      cbFreezeChattersList.Location = new Point(164, 30);
+      cbFreezeChattersList.Name = "cbFreezeChattersList";
+      cbFreezeChattersList.Size = new Size(44, 33);
+      cbFreezeChattersList.TabIndex = 3;
+      cbFreezeChattersList.Text = "Freeze";
+      cbFreezeChattersList.UseVisualStyleBackColor = true;
+      cbFreezeChattersList.CheckedChanged += cbFreezeChattersList_CheckedChanged;
+      // 
+      // btnBanKnownBotsInChat
+      // 
+      btnBanKnownBotsInChat.Location = new Point(12, 313);
+      btnBanKnownBotsInChat.Name = "btnBanKnownBotsInChat";
+      btnBanKnownBotsInChat.Size = new Size(196, 23);
+      btnBanKnownBotsInChat.TabIndex = 6;
+      btnBanKnownBotsInChat.Text = "Ban them bots";
+      btnBanKnownBotsInChat.UseVisualStyleBackColor = true;
+      btnBanKnownBotsInChat.Click += btnBanKnownBotsInChat_Click;
+      // 
       // MainForm
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       ClientSize = new Size(674, 355);
+      Controls.Add(btnBanKnownBotsInChat);
       Controls.Add(btnMassBan);
       Controls.Add(lblTwConnected);
       Controls.Add(labelChatters);
       Controls.Add(listChatters);
       Controls.Add(btnUpdateChatters);
+      Controls.Add(cbFreezeChattersList);
       Name = "MainForm";
       Text = "SimpleBot";
       ResumeLayout(false);
@@ -120,5 +148,7 @@
     private FolderBrowserDialog dialogUserDataFolder;
     private Button btnMassBan;
     private OpenFileDialog ofd;
+    private CheckBox cbFreezeChattersList;
+    private Button btnBanKnownBotsInChat;
   }
 }

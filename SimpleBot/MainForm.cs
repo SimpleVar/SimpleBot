@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System.Diagnostics;
 
 namespace SimpleBot
@@ -6,6 +7,8 @@ namespace SimpleBot
   {
     public static MainForm Get;
     readonly Bot bot = null;
+    bool _freezeChattersList = false;
+    bool _isMultiselectingChatters = false;
 
     public MainForm()
     {
@@ -50,6 +53,8 @@ namespace SimpleBot
 
     private void Bot_UpdatedUsersInChat(object sender, EventArgs e)
     {
+      if (_freezeChattersList)
+        return;
       var users = ChatActivity.UsersInChat();
       Array.Sort(users);
       this.Invoke(() =>
@@ -152,6 +157,70 @@ namespace SimpleBot
         btnMassBan.Enabled = true;
         btnMassBan.Text = ogText;
       }
+    }
+
+    private void listChatters_KeyDown(object sender, KeyEventArgs e)
+    {
+      if (e.Control && e.KeyCode == Keys.C)
+      {
+        Clipboard.SetText(string.Join("\r\n", listChatters.SelectedItems.Cast<object>()));
+      }
+    }
+
+    private void cbFreezeChattersList_CheckedChanged(object sender, EventArgs e)
+    {
+      btnUpdateChatters.Enabled = _freezeChattersList;
+      _freezeChattersList = !_freezeChattersList;
+    }
+
+    private void listChatters_SelectedIndexChanged(object sender, EventArgs e)
+    {
+      var multi = listChatters.SelectedIndices.Count > 1;
+      if (_isMultiselectingChatters == multi)
+        return;
+      _isMultiselectingChatters = multi;
+      // automatically freeze when multiselecting and unfreeze when dropping multiselection
+      cbFreezeChattersList.Checked = multi;
+    }
+
+    private async void btnBanKnownBotsInChat_Click(object sender, EventArgs e)
+    {
+      try
+      {
+        btnBanKnownBotsInChat.Enabled = false;
+        var users = ChatActivity.UsersInChat().ToHashSet();
+        using var www = new HttpClient();
+        var knownBots = JsonConvert.DeserializeObject<KnownBots>(await www.GetStringAsync("https://api.twitchinsights.net/v1/bots/all"));
+
+        foreach (var knownBot in knownBots.bots)
+        {
+          long stalkCount = (long)knownBot[1];
+          string name = (knownBot[0] + "").CanonicalUsername();
+          if (
+            users.Contains(name) &&
+            stalkCount >= 30 &&
+            name != bot.BOT_NAME.CanonicalUsername() &&
+            name != "commanderroot" &&
+            !ChatActivity.IsIgnoredBot(name)
+            )
+          {
+            await Ban(name, $"known bot (stalkCount {stalkCount})");
+          }
+        }
+      }
+      catch (Exception ex)
+      {
+        MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+      }
+      finally
+      {
+        btnBanKnownBotsInChat.Enabled = true;
+      }
+    }
+
+    struct KnownBots
+    {
+      public object[][] bots;
     }
   }
 }

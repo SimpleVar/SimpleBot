@@ -341,6 +341,21 @@ namespace SimpleBot
       new(new Dictionary<string, BotCommandId>(_builtinCommandsAliases.SelectMany(x => x.Value.Select(alias => new KeyValuePair<string, BotCommandId>(alias, x.Key)))));
     static readonly string _allBuiltinCommands = string.Join(' ', _builtinCommandsAliases.Where(x => x.Key != BotCommandId.ListCommands).Select(x => x.Value[0]));
 
+    static readonly ReadOnlyDictionary<string, string> _commandExpansions =
+      new(new Dictionary<string, (BotCommandId cid, string extraText)>()
+      {
+        ["jc"] = (BotCommandId.SetGame, "jc"),
+        ["gjc"] = (BotCommandId.SetGame, "jc"),
+        ["gp"] = (BotCommandId.SetGame, "p"),
+        ["gc"] = (BotCommandId.SetGame, "c"),
+      }
+      .ToDictionary(x =>
+      {
+        if (_cmdStr2Cid.ContainsKey(x.Key))
+          throw new ApplicationException("Expansion is shadowing a builtin alias");
+        return x.Key;
+      }, x => _builtinCommandsAliases[x.Value.cid][0] + ' ' + x.Value.extraText + ' '));
+
     public static BotCommandId ParseBuiltinCommandId(string cmd)
     {
       if (_cmdStr2Cid.TryGetValue(cmd, out var cid))
@@ -379,6 +394,7 @@ namespace SimpleBot
               UnicodeCategory.LineSeparator or
               UnicodeCategory.ParagraphSeparator)
         msg = msg[0..^1];
+      msg = msg.Trim();
       if (msg.Length == 0)
         return;
 
@@ -386,13 +402,27 @@ namespace SimpleBot
       if (msg.Contains("BANGER", StringComparison.InvariantCulture)) TwSendMsg("It's aaameee!! MARIO");
       else if (msg.Contains("wow", StringComparison.InvariantCultureIgnoreCase)) TwSendMsg("Mama mia");
 
-      // TODO alias (expandable, like !gc !game c)
+      if (msg.Length == CMD_PREFIX.Length ||
+          char.IsWhiteSpace(msg[CMD_PREFIX.Length]) ||
+          !msg.StartsWith(CMD_PREFIX))
+      {
+        // can't be a command, bitch
+        return;
+      }
+      msg = msg[CMD_PREFIX.Length..];
+
+      // command expansions
+      {
+        var cmdLength = msg.IndexOf(' ');
+        if (cmdLength == -1)
+          cmdLength = msg.Length;
+        if (_commandExpansions.TryGetValue(msg[0..cmdLength].ToLowerInvariant(), out string expansion))
+          msg = expansion + msg[cmdLength..];
+      }
 
       // commands
       var args = msg.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
-      if (args.Count <= 0 || !args[0].StartsWith(CMD_PREFIX))
-        return;
-      var cmd = args[0][CMD_PREFIX.Length..].ToLowerInvariant();
+      var cmd = args[0].ToLowerInvariant();
       args.RemoveAt(0);
       var argsStr = string.Join(' ', args);
       BotCommandId cid = ParseBuiltinCommandId(cmd);
@@ -1207,7 +1237,7 @@ namespace SimpleBot
       const string MISSING_PARTICLE_SEP = ", ";
       string formatted = rgxTwFormatParticle.Replace(text, m =>
       {
-        var particle = m.Value[2..^1]; // $(name)
+        var particle = m.Value[2..^1].Trim(); // $(name)
         // first try find fetch result under that name (case sensitive)
         var particleMembers = particle.Split('.');
         if (fetchResults.TryGetValue(particleMembers[0], out var res))

@@ -12,7 +12,7 @@
       _task = LongRunningPeriodicTask.Start(0, false, 60000, 3000, 10000, async rid =>
       {
         if (!bot.IsOnline) return 10000;
-        var q = _questions[Rand.R.Next(_questions.Length)];
+        var q = _questions.Next();
         // TODO? play an alert, and read the answer?
         bot.TwSendMsg("▀▄▀▄▀▄ 𝐻𝒾𝓇𝒶𝑔𝒶𝓃𝒶 𝒫𝑜𝓅 𝒬𝓊𝒾𝓏 ▄▀▄▀▄▀ " + q.Q);
         await Task.Delay(15000);
@@ -30,7 +30,7 @@
         A = a;
       }
     }
-    static readonly QA[] _questions = new QA[]
+    static readonly RandomBag<QA> _questions = new(new QA[]
     {
       new("ん", "n"),
       new("あ", "a"), new("い", "i"), new("う", "u"), new("え", "e"),new("お", "o"),
@@ -60,6 +60,6 @@
       new("ぎゃ", "gya"), new("ぎゅ", "gyu"),new("ぎょ", "gyo"),
       new("びゃ", "bya"), new("びゅ", "byu"), new("びょ", "byo"),
       new("ぴゃ", "pya"), new("ぴゅ", "pyu"), new("ぴょ", "pyo"),
-    };
+    });
   }
 }
