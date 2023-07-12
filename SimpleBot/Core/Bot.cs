@@ -145,8 +145,8 @@ namespace SimpleBot
       
       _twApi = new TwitchAPI(settings: new ApiSettings { ClientId = Settings.Default.TwitchClientId, AccessToken = File.ReadAllText(Settings.Default.TwitchOAuth) });
       _twApi_More = new TwitchApi_MoreEdges(_twApi.Settings);
-      CHANNEL_ID = await _twApi.GetUserId(CHANNEL).ConfigureAwait(true);
-      BOT_ID = await _twApi.GetUserId(BOT_NAME).ConfigureAwait(true);
+      CHANNEL_ID = GetUserIdOrNull(CHANNEL);
+      BOT_ID = GetUserIdOrNull(BOT_NAME);
       /* TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
       var customRewards = (await _twApi.Helix.ChannelPoints.GetCustomRewardAsync(CHANNEL_ID).ConfigureAwait(true)).Data;
       var redemptions = new List<RewardRedemption>();
@@ -182,9 +182,9 @@ namespace SimpleBot
       ForegroundWinUtil.ForgroundWindowChanged += (o, e) =>
       {
         var TWITCH_CHAT_TITLE = CHANNEL + " - Chat - Twitch";
-        if ((e.procName != "msedge" || e.title.StartsWith(TWITCH_CHAT_TITLE)) && e.procName != "devenv")
+        if ((e.procName != "brave" || e.title.StartsWith(TWITCH_CHAT_TITLE)) && e.procName != "devenv")
           return;
-        var shouldShowVS = e.procName != "msedge";
+        var shouldShowVS = e.procName != "brave";
         if (isVsVisible == shouldShowVS)
           return;
         isVsVisible = shouldShowVS;
@@ -348,6 +348,7 @@ namespace SimpleBot
         ["gjc"] = (BotCommandId.SetGame, "jc"),
         ["gp"] = (BotCommandId.SetGame, "p"),
         ["gc"] = (BotCommandId.SetGame, "c"),
+        ["gt"] = (BotCommandId.SetGame, "t"),
       }
       .ToDictionary(x =>
       {
@@ -361,6 +362,21 @@ namespace SimpleBot
       if (_cmdStr2Cid.TryGetValue(cmd, out var cid))
         return cid;
       return (BotCommandId)(-1);
+    }
+
+    public ChannelInformation GetChannelInfo(string channelName)
+    {
+      string id = GetUserIdOrNull(channelName);
+      if (string.IsNullOrEmpty(id)) return null;
+      return _twApi.Helix.Channels.GetChannelInformationAsync(id).Result?.Data?.FirstOrDefault();
+    }
+
+    public string GetUserIdOrNull(string dirtyName)
+    {
+      var name = dirtyName?.CanonicalUsername();
+      if (string.IsNullOrWhiteSpace(name))
+        return null;
+      return _twApi.GetUserId(name).Result;
     }
 
     private void twOnMessage(object sender, OnMessageReceivedArgs e)
@@ -470,11 +486,21 @@ namespace SimpleBot
           }).ThrowMainThread();
           return;
         case BotCommandId.SetTitle:
+          if (argsStr.Length == 0)
+          {
+            TwSendMsg("Title: " + GetChannelInfo(CHANNEL).Title, chatter);
+            return;
+          }
           if (chatter.userLevel < UserLevel.Moderator) return;
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SetTitle);
           _ = SetGameOrTitle.SetTitle(this, chatter, argsStr).ThrowMainThread();
           return;
         case BotCommandId.SetGame:
+          if (argsStr.Length == 0)
+          {
+            TwSendMsg("Game: " + GetChannelInfo(CHANNEL).GameName, chatter);
+            return;
+          }
           if (chatter.userLevel < UserLevel.Moderator) return;
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SetGame);
           _ = SetGameOrTitle.SetGame(this, chatter, argsStr).ThrowMainThread();
@@ -734,7 +760,7 @@ namespace SimpleBot
             if (args.Count > 0)
             {
               tagUser = args[0].CleanUsername();
-              uid = await _twApi.GetUserId(tagUser.CanonicalUsername()).ConfigureAwait(true);
+              uid = GetUserIdOrNull(tagUser);
               if (uid == null)
               {
                 TwSendMsg("User not found: " + tagUser, chatter);
@@ -1274,19 +1300,6 @@ namespace SimpleBot
         }
         particle = particle.ToLowerInvariant();
         string tmp;
-        string getId(string name)
-        {
-          name = name?.CanonicalUsername();
-          if (string.IsNullOrWhiteSpace(name))
-            return null;
-          return _twApi.GetUserId(name).Result;
-        }
-        ChannelInformation getChannelInfo(string channelName)
-        {
-          string id = getId(channelName);
-          if (string.IsNullOrEmpty(id)) return null;
-          return _twApi.Helix.Channels.GetChannelInformationAsync(id).Result?.Data?[0];
-        }
         ChannelInformation _targetInfo = null;
         bool _targetInfoIsFetched = false;
         ChannelInformation getTargetInfo()
@@ -1294,7 +1307,7 @@ namespace SimpleBot
           if (_targetInfoIsFetched)
             return _targetInfo;
           _targetInfoIsFetched = true;
-          return (_targetInfo = getChannelInfo(args.FirstOrDefault()));
+          return (_targetInfo = GetChannelInfo(args.FirstOrDefault()));
         }
         ChannelInformation _chatterInfo = null;
         bool _chatterInfoIsFetched = false;
@@ -1303,7 +1316,7 @@ namespace SimpleBot
           if (_chatterInfoIsFetched)
             return _chatterInfo;
           _chatterInfoIsFetched = true;
-          return (_chatterInfo = getChannelInfo(chatter.name));
+          return (_chatterInfo = GetChannelInfo(chatter.name));
         }
         var rep = particle switch
         {
@@ -1323,7 +1336,7 @@ namespace SimpleBot
           "channelid" or "channel_id" or "channel.id" or "streamerid" or "streamer_id" or "streamer.id" => CHANNEL_ID,
           
           "targetorself_name" or "targetorself.name" => args.Count == 0 ? chatter.DisplayName : ChatterDataMgr.GetOrNull(args[0].CanonicalUsername())?.DisplayName ?? args[0].CleanUsername(),
-          "targetorself_id" or "targetorself.id" => args.Count == 0 ? chatter.uid : getId(args[0]),
+          "targetorself_id" or "targetorself.id" => args.Count == 0 ? chatter.uid : GetUserIdOrNull(args[0]),
           "targetorself_game" or "targetorself.game" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.GameName ?? "<not found>",
           "targetorself_title" or "targetorself.title" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.Title ?? "<not found>",
           "targetorself_level" or "targetorself.level" => args.Count == 0 ? chatter.userLevel.ToString() : (ChatterDataMgr.GetOrNull(args[0].CanonicalUsername())?.userLevel ?? default).ToString(),
@@ -1335,7 +1348,7 @@ namespace SimpleBot
           "userlevel" or "user_level" or "user.level" => chatter.userLevel.ToString(),
           
           "target" or "targetname" or "target.name" => ChatterDataMgr.GetOrNull(args.FirstOrDefault()?.CanonicalUsername())?.DisplayName ?? args.FirstOrDefault()?.CleanUsername() ?? "",
-          "targetid" or "target_id" or "target.id" => getId(args.FirstOrDefault()) ?? "<not found>",
+          "targetid" or "target_id" or "target.id" => GetUserIdOrNull(args.FirstOrDefault()) ?? "<not found>",
           "targetlevel" or "target_level" or "target.level" => string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString(),
           "targetgame" or "target_game" or "target.game" => getTargetInfo()?.GameName ?? "<not found>",
           "targettitle" or "target_title" or "target.title" => getTargetInfo()?.Title ?? "<not found>",
