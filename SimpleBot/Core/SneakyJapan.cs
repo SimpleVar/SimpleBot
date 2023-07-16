@@ -14,6 +14,7 @@
     static long _currentRoundId;
     static bool _currentRoundOpen;
     static DateTime _currentRoundOpenTime;
+    static List<Chatter> _currentPlayers = new();
 
     public static void Init(Bot bot)
     {
@@ -57,28 +58,31 @@
         lock (_lock)
         {
           _currentRoundOpen = false;
-          // TODO only loop over chatters that played this round, so collect them, and stop persisting LastRoll data
-          foreach (var chatter in ChatterDataMgr.All())
+          if (_currentPlayers.Count > 0)
           {
-            var japan = chatter.SneakyJapanStats;
-            if ((japan?.LastRollRoundId ?? 0) != rid)
-              continue;
-            var expGain = 1;
-            japan.RoundsPlayed++;
-            if (japan.LastRoll < sneakRoll)
+            foreach (var chatter in _currentPlayers)
             {
-              japan.WinStreak_Curr = 0;
+              var japan = chatter.SneakyJapanStats;
+              if ((japan?.LastRollRoundId ?? 0) != rid)
+                continue;
+              var expGain = 1;
+              japan.RoundsPlayed++;
+              if (japan.LastRoll < sneakRoll)
+              {
+                japan.WinStreak_Curr = 0;
+              }
+              else
+              {
+                japan.RoundsWon++;
+                japan.WinStreak_Curr++;
+                japan.WinStreak_Longest = Math.Max(japan.WinStreak_Curr, japan.WinStreak_Longest);
+                expGain = 5;
+                winners.Add(chatter.DisplayName);
+              }
+              japan.Exp += expGain;
             }
-            else
-            {
-              japan.RoundsWon++;
-              japan.WinStreak_Curr++;
-              japan.WinStreak_Longest = Math.Max(japan.WinStreak_Curr, japan.WinStreak_Longest);
-              expGain = 5;
-              winners.Add(chatter.DisplayName);
-            }
-            japan.Exp += expGain;
             ChatterDataMgr.Update();
+            _currentPlayers.Clear();
           }
         }
         if (winners.Count == 0)
@@ -126,12 +130,31 @@
         }
         japan.LastRoll += buff;
         japan.LastRoll += quickly ? QUICKNESS_BUFF : 0;
-        ChatterDataMgr.Update();
+        _currentPlayers.Add(chatter);
         _bot.TwSendMsg($"/me {tagUser} {(quickly ? "QUICKLY " : "")}rolled a {(crit ? "CRIT " : "")}{japan.LastRoll}{(crit ? " Kreygasm" : "")}");
       }
     }
 
-    static string FullJapanName(Chatter chatter) => $"{chatter.DisplayName} ({chatter.SneakyJapanStats.Exp} exp - {GetMasteryTitle(chatter.SneakyJapanStats.Exp)})";
+    public static void Do_NewGamePlus_Unchecked(Chatter chatter, string confirmationStr)
+    {
+      if (chatter.SneakyJapanStats.Exp < 10000)
+      {
+        _bot.TwSendMsg("Can't. Skill issue. Try when you have 10,000 exp 4Head", chatter);
+        return;
+      }
+      const string CONFIRM = "doit";
+      if (confirmationStr != CONFIRM)
+      {
+        _bot.TwSendMsg($"You may start fresh as a Weeb on NewGame+ ({chatter.SneakyJapanStats.NewGamePlus}), if you are sure send '{_bot.CMD_PREFIX}{Bot._builtinCommandsAliases[BotCommandId.SneakyJapan_NewGamePlus][0]} {CONFIRM}'", chatter);
+        return;
+      }
+      ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_Stats);
+      chatter.SneakyJapanStats.Exp -= 10000;
+      chatter.SneakyJapanStats.NewGamePlus++;
+      _bot.TwSendMsg($"svBEST peepoJapan MercyWing1 {FullJapanName(chatter)} MercyWing2 Congratulations on achieving NewGame+ ({chatter.SneakyJapanStats.NewGamePlus})!! peepoJapan SeemsGood peepoJapan PartyHat Kreygasm");
+    }
+
+    static string FullJapanName(Chatter chatter) => $"{chatter.DisplayName} ({chatter.SneakyJapanStats.Exp} exp - {GetMasteryTitle(chatter.SneakyJapanStats.Exp)}{(chatter.SneakyJapanStats.NewGamePlus == 0 ? "" : " +" + chatter.SneakyJapanStats.NewGamePlus)})";
     static int CalcBuff(int exp) => Math.Min(20, (20 * exp) / 1000);
     static string GetMasteryTitle(int exp)
     {

@@ -91,11 +91,11 @@ namespace SimpleBot
       }
 
       var msgUserLevel = msg.GetUserLevel();
-      if (chatter.displayName != msg.DisplayName ||
+      if (chatter.DisplayName != msg.DisplayName ||
           chatter.userLevel != msgUserLevel ||
           chatter.uid != msg.UserId)
       {
-        chatter.displayName = msg.DisplayName;
+        chatter.DisplayName = msg.DisplayName;
         chatter.userLevel = msgUserLevel;
         chatter.uid = msg.UserId;
         ChatterDataMgr.Update();

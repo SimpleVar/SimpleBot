@@ -35,7 +35,7 @@ namespace SimpleBot
 #endif
       if (!_dataChanged || string.IsNullOrEmpty(_chattersDataPath))
         return;
-      var json = _data.Values.ToArray().ToArray().ToJson();
+      var json = _data.Values.ToArray().ToJson();
       try
       {
         File.WriteAllText(_chattersDataPath, json);

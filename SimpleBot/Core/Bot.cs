@@ -294,7 +294,7 @@ namespace SimpleBot
       _tw.SendMessage(_twJC, msg);
     }
 
-    static readonly ReadOnlyDictionary<BotCommandId, string[]> _builtinCommandsAliases =
+    public static readonly ReadOnlyDictionary<BotCommandId, string[]> _builtinCommandsAliases =
       new(new Dictionary<BotCommandId, string[]>()
       {
         [BotCommandId.ListCommands] = new[] { "commands" },
@@ -327,6 +327,7 @@ namespace SimpleBot
         [BotCommandId.Queue_Open] = new[] { "open", "openqueue"},
         [BotCommandId.SneakyJapan] = new[] { "japan"},
         [BotCommandId.SneakyJapan_Stats] = new[] { "japanstats"},
+        [BotCommandId.SneakyJapan_NewGamePlus] = new[] { "japanplus"},
         [BotCommandId.Celsius2Fahrenheit] = new[] { "c2f"},
         [BotCommandId.Fahrenheit2Celsius] = new[] { "f2c"},
         [BotCommandId.CoinFlip] = new[] { "coin", "coinflip"},
@@ -522,13 +523,13 @@ namespace SimpleBot
             }
             if (chatter.userLevel < UserLevel.Moderator) return;
             // !poll title | A | B | C
-            // !poll -5m title | A | B | C
-            // !poll -30s title | A | B | C
+            // !poll --5m title | A | B | C
+            // !poll --30s title | A | B | C
             int durationSec = 120;
             char durUnit;
             string durStr = args.FirstOrDefault() ?? "";
             int restIdx = 0; // in characters, not arguments
-            if (durStr[0] == '-' && durStr.Length > 2 && char.IsAsciiDigit(durStr[1]) && (durUnit = char.ToLowerInvariant(durStr[^1])) is 'm' or 's' && int.TryParse(durStr[1..^1], out durationSec))
+            if (durStr.Length > 3 && durStr[0] == '-' && durStr[1] == '-' && char.IsAsciiDigit(durStr[2]) && (durUnit = char.ToLowerInvariant(durStr[^1])) is 'm' or 's' && int.TryParse(durStr[2..^1], out durationSec))
             {
               restIdx = durStr.Length;
               durationSec *= durUnit switch
@@ -574,7 +575,6 @@ namespace SimpleBot
             if (chatter.userLevel < UserLevel.Moderator) return;
             var cmdData = new CustomCommandData();
             // scan for flags
-            // TODO -cd cool down
             int cmdIdx = 0;
             for (; cmdIdx < args.Count; cmdIdx++)
             {
@@ -585,8 +585,9 @@ namespace SimpleBot
               if (arg.Length == 1)
                 continue; // forgiving a situtation like !addcmd - - -ul=mod !hi hi
               int j = 1;
-              if (arg[j++] is 'u' or 'U' && arg[j++] is 'l' or 'L')
+              if (arg.Length >= 2 && arg[j] is 'u' or 'U' && arg[j + 1] is 'l' or 'L')
               {
+                j += 2;
                 if (j + 1 >= arg.Length || arg[j] != '=')
                 {
                   TwSendMsg("-ul expects a value without spaces, e.g: -ul=mod", chatter);
@@ -605,6 +606,17 @@ namespace SimpleBot
                     TwSendMsg($"Invalid UserLevel '{ul}', valid values: all/sub/vip/mod/owner", chatter);
                     return;
                 }
+              }
+              else if (arg.Length >= 2 && arg[j] is 'c' or 'C' && arg[j + 1] is 'd' or 'D')
+              {
+                j += 2;
+                if (j + 1 >= arg.Length || arg[j] != '=')
+                {
+                  TwSendMsg("-cd expects a value without spaces, e.g: -cd=3s", chatter);
+                  return;
+                }
+                j++; // =
+                // TODO -cd cool down
               }
               else
               {
@@ -857,7 +869,6 @@ namespace SimpleBot
         case BotCommandId.SneakyJapan:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan);
           SneakyJapan.Japan(chatter);
-          _ = e.ChatMessage.Hide(this);
           return;
         case BotCommandId.SneakyJapan_Stats:
           {
@@ -876,6 +887,9 @@ namespace SimpleBot
             SneakyJapan.JapanStats(targetChatter);
             return;
           }
+        case BotCommandId.SneakyJapan_NewGamePlus:
+          SneakyJapan.Do_NewGamePlus_Unchecked(chatter, args.FirstOrDefault());
+          return;
         case BotCommandId.Celsius2Fahrenheit:
           {
             ChatActivity.IncCommandCounter(chatter, BotCommandId.Celsius2Fahrenheit);

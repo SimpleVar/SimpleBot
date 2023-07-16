@@ -33,6 +33,7 @@
     Queue_Open = 1507,
     SneakyJapan = 2000,
     SneakyJapan_Stats = 2001,
+    SneakyJapan_NewGamePlus = 2002,
     Celsius2Fahrenheit = 2900,
     Fahrenheit2Celsius = 2901,
     CoinFlip = 3010,
