@@ -170,12 +170,22 @@ namespace SimpleBot
           "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
           AnnouncementColors.Blue);
       });
-      // TODO shoutouts
-      //var yuli = GetUserId("zulu_gula7").ThrowMainThread().Result;
-      //var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, yuli).Result;
+      string[] shoutoutIds = (new[]
+      {
+        "oBtooce",
+      }).Select(x => ChatterDataMgr.GetOrNull(x.CanonicalUsername()))
+        .Where(x => x != null)
+        .Select(x => x.uid)
+        .ToArray();
+      LongRunningPeriodicTask.Start(0, true, 300042, 570000, 0, rid =>
+      {
+        var uid = shoutoutIds[rid % shoutoutIds.Length];
+        var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, uid).Result;
+        return res ? null : 120000;
+      });
 
 #if !DEBUG
-      ForegroundWinUtil.Init();
+        ForegroundWinUtil.Init();
       bool isVsVisible = false;
       int vsItemId = -1;
       int browserItemId = -1;
@@ -262,9 +272,12 @@ namespace SimpleBot
             TwSendMsg($"Nice. @{ev.UserName}");
             break;
           case "Japan":
+            TwSendMsg("Japan, baby!");
+            SneakyJapan.Buff(ChatterDataMgr.Get(ev.UserName.CanonicalUsername()), 3);
+            break;
           case "Japan!!":
-            // TODO add some buff to next Sneaky Japan roll
-            TwSendMsg("Japan, baby!!");
+            TwSendMsg("JAPAN, baby!!");
+            SneakyJapan.Buff(ChatterDataMgr.Get(ev.UserName.CanonicalUsername()), 7);
             break;
         }
       };

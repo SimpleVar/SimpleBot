@@ -1,4 +1,6 @@
-﻿namespace SimpleBot
+﻿using TwitchLib.Api.Helix.Models.Moderation.BanUser;
+
+namespace SimpleBot
 {
   static class SneakyJapan
   {
@@ -67,7 +69,7 @@
                 continue;
               var expGain = 1;
               japan.RoundsPlayed++;
-              if (japan.LastRoll < sneakRoll)
+              if (japan.LastRoll + japan.TemporaryBuff < sneakRoll)
               {
                 japan.WinStreak_Curr = 0;
               }
@@ -80,6 +82,7 @@
                 winners.Add(chatter.DisplayName);
               }
               japan.Exp += expGain;
+              japan.TemporaryBuff = 0;
             }
             ChatterDataMgr.Update();
             _currentPlayers.Clear();
@@ -131,27 +134,39 @@
         japan.LastRoll += buff;
         japan.LastRoll += quickly ? QUICKNESS_BUFF : 0;
         _currentPlayers.Add(chatter);
-        _bot.TwSendMsg($"/me {tagUser} {(quickly ? "QUICKLY " : "")}rolled a {(crit ? "CRIT " : "")}{japan.LastRoll}{(crit ? " Kreygasm" : "")}");
+        _bot.TwSendMsg($"/me {tagUser} {(quickly ? "QUICKLY " : "")}rolled a {(crit ? "CRIT " : "")}{japan.LastRoll}{(crit ? " Kreygasm" : "")}{(japan.TemporaryBuff == 0 ? "" : " (and +" + japan.TemporaryBuff + " buff)")}");
+      }
+    }
+
+    public static void Buff(Chatter chatter, int buff)
+    {
+      lock (_lock)
+      {
+        chatter.SneakyJapanStats.TemporaryBuff += buff;
+        _bot.TwSendMsg($"{FullJapanName(chatter)} gets a temporary +{buff} buff to the next roll result!");
       }
     }
 
     public static void Do_NewGamePlus_Unchecked(Chatter chatter, string confirmationStr)
     {
-      if (chatter.SneakyJapanStats.Exp < 10000)
+      lock (_lock)
       {
-        _bot.TwSendMsg("Can't. Skill issue. Try when you have 10,000 exp 4Head", chatter);
-        return;
+        if (chatter.SneakyJapanStats.Exp < 10000)
+        {
+          _bot.TwSendMsg("Can't. Skill issue. Try when you have 10,000 exp 4Head", chatter);
+          return;
+        }
+        const string CONFIRM = "doit";
+        if (confirmationStr != CONFIRM)
+        {
+          _bot.TwSendMsg($"You may start fresh as a Weeb on NewGame+ ({chatter.SneakyJapanStats.NewGamePlus}), if you are sure send '{_bot.CMD_PREFIX}{Bot._builtinCommandsAliases[BotCommandId.SneakyJapan_NewGamePlus][0]} {CONFIRM}'", chatter);
+          return;
+        }
+        ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_Stats);
+        chatter.SneakyJapanStats.Exp -= 10000;
+        chatter.SneakyJapanStats.NewGamePlus++;
+        _bot.TwSendMsg($"svBEST peepoJapan MercyWing1 {FullJapanName(chatter)} MercyWing2 Congratulations on achieving NewGame+ ({chatter.SneakyJapanStats.NewGamePlus})!! peepoJapan SeemsGood peepoJapan PartyHat Kreygasm");
       }
-      const string CONFIRM = "doit";
-      if (confirmationStr != CONFIRM)
-      {
-        _bot.TwSendMsg($"You may start fresh as a Weeb on NewGame+ ({chatter.SneakyJapanStats.NewGamePlus}), if you are sure send '{_bot.CMD_PREFIX}{Bot._builtinCommandsAliases[BotCommandId.SneakyJapan_NewGamePlus][0]} {CONFIRM}'", chatter);
-        return;
-      }
-      ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_Stats);
-      chatter.SneakyJapanStats.Exp -= 10000;
-      chatter.SneakyJapanStats.NewGamePlus++;
-      _bot.TwSendMsg($"svBEST peepoJapan MercyWing1 {FullJapanName(chatter)} MercyWing2 Congratulations on achieving NewGame+ ({chatter.SneakyJapanStats.NewGamePlus})!! peepoJapan SeemsGood peepoJapan PartyHat Kreygasm");
     }
 
     static string FullJapanName(Chatter chatter) => $"{chatter.DisplayName} ({chatter.SneakyJapanStats.Exp} exp - {GetMasteryTitle(chatter.SneakyJapanStats.Exp)}{(chatter.SneakyJapanStats.NewGamePlus == 0 ? "" : " +" + chatter.SneakyJapanStats.NewGamePlus)})";
