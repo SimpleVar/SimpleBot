@@ -170,19 +170,23 @@ namespace SimpleBot
           "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
           AnnouncementColors.Blue);
       });
-      string[] shoutoutIds = (new[]
+      Chatter[] shoutouts = (new[]
       {
         "oBtooce",
       }).Select(x => ChatterDataMgr.GetOrNull(x.CanonicalUsername()))
         .Where(x => x != null)
-        .Select(x => x.uid)
         .ToArray();
-      LongRunningPeriodicTask.Start(0, true, 300042, 570000, 0, rid =>
+      string[] shoutoutIds = shoutouts.Select(x => x.uid).ToArray();
+      Log("Auto-Shoutouts: " + string.Join(' ', shoutouts.Select(x => x.DisplayName)));
+      if (shoutoutIds.Length > 0)
       {
-        var uid = shoutoutIds[rid % shoutoutIds.Length];
-        var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, uid).Result;
-        return res ? null : 120000;
-      });
+        LongRunningPeriodicTask.Start(0, true, 300042, 570000, 0, rid =>
+        {
+          var uid = shoutoutIds[rid % shoutoutIds.Length];
+          var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, uid).Result;
+          return res ? null : 120000;
+        });
+      }
 
 #if !DEBUG
         ForegroundWinUtil.Init();
