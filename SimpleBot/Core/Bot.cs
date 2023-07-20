@@ -49,6 +49,7 @@ namespace SimpleBot
     public TwitchAPI _twApi;
     public TwitchApi_MoreEdges _twApi_More;
     public OBSWebsocket _obs;
+    public Youtube _yt;
 
     public bool IsOnline { get; private set; } = true;
     public string CHANNEL_ID { get; private set; }
@@ -64,6 +65,8 @@ namespace SimpleBot
 
     public Bot()
     {
+      _yt = new Youtube();
+
       _twJC = new JoinedChannel(CHANNEL);
 #if !DEBUG
       _logFilePath = Application.StartupPath + "logs\\";
@@ -91,6 +94,20 @@ namespace SimpleBot
         throw new ApplicationException("Init should be called exactly once");
       _init = true;
       ChatterDataMgr.Init();
+
+      await _yt.Init();
+      _yt.RegisterInitialized(async (o, e) =>
+      {
+        // TODO Continue here
+        //await _yt.SetVolume(20);
+        /*
+        await _yt.PlayVideo("IYnsfV5N2n8");
+        _yt.VideoEnded += (o, e) =>
+        {
+          _ = _yt.PlayVideo("IYnsfV5N2n8");
+        };
+        */
+      });
 
       _obs = new OBSWebsocket();
       _obs.Connected += (o, e) =>
@@ -287,7 +304,8 @@ namespace SimpleBot
             break;
         }
       };
-      _ = await cc.ConnectAsync().ThrowMainThread();
+      if (!(await cc.ConnectAsync().ConfigureAwait(true)))
+        Log("[CCErr] failed to connect");
 
       #endregion
     }
@@ -336,6 +354,7 @@ namespace SimpleBot
         [BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems"},
         [BotCommandId.FollowAge] = new[] { "followage"},
         [BotCommandId.WatchTime] = new[] { "watchtime"},
+        [BotCommandId.Songs_Test] = new[] { "ssr"},
         [BotCommandId.Queue_Curr] = new[] { "curr", "current"},
         [BotCommandId.Queue_Next] = new[] { "next"},
         [BotCommandId.Queue_All] = new[] { "queue"},
@@ -847,6 +866,19 @@ namespace SimpleBot
             }
             int count = _redeemCounts.TryGetValue(_rewardsKey(chatter.uid, reward.Id), out int v) ? v : 0;
             TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
+          }).ThrowMainThread();
+          return;
+        case BotCommandId.Songs_Test:
+          if (args.Count == 0) return;
+          _ = Task.Run(async () =>
+          {
+            if (await _yt.Search(argsStr) is Youtube.YtVideo video)
+            {
+              _ = await _yt.PlayVideo(video.id);
+              TwSendMsg($"Immediately playing: {video.title} ({video.duration})", chatter);
+            }
+            else
+              TwSendMsg("No video found for: " + argsStr, chatter);
           }).ThrowMainThread();
           return;
         case BotCommandId.Queue_Curr:

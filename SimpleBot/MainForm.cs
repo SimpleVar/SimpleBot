@@ -1,7 +1,5 @@
 using Newtonsoft.Json;
 using System.Diagnostics;
-using System.Net;
-using System.Web;
 
 namespace SimpleBot
 {
@@ -26,6 +24,8 @@ namespace SimpleBot
       bot.BadCredentials += Bot_BadCredentials;
       ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
       _ = bot.Init().ThrowMainThread();
+
+      panel1.Controls.Add(bot._yt.webView);
     }
 
     private void Bot_BadCredentials(object sender, EventArgs e)

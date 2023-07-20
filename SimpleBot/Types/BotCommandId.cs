@@ -23,6 +23,7 @@
     GetRedeemCounter = 1007,
     FollowAge = 1010,
     WatchTime = 1011,
+    Songs_Test = 1200,
     Queue_Curr = 1500,
     Queue_Next = 1501,
     Queue_All = 1502,

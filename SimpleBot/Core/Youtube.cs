@@ -1,5 +1,10 @@
-﻿using System.Net;
+﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+using System.Globalization;
+using System.Net;
 using System.Web;
+using VideoLibrary;
+using VideoLibrary.Exceptions;
 
 namespace SimpleBot
 {
@@ -12,29 +17,157 @@ namespace SimpleBot
 
     const int BUFF_SIZE = 1024;
 
-    readonly HttpClient web;
+    public readonly WebView2 webView;
+    public event EventHandler VideoEnded = delegate { };
+
+    private readonly object _webViewInitLock = new();
+    private bool IsWebViewInitialized = false;
+    private event EventHandler WebViewInitialized = delegate { };
+
+    public void RegisterInitialized(EventHandler action)
+    {
+      lock (_webViewInitLock)
+      {
+        if (IsWebViewInitialized)
+          action.Invoke(this, null);
+        else
+          WebViewInitialized += action;
+      }
+    }
+
+    readonly HttpClient _web;
+    readonly Client<YouTubeVideo> _yt;
     readonly byte[] _buff = new byte[BUFF_SIZE];
     readonly List<YtVideo> _results = new();
 
     public Youtube()
     {
       var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
-      web = new HttpClient(handler);
+      _web = new HttpClient(handler);
+      _yt = Client.For(YouTube.Default);
+
+      webView = new WebView2 { Dock = DockStyle.Fill };
+      webView.CoreWebView2InitializationCompleted += (o, e) =>
+      {
+        if (e.InitializationException != null)
+          throw e.InitializationException;
+
+        webView.CoreWebView2.DOMContentLoaded += (o, e) =>
+        {
+          // inject the html source into google so that youtube likes as and plays embedded videos
+          _ = webView.ExecuteScriptAsync(@"document.body.innerHTML = '<div id=player></div>';
+const scr = document.createElement('script');
+scr.innerHTML = `function onYouTubeIframeAPIReady() {
+  const player = new YT.Player('player', {
+    height: '390',
+    width: '640',
+    playerVars: { 'autoplay': 1, 'controls': 1 },
+    events: {
+      'onReady': () => { document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded'); },
+      'onStateChange': e => { if (e.data === 0) window.chrome.webview.postMessage(0) }
+    }
+  });
+}`;
+document.body.append(scr);
+const tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.body.append(tag);");
+        };
+
+        webView.WebMessageReceived += (o, e) =>
+        {
+          switch (e.WebMessageAsJson)
+          {
+            case "\"loaded\"":
+              lock (_webViewInitLock)
+              {
+                IsWebViewInitialized = true;
+                WebViewInitialized.Invoke(this, null);
+              }
+              break;
+            case "0":
+              VideoEnded.Invoke(this, null);
+              break;
+          }
+        };
+        // now we are in an https secured url, Muahahahahahahahhahahahqahahahadhahssdhakjsawdg
+        webView.CoreWebView2.Navigate("https://www.google.com");
+      };
     }
 
-    public void Search(string query, List<YtVideo> results, int maxResults)
+    public async Task Init()
     {
-      // TODO handle youtube urls
-      // TODO how to get the DATA from just the id? hit the actual api at the cost of 1 UNITTT?!?!
-      using Stream s = web.GetStreamAsync("https://www.youtube.com/results?sp=EgIQAQ%253D%253D&search_query=" + HttpUtility.UrlEncode(query)).Result;
+      var env = await CoreWebView2Environment.CreateAsync(null, null, new("--allow-insecure-localhost --unsafely-treat-insecure-origin-as-secure=about:blank"));
+      await webView.EnsureCoreWebView2Async(env);
+      //return webView.EnsureCoreWebView2Async();
+    }
+
+    public Task<string> SetVolume(int volume)
+    {
+      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.setVolume({volume})"));
+    }
+
+    public Task<string> PlayVideo(string videoId)
+    {
+      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.loadVideoById('{videoId}')"));
+    }
+
+    public Task<string> PlayVideo(string videoId, int startSeconds)
+    {
+      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.loadVideoById('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")})"));
+    }
+
+    public Task<string> PlayVideo(string videoId, int startSeconds, int endSeconds)
+    {
+      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.loadVideoById('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})"));
+    }
+
+    public async Task Search(string query, List<YtVideo> results, int maxResults)
+    {
+      var couldBeId = true;
+      for (int i = 0; couldBeId && i < query.Length; i++)
+      {
+        char c = query[i];
+        couldBeId = c != '-' && c != '_' && !char.IsLetterOrDigit(c);
+      }
+
+      YouTubeVideo video = null;
+      if (couldBeId)
+        video = tryGetVideo("youtube.com/watch?v=" + query);
+      else if (query.Contains("youtu.be/") || query.Contains("youtube."))
+        video = tryGetVideo(query);
+      
+      if (video != null)
+      {
+        results.Add(new()
+        {
+          id = query,
+          title = video.Title,
+          duration = TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToString("g", CultureInfo.InvariantCulture)
+        });
+        return;
+      }
+
+      using Stream s = await _web.GetStreamAsync("https://www.youtube.com/results?sp=EgIQAQ%253D%253D&search_query=" + HttpUtility.UrlEncode(query));
       parseSearchResults(s, results, maxResults);
     }
 
-    public YtVideo? Search(string query)
+    public async Task<YtVideo?> Search(string query)
     {
       _results.Clear();
-      Search(query, _results, 1);
+      await Search(query, _results, 1);
       return _results.Count == 0 ? null : _results[0];
+    }
+
+    private YouTubeVideo tryGetVideo(string url)
+    {
+      try
+      {
+        return _yt.GetVideo(url);
+      }
+      catch (ArgumentException) { }
+      catch (UnavailableStreamException) { }
+      return null;
     }
 
     // JSON PARSING-NOT-PARSING:
