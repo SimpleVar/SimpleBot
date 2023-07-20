@@ -170,6 +170,7 @@ namespace SimpleBot
           "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
           AnnouncementColors.Blue);
       });
+      /*
       Chatter[] shoutouts = (new[]
       {
         "oBtooce",
@@ -187,6 +188,7 @@ namespace SimpleBot
           return res ? null : 120000;
         });
       }
+      */
 
 #if !DEBUG
         ForegroundWinUtil.Init();

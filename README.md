@@ -8,8 +8,9 @@
 
 ### TODO
 
- - make a todo list
- - make a readme
+ - [ ] make a todo list
+ - [ ] make a readme
+ - [ ] Remove Newtonsoft.Json and use System.Text.Json
 
 
 

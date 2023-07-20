@@ -1,5 +1,7 @@
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Net;
+using System.Web;
 
 namespace SimpleBot
 {

@@ -143,7 +143,7 @@ namespace SimpleBot
       lock (_lock)
       {
         chatter.SneakyJapanStats.TemporaryBuff += buff;
-        _bot.TwSendMsg($"{FullJapanName(chatter)} gets a temporary +{buff} buff to the next roll result!");
+        _bot.TwSendMsg($"{FullJapanName(chatter)} gets a temporary +{buff} buff to your next perception check!");
       }
     }
 

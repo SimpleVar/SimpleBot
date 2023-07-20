@@ -125,7 +125,7 @@
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
-      ClientSize = new Size(674, 355);
+      ClientSize = new Size(662, 358);
       Controls.Add(btnBanKnownBotsInChat);
       Controls.Add(btnMassBan);
       Controls.Add(lblTwConnected);
