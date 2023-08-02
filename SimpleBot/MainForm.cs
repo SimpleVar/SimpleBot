@@ -72,18 +72,19 @@ namespace SimpleBot
 
     async Task<bool> Ban(string name, string reason)
     {
+      Bot.Log("[Ban] Attemping to ban " + name + " | reason: " + reason);
       var success = false;
       try
       {
         var uid = await bot._twApi.GetUserId(name.CanonicalUsername()).ConfigureAwait(true);
         if (uid == null)
         {
-          Debug.WriteLine("[Mass ban] " + name + " does not exist");
+          Bot.Log("[Ban] " + name + " does not exist");
           return true;
         }
         if ((await bot._twApi.Helix.Moderation.GetBannedUsersAsync(bot.CHANNEL_ID, userIds: new() { uid })).Data.Length > 0)
         {
-          Debug.WriteLine("[Mass ban] " + name + " already banned");
+          Bot.Log("[Ban] " + name + " already banned");
           return true;
         }
         var res = await bot._twApi.Helix.Moderation.BanUserAsync(bot.CHANNEL_ID, bot.CHANNEL_ID, new()
@@ -95,9 +96,10 @@ namespace SimpleBot
       }
       catch (Exception ex)
       {
+        Bot.Log("[Ban] ERROR: " + ex);
         Debug.WriteLine(ex);
       }
-      Debug.WriteLine($"[Mass ban] {(success ? "Banned" : "Failed to ban")} {name}");
+      Bot.Log($"[Ban] {(success ? "Banned" : "Failed to ban")} {name}");
       return success;
     }
 
@@ -193,25 +195,29 @@ namespace SimpleBot
         var users = ChatActivity.UsersInChat().ToHashSet();
         using var www = new HttpClient();
         var knownBots = JsonConvert.DeserializeObject<KnownBots>(await www.GetStringAsync("https://api.twitchinsights.net/v1/bots/all"));
-
+        var successCount = 0;
+        var botNameCanonical = bot.BOT_NAME.CanonicalUsername();
         foreach (var knownBot in knownBots.bots)
         {
           long stalkCount = (long)knownBot[1];
+          if (stalkCount < 30)
+            continue;
           string name = (knownBot[0] + "").CanonicalUsername();
-          if (
-            users.Contains(name) &&
-            stalkCount >= 30 &&
-            name != bot.BOT_NAME.CanonicalUsername() &&
-            name != "commanderroot" &&
-            !ChatActivity.IsIgnoredBot(name)
-            )
-          {
-            await Ban(name, $"known bot (stalkCount {stalkCount})");
-          }
+          if (name == "commanderroot" || name == "minecool_yt" || name == botNameCanonical || !users.Contains(name) || ChatActivity.IsIgnoredBot(name))
+            continue;
+          var success = await Ban(name, $"known bot (stalkCount {stalkCount})");
+          if (success)
+            successCount++;
+        }
+        if (successCount > 0)
+        {
+          Bot.Log("[Ban known bots] Banned " + successCount + " users");
+          MessageBox.Show("Banned " + successCount + " users");
         }
       }
       catch (Exception ex)
       {
+        Bot.Log("[Ban known bots] ERROR: " + ex);
         MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
       }
       finally

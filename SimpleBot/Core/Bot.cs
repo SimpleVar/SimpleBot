@@ -236,9 +236,9 @@ namespace SimpleBot
 
       _tw.Connect();
 
-      // Event Subs continue reacting to events even when offline
       #region Events Sub
 
+      // Event Subs continue reacting to events even when offline
       var existingEventSubs = await TwitchApiExtensions.AggregatePages(after => _twApi.Helix.EventSub.GetEventSubSubscriptionsAsync(after: after), x => x.Pagination, x => x.Subscriptions).ConfigureAwait(true);
       try
       {
@@ -264,14 +264,28 @@ namespace SimpleBot
         if (e.IsRequestedReconnect)
           return;
         // subscribe to events https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
-        var res = await _twApi.Helix.EventSub.CreateEventSubSubscriptionAsync(
-          "channel.channel_points_custom_reward_redemption.add",
-          "1",
-          new Dictionary<string, string> { { "broadcaster_user_id", CHANNEL_ID } },
-          EventSubTransportMethod.Websocket,
-          cc.SessionId
-        ).ThrowMainThread().ConfigureAwait(true);
-        Debug.WriteLine("[CC INIT] " + res.ToJson());
+        var twEventSubs = new[]
+        {
+          new TwEventSubReq(1, "channel.channel_points_custom_reward_redemption.add").Cond("broadcaster_user_id", CHANNEL_ID),
+          new TwEventSubReq(2, "channel.follow").Cond("broadcaster_user_id", CHANNEL_ID).Cond("moderator_user_id", CHANNEL_ID),
+          new TwEventSubReq(1, "channel.subscribe").Cond("broadcaster_user_id", CHANNEL_ID),
+          new TwEventSubReq(1, "channel.subscription.gift").Cond("broadcaster_user_id", CHANNEL_ID),
+          new TwEventSubReq(1, "channel.subscription.message").Cond("broadcaster_user_id", CHANNEL_ID),
+          new TwEventSubReq(1, "channel.cheer").Cond("broadcaster_user_id", CHANNEL_ID),
+          new TwEventSubReq(1, "channel.raid").Cond("to_broadcaster_user_id", CHANNEL_ID),
+          new TwEventSubReq(1, "channel.charity_campaign.donate").Cond("broadcaster_user_id", CHANNEL_ID),
+        };
+        foreach (var twEventSub in twEventSubs)
+        {
+          var res = await _twApi.Helix.EventSub.CreateEventSubSubscriptionAsync(
+            twEventSub.type,
+            twEventSub.version + "",
+            twEventSub.conditions,
+            EventSubTransportMethod.Websocket,
+            cc.SessionId
+          ).ThrowMainThread().ConfigureAwait(true);
+          Debug.WriteLine("[CC INIT] " + res.ToJson());
+        }
       };
       int ccReconnectTime = 1000;
       cc.WebsocketDisconnected += async (o , e)=>
@@ -303,6 +317,41 @@ namespace SimpleBot
             SneakyJapan.Buff(ChatterDataMgr.Get(ev.UserName.CanonicalUsername()), 7);
             break;
         }
+      };
+      cc.ChannelFollow += (o, e) =>
+      {
+        var name = e.Notification.Payload.Event.UserName;
+        TwSendMsg("Thanks for following @" + name);
+      };
+      cc.ChannelSubscribe += (o, e) =>
+      {
+        var ev = e.Notification.Payload.Event;
+        // TODO
+      };
+      cc.ChannelSubscriptionGift += (o, e) =>
+      {
+        var ev = e.Notification.Payload.Event;
+        // TODO
+      };
+      cc.ChannelSubscriptionMessage += (o, e) =>
+      {
+        var ev = e.Notification.Payload.Event;
+        // TODO
+      };
+      cc.ChannelCheer += (o, e) =>
+      {
+        var ev = e.Notification.Payload.Event;
+        // TODO
+      };
+      cc.ChannelRaid += (o, e) =>
+      {
+        var ev = e.Notification.Payload.Event;
+        // TODO
+      };
+      cc.ChannelCharityCampaignDonate += (o, e) =>
+      {
+        var ev = e.Notification.Payload.Event;
+        // TODO
       };
       if (!(await cc.ConnectAsync().ConfigureAwait(true)))
         Log("[CCErr] failed to connect");
@@ -1220,13 +1269,13 @@ namespace SimpleBot
         // read fetch NAME
         if (i < text.Length && text[i] == ':')
         {
-          int j = i;
+          int j = ++i;
           while (j < text.Length && text[j] != ' ' && text[j] != ')')
           {
             var c = text[j++];
             if (c != '_' && (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9'))
             {
-              error = BAD_SYNTAX_MSG;
+              error = "#1" + BAD_SYNTAX_MSG;
               return null;
             }
           }
@@ -1263,13 +1312,13 @@ namespace SimpleBot
         }
         if (text[i] != ')')
         {
-          error = BAD_SYNTAX_MSG;
+          error = "#2" + BAD_SYNTAX_MSG;
           return null;
         }
         var url = text[urlStart..i].TrimEnd();
         if (string.IsNullOrWhiteSpace(url) || url[0] == '$') // makes sure url isn't $fetch itself, or smth stoopid
         {
-          error = BAD_SYNTAX_MSG;
+          error = "#3" + BAD_SYNTAX_MSG;
           return null;
         }
         i++;

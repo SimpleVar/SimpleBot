@@ -1,5 +1,4 @@
-﻿using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
+﻿using Microsoft.Web.WebView2.WinForms;
 using System.Globalization;
 using System.Net;
 using System.Web;
@@ -18,7 +17,7 @@ namespace SimpleBot
     const int BUFF_SIZE = 1024;
 
     public readonly WebView2 webView;
-    public event EventHandler VideoEnded = delegate { };
+    public event EventHandler<string> VideoEnded = delegate { };
 
     private readonly object _webViewInitLock = new();
     private bool IsWebViewInitialized = false;
@@ -63,11 +62,16 @@ scr.innerHTML = `function onYouTubeIframeAPIReady() {
     width: '640',
     playerVars: { 'autoplay': 1, 'controls': 1 },
     events: {
-      'onReady': () => { document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded'); },
-      'onStateChange': e => { if (e.data === 0) window.chrome.webview.postMessage(0) }
+      'onReady': () => { document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
+      'onStateChange': e => { if (e.data === 0) window.chrome.webview.postMessage(document._loadedVideoId ?? '') }
     }
   });
-}`;
+}
+function playNow(id, start, end) {
+  document._loadedVideoId = id
+  document.ytPlayer?.loadVideoById(id, start, end)
+}
+`;
 document.body.append(scr);
 const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
@@ -78,15 +82,18 @@ document.body.append(tag);");
         {
           switch (e.WebMessageAsJson)
           {
-            case "\"loaded\"":
-              lock (_webViewInitLock)
+            case "\"loaded baby\"":
+              if (!IsWebViewInitialized)
               {
-                IsWebViewInitialized = true;
-                WebViewInitialized.Invoke(this, null);
+                lock (_webViewInitLock)
+                {
+                  IsWebViewInitialized = true;
+                  WebViewInitialized.Invoke(this, null);
+                }
               }
               break;
-            case "0":
-              VideoEnded.Invoke(this, null);
+            default:
+              VideoEnded.Invoke(this, e.WebMessageAsJson[1..^1]); // removes quotes from string values
               break;
           }
         };
@@ -95,11 +102,11 @@ document.body.append(tag);");
       };
     }
 
-    public async Task Init()
+    public Task Init()
     {
-      var env = await CoreWebView2Environment.CreateAsync(null, null, new("--allow-insecure-localhost --unsafely-treat-insecure-origin-as-secure=about:blank"));
-      await webView.EnsureCoreWebView2Async(env);
-      //return webView.EnsureCoreWebView2Async();
+      //var env = await CoreWebView2Environment.CreateAsync(null, null, new("--allow-insecure-localhost --unsafely-treat-insecure-origin-as-secure=about:blank"));
+      //await webView.EnsureCoreWebView2Async(env);
+      return webView.EnsureCoreWebView2Async();
     }
 
     public Task<string> SetVolume(int volume)
@@ -107,19 +114,9 @@ document.body.append(tag);");
       return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.setVolume({volume})"));
     }
 
-    public Task<string> PlayVideo(string videoId)
+    public Task<string> PlayVideo(string videoId, int startSeconds = 0, int endSeconds = 0)
     {
-      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.loadVideoById('{videoId}')"));
-    }
-
-    public Task<string> PlayVideo(string videoId, int startSeconds)
-    {
-      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.loadVideoById('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")})"));
-    }
-
-    public Task<string> PlayVideo(string videoId, int startSeconds, int endSeconds)
-    {
-      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.loadVideoById('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})"));
+      return webView.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})"));
     }
 
     public async Task Search(string query, List<YtVideo> results, int maxResults)

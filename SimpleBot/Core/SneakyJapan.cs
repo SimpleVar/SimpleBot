@@ -31,7 +31,7 @@ namespace SimpleBot
         async rid =>
       {
         if (!_bot.IsOnline) return MS_BEFORE_FIRST_ROUND;
-        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 1).Count < 1)
+        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 2).Count < 2)
         {
           Bot.Log("Sneaky Japan delayed due to inactive chat");
           return MS_ROUND_DURATION;
@@ -142,9 +142,16 @@ namespace SimpleBot
     {
       lock (_lock)
       {
-        chatter.SneakyJapanStats.TemporaryBuff += buff;
-        _bot.TwSendMsg($"{FullJapanName(chatter)} gets a temporary +{buff} buff to your next perception check!");
+        var newBuff = chatter.SneakyJapanStats.TemporaryBuff + buff;
+        string accumulationStr = chatter.SneakyJapanStats.TemporaryBuff == 0 ? "" : (" (accumulated total: )" + newBuff);
+        chatter.SneakyJapanStats.TemporaryBuff = newBuff;
+        _bot.TwSendMsg($"{FullJapanName(chatter)} gets a temporary +{buff} buff to your next perception check!" + accumulationStr);
       }
+    }
+
+    public static void ShowBuff(Chatter chatter)
+    {
+
     }
 
     public static void Do_NewGamePlus_Unchecked(Chatter chatter, string confirmationStr)
