@@ -65,15 +65,15 @@ namespace SimpleBot
 
     public Bot()
     {
-      Log("[init] Bot ctor");
-      _yt = new Youtube();
-
-      _twJC = new JoinedChannel(CHANNEL);
 #if !DEBUG
       _logFilePath = Application.StartupPath + "logs\\";
       Directory.CreateDirectory(_logFilePath);
       _logFilePath += $"{DateTime.Now:yyyy_MM_dd}.txt";
 #endif
+
+      Log("[init] Bot ctor");
+      _yt = new Youtube();
+      _twJC = new JoinedChannel(CHANNEL);
 
       // Load persistent data
       if (string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
