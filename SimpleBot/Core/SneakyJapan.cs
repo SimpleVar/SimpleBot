@@ -124,7 +124,7 @@ namespace SimpleBot
           return;
         }
         japan.LastRollRoundId = _currentRoundId;
-        japan.LastRoll = Rand.R.Next(20) + 1;
+        japan.LastRoll = japan.TemporaryBuff == 420 ? 20 : Rand.R.Next(20) + 1;
         bool crit = japan.LastRoll == 20;
         if (crit)
         {
@@ -143,15 +143,10 @@ namespace SimpleBot
       lock (_lock)
       {
         var newBuff = chatter.SneakyJapanStats.TemporaryBuff + buff;
-        string accumulationStr = chatter.SneakyJapanStats.TemporaryBuff == 0 ? "" : (" (accumulated total: )" + newBuff);
+        string accumulationStr = chatter.SneakyJapanStats.TemporaryBuff == 0 ? "" : $" (accumulated total: {newBuff})";
         chatter.SneakyJapanStats.TemporaryBuff = newBuff;
         _bot.TwSendMsg($"{FullJapanName(chatter)} gets a temporary +{buff} buff to your next perception check!" + accumulationStr);
       }
-    }
-
-    public static void ShowBuff(Chatter chatter)
-    {
-
     }
 
     public static void Do_NewGamePlus_Unchecked(Chatter chatter, string confirmationStr)

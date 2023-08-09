@@ -35,5 +35,14 @@
     <Setting Name="SneakyJapanRound" Type="System.String" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
+    <Setting Name="enable_all_SimpleVar_systems" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="obs_enabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="active_window_tracking_enabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

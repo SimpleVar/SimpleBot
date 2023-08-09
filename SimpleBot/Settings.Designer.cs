@@ -12,7 +12,7 @@ namespace SimpleBot {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.4.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.6.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -152,6 +152,42 @@ namespace SimpleBot {
             }
             set {
                 this["SneakyJapanRound"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool enable_all_SimpleVar_systems {
+            get {
+                return ((bool)(this["enable_all_SimpleVar_systems"]));
+            }
+            set {
+                this["enable_all_SimpleVar_systems"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool obs_enabled {
+            get {
+                return ((bool)(this["obs_enabled"]));
+            }
+            set {
+                this["obs_enabled"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool active_window_tracking_enabled {
+            get {
+                return ((bool)(this["active_window_tracking_enabled"]));
+            }
+            set {
+                this["active_window_tracking_enabled"] = value;
             }
         }
     }

@@ -1,4 +1,5 @@
-﻿using Microsoft.Web.WebView2.WinForms;
+﻿using Microsoft.VisualBasic.Logging;
+using Microsoft.Web.WebView2.WinForms;
 using System.Globalization;
 using System.Net;
 using System.Web;
@@ -49,7 +50,11 @@ namespace SimpleBot
       webView.CoreWebView2InitializationCompleted += (o, e) =>
       {
         if (e.InitializationException != null)
+        {
+          Bot.Log("[yt] ERR: WebView2 core mega bullshit init error: " + e.InitializationException.Message);
           throw e.InitializationException;
+        }
+        Bot.Log("[yt] WebView2 core mega bullshit initialized");
 
         webView.CoreWebView2.DOMContentLoaded += (o, e) =>
         {

@@ -65,6 +65,7 @@ namespace SimpleBot
 
     public Bot()
     {
+      Log("[init] Bot ctor");
       _yt = new Youtube();
 
       _twJC = new JoinedChannel(CHANNEL);
@@ -78,6 +79,7 @@ namespace SimpleBot
       if (string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
         return;
       
+      Log("[init] loading user data");
       Directory.CreateDirectory(Path.Combine(USER_DATA_FOLDER, "data"));
       Directory.CreateDirectory(Path.Combine(USER_DATA_FOLDER, "obs_labels"));
       ChatterDataMgr.Load(Path.Combine(USER_DATA_FOLDER, "data\\chatters_data.txt"));
@@ -85,6 +87,7 @@ namespace SimpleBot
       ViewersQueue.Load(Path.Combine(USER_DATA_FOLDER, "data\\viewers_queue.txt"));
       Quotes.Load(Path.Combine(USER_DATA_FOLDER, "data\\quotes.txt"));
       LoadCustomCommands(Path.Combine(USER_DATA_FOLDER, "data\\custom_commands.txt"));
+      Log("[init] loaded user data");
     }
 
     bool _init = false;
@@ -95,6 +98,7 @@ namespace SimpleBot
       _init = true;
       ChatterDataMgr.Init();
 
+      Log("[init] _yt");
       await _yt.Init();
       _yt.RegisterInitialized(async (o, e) =>
       {
@@ -109,41 +113,46 @@ namespace SimpleBot
         */
       });
 
-      _obs = new OBSWebsocket();
-      _obs.Connected += (o, e) =>
+      if (Settings.Default.obs_enabled)
       {
-        Log("[OBS] connected"); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
-        IsOnline = _obs.GetStreamStatus().IsActive;
-      };
-      _obs.Disconnected += (o, e) =>
-      {
-        Log("[OBS] disconnected: " + e.ToJson()); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
-      };
-      _obs.StreamStateChanged += (o, e) =>
-      {
-        Log("[OBS] state changed: " + e.OutputState.StateStr);
-        switch (e.OutputState.State)
+        Log("[init] _obs");
+        _obs = new OBSWebsocket();
+        _obs.Connected += (o, e) =>
         {
-          case OBSWebsocketDotNet.Types.OutputState.OBS_WEBSOCKET_OUTPUT_STARTED:
-            IsOnline = true;
-            break;
-          case OBSWebsocketDotNet.Types.OutputState.OBS_WEBSOCKET_OUTPUT_STOPPED:
-            IsOnline = false;
-            break;
-        }
-      };
-      _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
-      //_obs.SetInputSettings("VS", new JObject { { "text", "LETS FUCKING GO" } });
-      // TODO test around obs disconnecting or not existing on init
-      // TODO? when obs process closes, stop being a bot and maybe close -- _obs.ExitStarted
+          Log("[OBS] connected"); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
+          IsOnline = _obs.GetStreamStatus().IsActive;
+        };
+        _obs.Disconnected += (o, e) =>
+        {
+          Log("[OBS] disconnected: " + e.ToJson()); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
+        };
+        _obs.StreamStateChanged += (o, e) =>
+        {
+          Log("[OBS] state changed: " + e.OutputState.StateStr);
+          switch (e.OutputState.State)
+          {
+            case OBSWebsocketDotNet.Types.OutputState.OBS_WEBSOCKET_OUTPUT_STARTED:
+              IsOnline = true;
+              break;
+            case OBSWebsocketDotNet.Types.OutputState.OBS_WEBSOCKET_OUTPUT_STOPPED:
+              IsOnline = false;
+              break;
+          }
+        };
+        _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
+        //_obs.SetInputSettings("VS", new JObject { { "text", "LETS FUCKING GO" } });
+        // TODO test around obs disconnecting or not existing on init
+        // TODO? when obs process closes, stop being a bot and maybe close -- _obs.ExitStarted
+      }
 
+      Log("[init] _tw");
       _tw = new TwitchClient(new WebSocketClient(new ClientOptions { DisconnectWait = 5000 }));
       _tw.Initialize(new ConnectionCredentials(BOT_NAME, File.ReadAllText(Settings.Default.TwitchOAuthBot)), CHANNEL);
 
       _tw.OnLog += (o, e) => Log("[twLog] " + e.Data);
-      _tw.OnConnected += (o, e) => { Log("twitch connected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
-      _tw.OnReconnected += (o, e) => { Log("twitch reconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
-      _tw.OnDisconnected += (o, e) => { Log("twitch disconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
+      _tw.OnConnected += (o, e) => { Log("[tw] connected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
+      _tw.OnReconnected += (o, e) => { Log("[tw] reconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
+      _tw.OnDisconnected += (o, e) => { Log("[tw] disconnected"); UpdatedTwitchConnected?.Invoke(this, EventArgs.Empty); };
       _tw.OnError += (o, e) => { Log("[twErr] " + e.Exception); };
       _tw.OnConnectionError += (o, e) => { Log("[twErr]:conn " + e?.Error?.Message); };
       _tw.OnNoPermissionError += (o, e) => { Log("[twErr]:perm"); };
@@ -160,10 +169,14 @@ namespace SimpleBot
         }
       };
       
+      Log("[init] _twApi");
       _twApi = new TwitchAPI(settings: new ApiSettings { ClientId = Settings.Default.TwitchClientId, AccessToken = File.ReadAllText(Settings.Default.TwitchOAuth) });
+      Log("[init] _twApi_More");
       _twApi_More = new TwitchApi_MoreEdges(_twApi.Settings);
       CHANNEL_ID = GetUserIdOrNull(CHANNEL);
       BOT_ID = GetUserIdOrNull(BOT_NAME);
+      if (CHANNEL_ID == null || BOT_ID == null)
+        throw new ApplicationException("Failed to get twitch user id of the streamer or the bot account");
       /* TODO for !redeems TwitchApi broken? I'm dumb? maybe one day get back to it
       var customRewards = (await _twApi.Helix.ChannelPoints.GetCustomRewardAsync(CHANNEL_ID).ConfigureAwait(true)).Data;
       var redemptions = new List<RewardRedemption>();
@@ -175,69 +188,77 @@ namespace SimpleBot
       */
 
       // Init custom thingies
+      Log("[init] various systems");
       ChatActivity.Init(this);
-      SneakyJapan.Init(this);
-      LearnHiragana.Init(this);
-      LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, async _ =>
+      if (Settings.Default.enable_all_SimpleVar_systems)
       {
-        if (!IsOnline) return;
-        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(1200123), maxChattersNeeded: 2).Count < 2)
-          return;
-        await _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID,
-          "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
-          AnnouncementColors.Blue);
-      });
-      /*
-      Chatter[] shoutouts = (new[]
-      {
-        "oBtooce",
-      }).Select(x => ChatterDataMgr.GetOrNull(x.CanonicalUsername()))
-        .Where(x => x != null)
-        .ToArray();
-      string[] shoutoutIds = shoutouts.Select(x => x.uid).ToArray();
-      Log("Auto-Shoutouts: " + string.Join(' ', shoutouts.Select(x => x.DisplayName)));
-      if (shoutoutIds.Length > 0)
-      {
-        LongRunningPeriodicTask.Start(0, true, 300042, 570000, 0, rid =>
+        SneakyJapan.Init(this);
+        LearnHiragana.Init(this);
+        LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, async _ =>
         {
-          var uid = shoutoutIds[rid % shoutoutIds.Length];
-          var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, uid).Result;
-          return res ? null : 120000;
+          if (!IsOnline) return;
+          if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(1200123), maxChattersNeeded: 2).Count < 2)
+            return;
+          await _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID,
+            "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
+            AnnouncementColors.Blue);
         });
+        /*
+        Chatter[] shoutouts = (new[]
+        {
+          "oBtooce",
+        }).Select(x => ChatterDataMgr.GetOrNull(x.CanonicalUsername()))
+          .Where(x => x != null)
+          .ToArray();
+        string[] shoutoutIds = shoutouts.Select(x => x.uid).ToArray();
+        Log("Auto-Shoutouts: " + string.Join(' ', shoutouts.Select(x => x.DisplayName)));
+        if (shoutoutIds.Length > 0)
+        {
+          LongRunningPeriodicTask.Start(0, true, 300042, 570000, 0, rid =>
+          {
+            var uid = shoutoutIds[rid % shoutoutIds.Length];
+            var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, uid).Result;
+            return res ? null : 120000;
+          });
+        }
+        */
       }
-      */
 
 #if !DEBUG
-        ForegroundWinUtil.Init();
-      bool isVsVisible = false;
-      int vsItemId = -1;
-      int browserItemId = -1;
-      ForegroundWinUtil.ForgroundWindowChanged += (o, e) =>
+      if (_obs != null && Settings.Default.active_window_tracking_enabled)
       {
-        var TWITCH_CHAT_TITLE = CHANNEL + " - Chat - Twitch";
-        if ((e.procName != "brave" || e.title.StartsWith(TWITCH_CHAT_TITLE)) && e.procName != "devenv")
-          return;
-        var shouldShowVS = e.procName != "brave";
-        if (isVsVisible == shouldShowVS)
-          return;
-        isVsVisible = shouldShowVS;
+        ForegroundWinUtil.Init();
+        bool isVsVisible = false;
+        int vsItemId = -1;
+        int browserItemId = -1;
+        ForegroundWinUtil.ForgroundWindowChanged += (o, e) =>
+        {
+          var TWITCH_CHAT_TITLE = CHANNEL + " - Chat - Twitch";
+          if ((e.procName != "brave" || e.title.StartsWith(TWITCH_CHAT_TITLE)) && e.procName != "devenv")
+            return;
+          var shouldShowVS = e.procName != "brave";
+          if (isVsVisible == shouldShowVS)
+            return;
+          isVsVisible = shouldShowVS;
 
-        if (!_obs.IsConnected)
-          return;
-        if (vsItemId == -1) vsItemId = _obs.GetSceneItemId("CODE", "VS", 0);
-        if (browserItemId == -1) browserItemId = _obs.GetSceneItemId("CODE", "Browser", 0);
-        var vsIdx = _obs.GetSceneItemIndex("CODE", vsItemId);
-        var browserIdx = _obs.GetSceneItemIndex("CODE", browserItemId);
-        // looks stupid but obs is stupid
-        var newVsIdx = browserIdx + (shouldShowVS ? (vsIdx > browserIdx ? 1 : 0) : (vsIdx > browserIdx ? 0 : -1));
-        _obs.SetSceneItemIndex("CODE", vsItemId, newVsIdx);
-      };
+          if (!_obs.IsConnected)
+            return;
+          if (vsItemId == -1) vsItemId = _obs.GetSceneItemId("CODE", "VS", 0);
+          if (browserItemId == -1) browserItemId = _obs.GetSceneItemId("CODE", "Browser", 0);
+          var vsIdx = _obs.GetSceneItemIndex("CODE", vsItemId);
+          var browserIdx = _obs.GetSceneItemIndex("CODE", browserItemId);
+          // looks stupid but obs is stupid
+          var newVsIdx = browserIdx + (shouldShowVS ? (vsIdx > browserIdx ? 1 : 0) : (vsIdx > browserIdx ? 0 : -1));
+          _obs.SetSceneItemIndex("CODE", vsItemId, newVsIdx);
+        };
+      }
 #endif
 
       _tw.Connect();
 
       #region Events Sub
 
+      Log("[twEventSub] cleanup start");
       // Event Subs continue reacting to events even when offline
       var existingEventSubs = await TwitchApiExtensions.AggregatePages(after => _twApi.Helix.EventSub.GetEventSubSubscriptionsAsync(after: after), x => x.Pagination, x => x.Subscriptions).ConfigureAwait(true);
       try
@@ -253,18 +274,20 @@ namespace SimpleBot
       {
         Log(ex.ToString());
       }
+      Log("[twEventSub] init start");
       var serviceProvider = new ServiceCollection().AddLogging().AddTwitchLibEventSubWebsockets().BuildServiceProvider();
-      var cc = serviceProvider.GetService<EventSubWebsocketClient>();
-      cc.ErrorOccurred += (o, e) =>
+      var twEventSub = serviceProvider.GetService<EventSubWebsocketClient>();
+      twEventSub.ErrorOccurred += (o, e) =>
       {
-        Log("[CCErr] " + e.ToJson());
+        Log("[twEventSub ERR] " + e.ToJson());
       };
-      cc.WebsocketConnected += async (o, e) =>
+      twEventSub.WebsocketConnected += async (o, e) =>
       {
         if (e.IsRequestedReconnect)
           return;
+        Log("[twEventSub] starting to listen to events");
         // subscribe to events https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
-        var twEventSubs = new[]
+        var evSubs = new[]
         {
           new TwEventSubReq(1, "channel.channel_points_custom_reward_redemption.add").Cond("broadcaster_user_id", CHANNEL_ID),
           new TwEventSubReq(2, "channel.follow").Cond("broadcaster_user_id", CHANNEL_ID).Cond("moderator_user_id", CHANNEL_ID),
@@ -275,29 +298,30 @@ namespace SimpleBot
           new TwEventSubReq(1, "channel.raid").Cond("to_broadcaster_user_id", CHANNEL_ID),
           new TwEventSubReq(1, "channel.charity_campaign.donate").Cond("broadcaster_user_id", CHANNEL_ID),
         };
-        foreach (var twEventSub in twEventSubs)
+        foreach (var evSub in evSubs)
         {
           var res = await _twApi.Helix.EventSub.CreateEventSubSubscriptionAsync(
-            twEventSub.type,
-            twEventSub.version + "",
-            twEventSub.conditions,
+            evSub.type,
+            evSub.version + "",
+            evSub.conditions,
             EventSubTransportMethod.Websocket,
-            cc.SessionId
+            twEventSub.SessionId
           ).ThrowMainThread().ConfigureAwait(true);
-          Debug.WriteLine("[CC INIT] " + res.ToJson());
+          Debug.WriteLine("[twEventSub INIT] " + res.ToJson());
         }
+        Log("[twEventSub] listening to all events successfuly");
       };
       int ccReconnectTime = 1000;
-      cc.WebsocketDisconnected += async (o , e)=>
+      twEventSub.WebsocketDisconnected += async (o , e)=>
       {
-        while (!await cc.ReconnectAsync())
+        while (!await twEventSub.ReconnectAsync())
         {
           await Task.Delay(ccReconnectTime);
           if (ccReconnectTime < 300000)
             ccReconnectTime *= 2;
         }
       };
-      cc.ChannelPointsCustomRewardRedemptionAdd += (o, e) =>
+      twEventSub.ChannelPointsCustomRewardRedemptionAdd += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
         //_redeemCounts.AddOrUpdate(_rewardsKey(ev.UserId, ev.Reward.Id), 1, (k, v) => v + 1);
@@ -318,43 +342,43 @@ namespace SimpleBot
             break;
         }
       };
-      cc.ChannelFollow += (o, e) =>
+      twEventSub.ChannelFollow += (o, e) =>
       {
         var name = e.Notification.Payload.Event.UserName;
         TwSendMsg("Thanks for following @" + name);
       };
-      cc.ChannelSubscribe += (o, e) =>
+      twEventSub.ChannelSubscribe += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
         // TODO
       };
-      cc.ChannelSubscriptionGift += (o, e) =>
+      twEventSub.ChannelSubscriptionGift += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
         // TODO
       };
-      cc.ChannelSubscriptionMessage += (o, e) =>
+      twEventSub.ChannelSubscriptionMessage += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
         // TODO
       };
-      cc.ChannelCheer += (o, e) =>
+      twEventSub.ChannelCheer += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
         // TODO
       };
-      cc.ChannelRaid += (o, e) =>
+      twEventSub.ChannelRaid += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
         // TODO
       };
-      cc.ChannelCharityCampaignDonate += (o, e) =>
+      twEventSub.ChannelCharityCampaignDonate += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
         // TODO
       };
-      if (!(await cc.ConnectAsync().ConfigureAwait(true)))
-        Log("[CCErr] failed to connect");
+      if (!(await twEventSub.ConnectAsync().ConfigureAwait(true)))
+        Log("[twEventSub] failed to connect");
 
       #endregion
     }
@@ -803,7 +827,7 @@ namespace SimpleBot
             brbFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\brb.txt");
             File.WriteAllText(brbFile, "BRB");
           }
-          _obs.SetInputMute("Audio Input Capture", true);
+          _obs?.SetInputMute("Audio Input Capture", true);
           _isBrbEnabled = true;
           _ = Task.Run(async () =>
           {
@@ -811,7 +835,7 @@ namespace SimpleBot
             do { await Task.Delay(1000); } while (Cursor.Position == p);
             if (brbFile != null)
               File.WriteAllText(brbFile, "");
-            _obs.SetInputMute("Audio Input Capture", false);
+            _obs?.SetInputMute("Audio Input Capture", false);
             _isBrbEnabled = false;
           });
           return;
