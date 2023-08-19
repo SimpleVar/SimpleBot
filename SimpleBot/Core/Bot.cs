@@ -219,7 +219,7 @@ namespace SimpleBot
           LongRunningPeriodicTask.Start(0, true, 300042, 570000, 0, rid =>
           {
             var uid = shoutoutIds[rid % shoutoutIds.Length];
-            var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, uid).Result;
+            var res = _twApi_More.Shoutout(CHANNEL_ID, CHANNEL_ID, uid).GetAwaiter().GetResult();
             return res ? null : 120000;
           });
         }
@@ -482,7 +482,7 @@ namespace SimpleBot
     {
       string id = GetUserIdOrNull(channelName);
       if (string.IsNullOrEmpty(id)) return null;
-      return _twApi.Helix.Channels.GetChannelInformationAsync(id).Result?.Data?.FirstOrDefault();
+      return _twApi.Helix.Channels.GetChannelInformationAsync(id).GetAwaiter().GetResult()?.Data?.FirstOrDefault();
     }
 
     public string GetUserIdOrNull(string dirtyName)
@@ -490,11 +490,7 @@ namespace SimpleBot
       var name = dirtyName?.CanonicalUsername();
       if (string.IsNullOrWhiteSpace(name))
         return null;
-      var t = _twApi.GetUserId(name);
-      t.Wait();
-      if (t.IsCompletedSuccessfully)
-        return t.Result;
-      throw t.Exception;
+      return _twApi.GetUserId(name).GetAwaiter().GetResult();
     }
 
     private void twOnMessage(object sender, OnMessageReceivedArgs e)
@@ -1093,64 +1089,67 @@ namespace SimpleBot
           {
             ChatActivity.IncCommandCounter(chatter, BotCommandId.GetChessRatings);
             var targetName = args.FirstOrDefault()?.CleanUsername() ?? chatter.DisplayName;
-            bool found = false;
-            try
+            _ = Task.Run(async () =>
             {
-              using var http = new HttpClient();
-              var lichess = JToken.Parse(http.GetStringAsync("https://lichess.org/api/user/" + targetName).Result);
-              lichess = lichess["perfs"];
-              if (lichess != null)
+              bool found = false;
+              try
               {
-                int bullet = lichess["bullet"]?["rating"]?.Value<int>() ?? 0;
-                int blitz = lichess["blitz"]?["rating"]?.Value<int>() ?? 0;
-                int rapid = lichess["rapid"]?["rating"]?.Value<int>() ?? 0;
-                int classical = lichess["classical"]?["rating"]?.Value<int>() ?? 0;
-                int daily = (lichess["daily"] ?? lichess["correspondence"])?["rating"]?.Value<int>() ?? 0;
-                int puzzle = lichess["puzzle"]?["rating"]?.Value<int>() ?? 0;
-                var sb = new StringBuilder();
-                if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
-                if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
-                if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
-                if (classical != 0) sb.Append("Classical ").Append(classical).Append(" | ");
-                if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
-                if (puzzle != 0) sb.Append("Puzzle ").Append(puzzle).Append(" | ");
-                if (sb.Length != 0)
+                using var http = new HttpClient();
+                var lichess = JToken.Parse(await http.GetStringAsync("https://lichess.org/api/user/" + targetName));
+                lichess = lichess["perfs"];
+                if (lichess != null)
                 {
-                  found = true;
-                  TwSendMsg(targetName + " (lichess) " + sb.ToString()[..^3]);
+                  int bullet = lichess["bullet"]?["rating"]?.Value<int>() ?? 0;
+                  int blitz = lichess["blitz"]?["rating"]?.Value<int>() ?? 0;
+                  int rapid = lichess["rapid"]?["rating"]?.Value<int>() ?? 0;
+                  int classical = lichess["classical"]?["rating"]?.Value<int>() ?? 0;
+                  int daily = (lichess["daily"] ?? lichess["correspondence"])?["rating"]?.Value<int>() ?? 0;
+                  int puzzle = lichess["puzzle"]?["rating"]?.Value<int>() ?? 0;
+                  var sb = new StringBuilder();
+                  if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
+                  if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
+                  if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
+                  if (classical != 0) sb.Append("Classical ").Append(classical).Append(" | ");
+                  if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
+                  if (puzzle != 0) sb.Append("Puzzle ").Append(puzzle).Append(" | ");
+                  if (sb.Length != 0)
+                  {
+                    found = true;
+                    TwSendMsg(targetName + " (lichess) " + sb.ToString()[..^3]);
+                  }
                 }
               }
-            }
-            catch { }
-            try
-            {
-              using var http = new HttpClient();
-              // chesscum wants useragent
-              http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246");
-              var chesscum = JToken.Parse(http.GetStringAsync("https://api.chess.com/pub/player/" + targetName + "/stats").Result);
-              if (chesscum != null)
+              catch { }
+              try
               {
-                int bullet = chesscum["chess_bullet"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                int blitz = chesscum["chess_blitz"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                int rapid = chesscum["chess_rapid"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                int daily = chesscum["chess_daily"]?["last"]?["rating"]?.Value<int>() ?? 0;
-                int puzzle = (chesscum["tactics"]?["last"] ?? chesscum["tactics"]?["highest"])?["rating"]?.Value<int>() ?? 0;
-                var sb = new StringBuilder();
-                if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
-                if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
-                if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
-                if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
-                if (puzzle != 0) sb.Append("Puzzle ").Append(puzzle).Append(" | ");
-                if (sb.Length != 0)
+                using var http = new HttpClient();
+                // chesscum wants useragent
+                http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246");
+                var chesscum = JToken.Parse(await http.GetStringAsync("https://api.chess.com/pub/player/" + targetName + "/stats"));
+                if (chesscum != null)
                 {
-                  found = true;
-                  TwSendMsg(targetName + " (chesscom) " + sb.ToString()[..^3]);
+                  int bullet = chesscum["chess_bullet"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                  int blitz = chesscum["chess_blitz"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                  int rapid = chesscum["chess_rapid"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                  int daily = chesscum["chess_daily"]?["last"]?["rating"]?.Value<int>() ?? 0;
+                  int puzzle = (chesscum["tactics"]?["last"] ?? chesscum["tactics"]?["highest"])?["rating"]?.Value<int>() ?? 0;
+                  var sb = new StringBuilder();
+                  if (bullet != 0) sb.Append("Bullet ").Append(bullet).Append(" | ");
+                  if (blitz != 0) sb.Append("Blitz ").Append(blitz).Append(" | ");
+                  if (rapid != 0) sb.Append("Rapid ").Append(rapid).Append(" | ");
+                  if (daily != 0) sb.Append("Daily ").Append(daily).Append(" | ");
+                  if (puzzle != 0) sb.Append("Puzzle ").Append(puzzle).Append(" | ");
+                  if (sb.Length != 0)
+                  {
+                    found = true;
+                    TwSendMsg(targetName + " (chesscom) " + sb.ToString()[..^3]);
+                  }
                 }
               }
-            }
-            catch { }
-            if (!found)
-              TwSendMsg(targetName + " was not found on lichess or chesscom");
+              catch { }
+              if (!found)
+                TwSendMsg(targetName + " was not found on lichess or chesscom");
+            }).LogErr();
             return;
           }
       } // switch (built-in commands)
@@ -1367,7 +1366,7 @@ namespace SimpleBot
         using var http = new HttpClient();
         try
         {
-          json = http.GetStringAsync(url).Result;
+          json = http.GetStringAsync(url).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {
