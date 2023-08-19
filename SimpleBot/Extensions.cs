@@ -34,13 +34,14 @@ namespace SimpleBot
       };
     }
 
-    public static string NullIfEmpty(this string s) => string.IsNullOrEmpty(s) ? null : s;
-    public static string NullIfWhiteSpace(this string s) => string.IsNullOrWhiteSpace(s) ? null : s;
     public static string ToJson(this object o) => JsonConvert.SerializeObject(o);
     public static T FromJson<T>(this string json) => JsonConvert.DeserializeObject<T>(json);
 
-    public static Task NoThrow(this Task task) => task.ContinueWith(t => {});
-    public static Task<T> NoThrow<T>(this Task<T> task, T defaultVal = default) => task.ContinueWith(t => defaultVal);
+    public static Task LogErr(this Task task) => task.ContinueWith(t =>
+    {
+      if (t.Exception != null)
+        Bot.Log("[Task Err] " + t.Exception);
+    });
 
     public static Task ThrowMainThread(this Task task) => task.ContinueWith(t =>
     {
@@ -59,5 +60,34 @@ namespace SimpleBot
       });
       return t.Result;
     });
+
+    public static Task RunThreadSTA(this Func<Task> action)
+    {
+      var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+      var thread = new Thread(() =>
+      {
+        Application.Idle += Application_Idle;
+        Application.Run();
+      });
+      thread.SetApartmentState(ApartmentState.STA);
+      thread.IsBackground = true;
+      thread.Start();
+      return tcs.Task;
+
+      async void Application_Idle(object sender, EventArgs e)
+      {
+        Application.Idle -= Application_Idle;
+        try
+        {
+          await action();
+          tcs.SetResult();
+        }
+        catch (Exception ex)
+        {
+          tcs.SetException(ex);
+          Application.ExitThread();
+        }
+      }
+    }
   }
 }

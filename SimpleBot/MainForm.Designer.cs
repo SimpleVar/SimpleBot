@@ -37,7 +37,7 @@
       ofd = new OpenFileDialog();
       cbFreezeChattersList = new CheckBox();
       btnBanKnownBotsInChat = new Button();
-      panel1 = new Panel();
+      btnShowYoutubeForm = new Button();
       SuspendLayout();
       // 
       // listChatters
@@ -122,20 +122,22 @@
       btnBanKnownBotsInChat.UseVisualStyleBackColor = true;
       btnBanKnownBotsInChat.Click += btnBanKnownBotsInChat_Click;
       // 
-      // panel1
+      // btnShowYoutubeForm
       // 
-      panel1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-      panel1.Location = new Point(228, 95);
-      panel1.Name = "panel1";
-      panel1.Size = new Size(408, 249);
-      panel1.TabIndex = 7;
+      btnShowYoutubeForm.Location = new Point(228, 104);
+      btnShowYoutubeForm.Name = "btnShowYoutubeForm";
+      btnShowYoutubeForm.Size = new Size(115, 23);
+      btnShowYoutubeForm.TabIndex = 7;
+      btnShowYoutubeForm.Text = "YouTube Player";
+      btnShowYoutubeForm.UseVisualStyleBackColor = true;
+      btnShowYoutubeForm.Click += btnShowYoutubeForm_Click;
       // 
       // MainForm
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       ClientSize = new Size(648, 356);
-      Controls.Add(panel1);
+      Controls.Add(btnShowYoutubeForm);
       Controls.Add(btnBanKnownBotsInChat);
       Controls.Add(btnMassBan);
       Controls.Add(lblTwConnected);
@@ -160,6 +162,6 @@
     private OpenFileDialog ofd;
     private CheckBox cbFreezeChattersList;
     private Button btnBanKnownBotsInChat;
-    private Panel panel1;
+    private Button btnShowYoutubeForm;
   }
 }

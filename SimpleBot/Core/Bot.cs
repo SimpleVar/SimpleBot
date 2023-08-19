@@ -96,6 +96,7 @@ namespace SimpleBot
       if (_init)
         throw new ApplicationException("Init should be called exactly once");
       _init = true;
+      await Task.Yield();
       ChatterDataMgr.Init();
 
       Log("[init] _yt");
@@ -173,6 +174,7 @@ namespace SimpleBot
       _twApi = new TwitchAPI(settings: new ApiSettings { ClientId = Settings.Default.TwitchClientId, AccessToken = File.ReadAllText(Settings.Default.TwitchOAuth) });
       Log("[init] _twApi_More");
       _twApi_More = new TwitchApi_MoreEdges(_twApi.Settings);
+      Log("[init] fetching user ids");
       CHANNEL_ID = GetUserIdOrNull(CHANNEL);
       BOT_ID = GetUserIdOrNull(BOT_NAME);
       if (CHANNEL_ID == null || BOT_ID == null)
@@ -488,7 +490,11 @@ namespace SimpleBot
       var name = dirtyName?.CanonicalUsername();
       if (string.IsNullOrWhiteSpace(name))
         return null;
-      return _twApi.GetUserId(name).Result;
+      var t = _twApi.GetUserId(name);
+      t.Wait();
+      if (t.IsCompletedSuccessfully)
+        return t.Result;
+      throw t.Exception;
     }
 
     private void twOnMessage(object sender, OnMessageReceivedArgs e)
@@ -505,7 +511,7 @@ namespace SimpleBot
       // handle redeems that have input
       if (e.ChatMessage.CustomRewardId == "536092ba-85bb-4df8-bd15-286410fe96c6") // Change stream title
       {
-        _ = SetGameOrTitle.SetTitle(this, chatter, msg).ThrowMainThread();
+        _ = SetGameOrTitle.SetTitle(this, chatter, msg).LogErr();
         return;
       }
 
@@ -595,7 +601,7 @@ namespace SimpleBot
             s.EmoteMode = slowmode;
             s.FollowerMode = slowmode;
             s.SubscriberMode = slowmode;
-          }).ThrowMainThread();
+          }).LogErr();
           return;
         case BotCommandId.SetTitle:
           if (argsStr.Length == 0)
@@ -605,7 +611,7 @@ namespace SimpleBot
           }
           if (chatter.userLevel < UserLevel.Moderator) return;
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SetTitle);
-          _ = SetGameOrTitle.SetTitle(this, chatter, argsStr).ThrowMainThread();
+          _ = SetGameOrTitle.SetTitle(this, chatter, argsStr).LogErr();
           return;
         case BotCommandId.SetGame:
           if (argsStr.Length == 0)
@@ -615,7 +621,7 @@ namespace SimpleBot
           }
           if (chatter.userLevel < UserLevel.Moderator) return;
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SetGame);
-          _ = SetGameOrTitle.SetGame(this, chatter, argsStr).ThrowMainThread();
+          _ = SetGameOrTitle.SetGame(this, chatter, argsStr).LogErr();
           return;
         case BotCommandId.StartPoll:
           {
@@ -629,7 +635,7 @@ namespace SimpleBot
                 var res = string.Join(" | ", poll.Choices.OrderByDescending(x => x.Votes)
                   .Select(x => $"{(x.Votes == 0 ? "0%" : (x.Votes * oneOverTotVotes).ToString("P2"))} {x.Title}"));
                 TwSendMsg($"[{(poll.Status == "ACTIVE" ? "current" : "last")} poll] {poll.Title} | {res}");
-              }).ThrowMainThread();
+              }).LogErr();
               return;
             }
             if (chatter.userLevel < UserLevel.Moderator) return;
@@ -668,18 +674,18 @@ namespace SimpleBot
               var success = await _twApi.StartPoll(CHANNEL_ID, titleAndOpts[0], durationSec, titleAndOpts.Skip(1));
               if (!success)
                 TwSendMsg("Failed to start poll D:");
-            }).ThrowMainThread();
+            }).LogErr();
             return;
           }
         case BotCommandId.EndPoll:
           if (chatter.userLevel < UserLevel.Moderator) return;
             ChatActivity.IncCommandCounter(chatter, BotCommandId.EndPoll);
-          _ = _twApi.EndCurrentPoll(CHANNEL_ID, true).ThrowMainThread();
+          _ = _twApi.EndCurrentPoll(CHANNEL_ID, true).LogErr();
           return;
         case BotCommandId.DelPoll:
           if (chatter.userLevel < UserLevel.Moderator) return;
             ChatActivity.IncCommandCounter(chatter, BotCommandId.DelPoll);
-          _ = _twApi.EndCurrentPoll(CHANNEL_ID, false).ThrowMainThread();
+          _ = _twApi.EndCurrentPoll(CHANNEL_ID, false).LogErr();
           return;
         case BotCommandId.AddCustomCommand:
           {
@@ -843,7 +849,7 @@ namespace SimpleBot
         // COMMON
         case BotCommandId.SearchGame:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SearchGame);
-          _ = SetGameOrTitle.SearchGame(this, chatter, argsStr).ThrowMainThread();
+          _ = SetGameOrTitle.SearchGame(this, chatter, argsStr).LogErr();
           return;
         case BotCommandId.GetCmdCounter:
           {
@@ -898,7 +904,7 @@ namespace SimpleBot
               var dur = DateTime.UtcNow.Subtract(DateTime.Parse(res[0].followed_at));
               TwSendMsg(tagUser + " is following for " + dur.Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
             }
-          }).ThrowMainThread();
+          }).LogErr();
           return;
         case BotCommandId.WatchTime:
           {
@@ -939,7 +945,7 @@ namespace SimpleBot
             }
             int count = _redeemCounts.TryGetValue(_rewardsKey(chatter.uid, reward.Id), out int v) ? v : 0;
             TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
-          }).ThrowMainThread();
+          }).LogErr();
           return;
         case BotCommandId.Songs_Test:
           if (args.Count == 0) return;
@@ -952,7 +958,7 @@ namespace SimpleBot
             }
             else
               TwSendMsg("No video found for: " + argsStr, chatter);
-          }).ThrowMainThread();
+          }).LogErr();
           return;
         case BotCommandId.Queue_Curr:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);

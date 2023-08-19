@@ -23,9 +23,12 @@ namespace SimpleBot
       bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;
       bot.BadCredentials += Bot_BadCredentials;
       ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
-      _ = bot.Init().ThrowMainThread();
+      _ = Task.Run(bot.Init).ThrowMainThread();
+    }
 
-      panel1.Controls.Add(bot._yt.webView);
+    private void btnShowYoutubeForm_Click(object sender, EventArgs e)
+    {
+      bot._yt.Show();
     }
 
     private void Bot_BadCredentials(object sender, EventArgs e)

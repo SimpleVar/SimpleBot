@@ -43,7 +43,7 @@
             await sleep(DelayMsAfterEnabling).ConfigureAwait(true);
           }
           long rid = ++_lastPeriodId;
-          int? delay = work(rid).ThrowMainThread().Result;
+          int? delay = await work(rid).ThrowMainThread();
           await sleep(delay ?? DelayMsAfterWork).ConfigureAwait(true);
         }
       }, TaskCreationOptions.LongRunning).ThrowMainThread();

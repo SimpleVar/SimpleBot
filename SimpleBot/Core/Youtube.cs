@@ -17,7 +17,7 @@ namespace SimpleBot
 
     const int BUFF_SIZE = 1024;
 
-    public readonly WebView2 webView;
+    public WebView2 webView;
     public event EventHandler<string> VideoEnded = delegate { };
 
     private readonly object _webViewInitLock = new();
@@ -45,26 +45,33 @@ namespace SimpleBot
       var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
       _web = new HttpClient(handler);
       _yt = Client.For(YouTube.Default);
+    }
 
-      webView = new WebView2 { Dock = DockStyle.Fill };
-      webView.CoreWebView2InitializationCompleted += (o, e) =>
+    public Task Init()
+    {
+      //var env = await CoreWebView2Environment.CreateAsync(null, null, new("--allow-insecure-localhost --unsafely-treat-insecure-origin-as-secure=about:blank"));
+      //await webView.EnsureCoreWebView2Async(env);
+      return Extensions.RunThreadSTA(async () =>
       {
-        if (e.InitializationException != null)
+        webView = new WebView2 { Dock = DockStyle.Fill };
+        webView.CoreWebView2InitializationCompleted += (o, e) =>
         {
-          Bot.Log("[yt] ERR: WebView2 core mega bullshit init error: " + e.InitializationException.Message);
-          throw e.InitializationException;
-        }
-        Bot.Log("[yt] WebView2 core mega bullshit initialized");
+          if (e.InitializationException != null)
+          {
+            Bot.Log("[yt] ERR: WebView2 core mega bullshit init error: " + e.InitializationException.Message);
+            throw e.InitializationException;
+          }
+          Bot.Log("[yt] WebView2 core mega bullshit initialized");
 
-        webView.CoreWebView2.DOMContentLoaded += (o, e) =>
-        {
-          // inject the html source into google so that youtube likes as and plays embedded videos
-          _ = webView.ExecuteScriptAsync(@"document.body.innerHTML = '<div id=player></div>';
+          webView.CoreWebView2.DOMContentLoaded += (o, e) =>
+          {
+            // inject the html source into google so that youtube likes as and plays embedded videos
+            _ = webView.ExecuteScriptAsync(@"document.body.innerHTML = '<div id=player></div>';
 const scr = document.createElement('script');
 scr.innerHTML = `function onYouTubeIframeAPIReady() {
   const player = new YT.Player('player', {
-    height: '390',
-    width: '640',
+    height: '100%',
+    width: '100%',
     playerVars: { 'autoplay': 1, 'controls': 1 },
     events: {
       'onReady': () => { document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
@@ -78,50 +85,67 @@ function playNow(id, start, end) {
 }
 `;
 document.body.append(scr);
+document.body.style.overflow = 'hidden';
 const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.body.append(tag);");
-        };
+          };
 
-        webView.WebMessageReceived += (o, e) =>
-        {
-          switch (e.WebMessageAsJson)
+          webView.WebMessageReceived += (o, e) =>
           {
-            case "\"loaded baby\"":
-              if (!IsWebViewInitialized)
-              {
-                lock (_webViewInitLock)
+            switch (e.WebMessageAsJson)
+            {
+              case "\"loaded baby\"":
+                if (!IsWebViewInitialized)
                 {
-                  IsWebViewInitialized = true;
-                  WebViewInitialized.Invoke(this, null);
+                  lock (_webViewInitLock)
+                  {
+                    IsWebViewInitialized = true;
+                    WebViewInitialized.Invoke(this, null);
+                  }
                 }
-              }
-              break;
-            default:
-              VideoEnded.Invoke(this, e.WebMessageAsJson[1..^1]); // removes quotes from string values
-              break;
-          }
+                break;
+              default:
+                VideoEnded.Invoke(this, e.WebMessageAsJson[1..^1]); // removes quotes from string values
+                break;
+            }
+          };
+          // now we are in an https secured url, Muahahahahahahahhahahahqahahahadhahssdhakjsawdg
+          webView.CoreWebView2.Navigate("https://www.google.com");
         };
-        // now we are in an https secured url, Muahahahahahahahhahahahqahahahadhahssdhakjsawdg
-        webView.CoreWebView2.Navigate("https://www.google.com");
-      };
+        await webView.EnsureCoreWebView2Async();
+      });
     }
 
-    public Task Init()
+    public void Show()
     {
-      //var env = await CoreWebView2Environment.CreateAsync(null, null, new("--allow-insecure-localhost --unsafely-treat-insecure-origin-as-secure=about:blank"));
-      //await webView.EnsureCoreWebView2Async(env);
-      return webView.EnsureCoreWebView2Async();
+      webView?.Invoke(() =>
+      {
+        var f = new Form
+        {
+          ClientSize = new Size(640, 390),
+          FormBorderStyle = FormBorderStyle.SizableToolWindow,
+          ShowIcon = false,
+          ShowInTaskbar = false,
+          Text = "SimpleBot - Youtube view"
+        };
+        f.FormClosed += (o, e) =>
+        {
+          f.Controls.Clear();
+        };
+        f.Controls.Add(webView);
+        f.Show();
+      });
     }
 
     public Task<string> SetVolume(int volume)
     {
-      return webView.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.setVolume({volume})"));
+      return webView?.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.setVolume({volume})"));
     }
 
     public Task<string> PlayVideo(string videoId, int startSeconds = 0, int endSeconds = 0)
     {
-      return webView.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})"));
+      return webView?.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})"));
     }
 
     public async Task Search(string query, List<YtVideo> results, int maxResults)

@@ -31,7 +31,7 @@ namespace SimpleBot
         async rid =>
       {
         if (!_bot.IsOnline) return MS_BEFORE_FIRST_ROUND;
-        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 2).Count < 2)
+        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 1).Count < 1)
         {
           Bot.Log("Sneaky Japan delayed due to inactive chat");
           return MS_ROUND_DURATION;
