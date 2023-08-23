@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Runtime.CompilerServices;
 
 namespace SimpleBot
 {
@@ -37,16 +38,28 @@ namespace SimpleBot
     public static string ToJson(this object o) => JsonConvert.SerializeObject(o);
     public static T FromJson<T>(this string json) => JsonConvert.DeserializeObject<T>(json);
 
-    public static Task LogErr(this Task task) => task.ContinueWith(t =>
+    public static Task LogErr(this Task task,
+      [CallerMemberName] string memberName = "",
+      [CallerFilePath] string sourceFilePath = "",
+      [CallerLineNumber] int sourceLineNumber = 0) => task.ContinueWith(t =>
     {
       if (t.Exception != null)
-        Bot.Log("[Task Err] " + t.Exception);
+      {
+        Bot.Log($"[Task Err] Error from {memberName} at \"{sourceFilePath}:{sourceLineNumber}\": " + t.Exception);
+        throw t.Exception;
+      }
     });
 
-    public static Task<T> LogErr<T>(this Task<T> task) => task.ContinueWith(t =>
+    public static Task<T> LogErr<T>(this Task<T> task,
+      [CallerMemberName] string memberName = "",
+      [CallerFilePath] string sourceFilePath = "",
+      [CallerLineNumber] int sourceLineNumber = 0) => task.ContinueWith(t =>
     {
       if (t.Exception != null)
-        Bot.Log("[Task Err] " + t.Exception);
+      {
+        Bot.Log($"[Task Err] Error from {memberName} at \"{sourceFilePath}:{sourceLineNumber}\": " + t.Exception);
+        throw t.Exception;
+      }
       return t.Result;
     });
 

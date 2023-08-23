@@ -1,12 +1,11 @@
 using Newtonsoft.Json;
-using SimpleBot.Core;
 using System.Diagnostics;
 
 namespace SimpleBot
 {
   public partial class MainForm : Form
   {
-    public static MainForm Get;
+    public static MainForm Get { get; private set; }
     readonly Bot bot = null;
     bool _freezeChattersList = false;
     bool _isMultiselectingChatters = false;

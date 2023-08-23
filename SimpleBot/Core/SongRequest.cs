@@ -15,8 +15,6 @@ namespace SimpleBot.Core
       public List<Req> Queue;
       public List<Req> Playlist;
       public int CurrIndexToPlayInPlaylist;
-      public int Volume = 10; // 0-100
-      public int MaxVolume = 30;
       public Req PrevSong;
       public Req CurrSong;
 
@@ -24,8 +22,6 @@ namespace SimpleBot.Core
       {
         Playlist ??= new();
         Queue ??= new();
-        MaxVolume = Math.Max(0, Math.Min(100, MaxVolume));
-        Volume = Math.Max(0, Math.Min(MaxVolume, Volume));
         return this;
       }
     }
@@ -34,39 +30,64 @@ namespace SimpleBot.Core
     /// Fired when the current played song is changed, or anything is changed in the queue, or a song is added to the playlist
     /// Callbacks are executed in LOCKED context, so just read the data and get out!
     /// </summary>
-    public static event EventHandler<SRData> NeedUpdateUI_SongList = delegate { };
+    public static event EventHandler<SRData> NeedUpdateUI_SongList;
 
-    public static event EventHandler<(int volume, int maxVolume)> NeedUpdateUI_Volume = delegate { };
+    public static event EventHandler<(int volume, int maxVolume)> NeedUpdateUI_Volume;
 
     #region User Settings
 
-    static int _SR_videoMinLength_inSeconds = Settings.Default.SR_videoMinLength_inSeconds;
-    public static int SR_videoMinLength_inSeconds
+    static int _SR_volume = Settings.Default.SR_volume; // 0-100
+    static int _SR_maxVolume = Settings.Default.SR_maxVolume; // 0-100
+    static int _SR_minDuration_inSeconds = Settings.Default.SR_minDuration_inSeconds;
+    static int _SR_maxDuration_inSeconds = Settings.Default.SR_maxDuration_inSeconds;
+    static int _SR_maxSongsInQueuePerUser = Settings.Default.SR_maxSongsInQueuePerUser;
+    public static int SR_volume
     {
-      get => _SR_videoMinLength_inSeconds;
+      get => _SR_volume;
       set
       {
-        Settings.Default.SR_videoMinLength_inSeconds = _SR_videoMinLength_inSeconds = value;
+        if (_SR_volume == value) return;
+        Settings.Default.SR_volume = _SR_volume = value;
         Settings.Default.Save();
       }
     }
-    static int _SR_videoMaxLength_inSeconds = Settings.Default.SR_videoMaxLength_inSeconds;
-    public static int SR_videoMaxLength_inSeconds
+    public static int SR_maxVolume
     {
-      get => _SR_videoMaxLength_inSeconds;
+      get => _SR_maxVolume;
       set
       {
-        Settings.Default.SR_videoMaxLength_inSeconds = _SR_videoMaxLength_inSeconds = value;
+        if (_SR_maxVolume == value) return;
+        Settings.Default.SR_maxVolume = _SR_maxVolume = value;
         Settings.Default.Save();
       }
     }
-    static int _SR_maxOngoingRequestsBySameUser = Settings.Default.SR_maxOngoingRequestsBySameUser;
-    public static int SR_maxOngoingRequestsBySameUser
+    public static int SR_minDuration_inSeconds
     {
-      get => _SR_maxOngoingRequestsBySameUser;
+      get => _SR_minDuration_inSeconds;
       set
       {
-        Settings.Default.SR_maxOngoingRequestsBySameUser = _SR_maxOngoingRequestsBySameUser = value;
+        if (_SR_minDuration_inSeconds == value) return;
+        Settings.Default.SR_minDuration_inSeconds = _SR_minDuration_inSeconds = value;
+        Settings.Default.Save();
+      }
+    }
+    public static int SR_maxDuration_inSeconds
+    {
+      get => _SR_maxDuration_inSeconds;
+      set
+      {
+        if (_SR_maxDuration_inSeconds == value) return;
+        Settings.Default.SR_maxDuration_inSeconds = _SR_maxDuration_inSeconds = value;
+        Settings.Default.Save();
+      }
+    }
+    public static int SR_maxSongsInQueuePerUser
+    {
+      get => _SR_maxSongsInQueuePerUser;
+      set
+      {
+        if (_SR_maxSongsInQueuePerUser == value) return;
+        Settings.Default.SR_maxSongsInQueuePerUser = _SR_maxSongsInQueuePerUser = value;
         Settings.Default.Save();
       }
     }
@@ -79,6 +100,13 @@ namespace SimpleBot.Core
     static readonly object _lock = new();
     public static Youtube _yt;
 
+    static void _beValid_noLock()
+    {
+      SR_maxVolume = Math.Max(0, Math.Min(100, _SR_maxVolume));
+      SR_volume = Math.Max(0, Math.Min(_SR_maxVolume, _SR_volume));
+      _sr.BeValid();
+    }
+
     public static void Load(string filePath)
     {
       _filePath = filePath;
@@ -87,10 +115,11 @@ namespace SimpleBot.Core
       try
       {
         var json = File.ReadAllText(_filePath);
-        SRData sr = json.FromJson<SRData>().BeValid();
+        SRData sr = json.FromJson<SRData>();
         lock (_lock)
         {
           _sr = sr;
+          _beValid_noLock();
         }
       }
       catch { }
@@ -101,7 +130,7 @@ namespace SimpleBot.Core
 #if DEBUG
       return;
 #endif
-      if (!string.IsNullOrEmpty(_filePath))
+      if (string.IsNullOrEmpty(_filePath))
         return;
       var json = _sr.ToJson();
       try
@@ -121,7 +150,7 @@ namespace SimpleBot.Core
         try
         {
           _yt.VideoEnded += _yt_VideoEnded;
-          await _SetVolume(_sr.Volume);
+          await _SetVolume(_SR_volume);
           string videoId = _sr.CurrSong.ytVideoId;
           if (videoId != null)
             await _yt.PlayVideo(videoId);
@@ -145,7 +174,7 @@ namespace SimpleBot.Core
     static void _onSongListChange_noLock()
     {
       _save_noLock();
-      NeedUpdateUI_SongList(null, _sr);
+      NeedUpdateUI_SongList?.Invoke(null, _sr);
       // TODO save changes to github
     }
 
@@ -185,12 +214,16 @@ namespace SimpleBot.Core
 
     public static void GetVolume(Chatter chatter)
     {
-      int vol, maxVol;
+      var (vol, maxVol) = _GetVolume();
+      _bot.TwSendMsg("Volume is " + vol + " out of " + maxVol, chatter);
+    }
+
+    public static (int vol, int maxVol) _GetVolume()
+    {
       lock (_lock)
       {
-        (vol, maxVol) = (_sr.Volume, _sr.MaxVolume);
+        return (_SR_volume, _SR_maxVolume);
       }
-      _bot.TwSendMsg("Volume is " + vol + " out of " + maxVol, chatter);
     }
 
     public static void SetVolume(int volume, Chatter chatter)
@@ -204,39 +237,43 @@ namespace SimpleBot.Core
 
     public static async Task<int> _SetVolume(int volume)
     {
-      int ogVol = _sr.Volume;
+      int ogVol = _SR_volume;
+      if (ogVol == volume)
+        return volume;
       int vol, maxVol;
       lock (_lock)
       {
-        _sr.Volume = volume;
-        _sr.BeValid();
+        SR_volume = volume;
+        _beValid_noLock();
         //_save_noLock(); // avoid this save, its useless. The volume will be saved when a song changes
-        (vol, maxVol) = (_sr.Volume, _sr.MaxVolume);
+        (vol, maxVol) = (_SR_volume, _SR_maxVolume);
       }
       if (vol != ogVol)
       {
         await _yt.SetVolume(vol);
-        NeedUpdateUI_Volume(null, (vol, maxVol));
+        NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
       }
       return vol;
     }
 
     public static async Task _SetMaxVolume(int maxVolume)
     {
-      int ogVol = _sr.Volume;
+      if (_SR_maxVolume == maxVolume)
+        return;
+      int ogVol = _SR_volume;
       int vol, maxVol;
       lock (_lock)
       {
-        _sr.MaxVolume = maxVolume;
-        _sr.BeValid();
-        //_save_noLock(); // avoid this save, its useless. The volume will be saved when a song changes
-        (vol, maxVol) = (_sr.Volume, _sr.MaxVolume);
+        SR_maxVolume = maxVolume;
+        _beValid_noLock();
+        _save_noLock();
+        (vol, maxVol) = (_SR_volume, _SR_maxVolume);
       }
       if (vol != ogVol)
       {
         await _yt.SetVolume(vol);
       }
-      NeedUpdateUI_Volume(null, (vol, maxVol));
+      NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
     }
 
     public static void SaveCurrSongToPlaylist()
@@ -305,11 +342,11 @@ namespace SimpleBot.Core
       {
         if (!TimeSpan.TryParse(r.duration, CultureInfo.InvariantCulture, out TimeSpan dur))
           return ReqResult.FailedToParseDuration;
-        if (dur.TotalSeconds < _SR_videoMinLength_inSeconds)
+        if (dur.TotalSeconds < SR_minDuration_inSeconds)
           return ReqResult.TooShort;
-        if (dur.TotalSeconds > _SR_videoMaxLength_inSeconds)
+        if (dur.TotalSeconds > _SR_maxDuration_inSeconds)
           return ReqResult.TooLong;
-        maxReqsByUser = _SR_maxOngoingRequestsBySameUser;
+        maxReqsByUser = _SR_maxSongsInQueuePerUser;
       }
       lock (_lock)
       {

@@ -194,36 +194,60 @@ namespace SimpleBot {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("30")]
-        public int SR_videoMinLength_inSeconds {
+        public int SR_minDuration_inSeconds {
             get {
-                return ((int)(this["SR_videoMinLength_inSeconds"]));
+                return ((int)(this["SR_minDuration_inSeconds"]));
             }
             set {
-                this["SR_videoMinLength_inSeconds"] = value;
+                this["SR_minDuration_inSeconds"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1500")]
-        public int SR_videoMaxLength_inSeconds {
+        public int SR_maxDuration_inSeconds {
             get {
-                return ((int)(this["SR_videoMaxLength_inSeconds"]));
+                return ((int)(this["SR_maxDuration_inSeconds"]));
             }
             set {
-                this["SR_videoMaxLength_inSeconds"] = value;
+                this["SR_maxDuration_inSeconds"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("5")]
-        public int SR_maxOngoingRequestsBySameUser {
+        public int SR_maxSongsInQueuePerUser {
             get {
-                return ((int)(this["SR_maxOngoingRequestsBySameUser"]));
+                return ((int)(this["SR_maxSongsInQueuePerUser"]));
             }
             set {
-                this["SR_maxOngoingRequestsBySameUser"] = value;
+                this["SR_maxSongsInQueuePerUser"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        public int SR_maxVolume {
+            get {
+                return ((int)(this["SR_maxVolume"]));
+            }
+            set {
+                this["SR_maxVolume"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        public int SR_volume {
+            get {
+                return ((int)(this["SR_volume"]));
+            }
+            set {
+                this["SR_volume"] = value;
             }
         }
     }

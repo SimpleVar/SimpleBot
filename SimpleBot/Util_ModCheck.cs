@@ -6,7 +6,7 @@ namespace SimpleBot
 {
   public partial class Util_ModCheck : Form
   {
-    string ogTitle;
+    readonly string ogTitle;
 
     public Util_ModCheck()
     {

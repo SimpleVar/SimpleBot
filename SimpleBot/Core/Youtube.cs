@@ -197,7 +197,7 @@ document.body.append(tag);");
 
     // JSON PARSING-NOT-PARSING:
 
-    int peekByte(ref ParseState s)
+    static int peekByte(ref ParseState s)
     {
       if (s.buffIdx < s.buffLen)
         return s.buff[s.buffIdx];
@@ -207,7 +207,7 @@ document.body.append(tag);");
       return b;
     }
 
-    int readByte(ref ParseState s)
+    static int readByte(ref ParseState s)
     {
       if (s.buffIdx < s.buffLen)
         return s.buff[s.buffIdx++];
@@ -219,7 +219,7 @@ document.body.append(tag);");
       return s.buff[0];
     }
 
-    bool nextMatch(string searchToken, ref ParseState s)
+    static bool nextMatch(string searchToken, ref ParseState s)
     {
       if (searchToken.IndexOf(searchToken[0], 1) != -1)
         throw new ApplicationException("Assumption doesn't hold"); // the token's first char should not appear in it later, to have a simple search
@@ -241,19 +241,19 @@ document.body.append(tag);");
       return foundToken;
     }
 
-    void readAndExpect(ref ParseState s, char c)
+    static void readAndExpect(ref ParseState s, char c)
     {
       if (readByte(ref s) != c)
         throw new ApplicationException("oh no");
     }
 
-    void skipSpace(ref ParseState s)
+    static void skipSpace(ref ParseState s)
     {
       while (peekByte(ref s) is ' ' or '\t')
         readByte(ref s);
     }
 
-    void skipSpaceOrComma(ref ParseState s)
+    static void skipSpaceOrComma(ref ParseState s)
     {
       while (peekByte(ref s) is ' ' or '\t' or ',')
         readByte(ref s);
@@ -462,7 +462,7 @@ document.body.append(tag);");
       public int videoRendererDepth;
       public int maxResults;
 
-      public bool IsQuotedEqualTo(string value)
+      public readonly bool IsQuotedEqualTo(string value)
       {
         if (value.Length > QUOTED_BUFF_SIZE)
           throw new ApplicationException("We need a bigger quoted buff size for that operation");

@@ -44,14 +44,20 @@
     <Setting Name="active_window_tracking_enabled" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
-    <Setting Name="SR_videoMinLength_inSeconds" Type="System.Int32" Scope="User">
+    <Setting Name="SR_minDuration_inSeconds" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">30</Value>
     </Setting>
-    <Setting Name="SR_videoMaxLength_inSeconds" Type="System.Int32" Scope="User">
+    <Setting Name="SR_maxDuration_inSeconds" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1500</Value>
     </Setting>
-    <Setting Name="SR_maxOngoingRequestsBySameUser" Type="System.Int32" Scope="User">
+    <Setting Name="SR_maxSongsInQueuePerUser" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">5</Value>
+    </Setting>
+    <Setting Name="SR_maxVolume" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">50</Value>
+    </Setting>
+    <Setting Name="SR_volume" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">50</Value>
     </Setting>
   </Settings>
 </SettingsFile>

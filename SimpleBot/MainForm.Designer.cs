@@ -37,6 +37,7 @@
       ofd = new OpenFileDialog();
       cbFreezeChattersList = new CheckBox();
       btnBanKnownBotsInChat = new Button();
+      songRequestView1 = new SongRequestView();
       SuspendLayout();
       // 
       // listChatters
@@ -121,11 +122,20 @@
       btnBanKnownBotsInChat.UseVisualStyleBackColor = true;
       btnBanKnownBotsInChat.Click += btnBanKnownBotsInChat_Click;
       // 
+      // songRequestView1
+      // 
+      songRequestView1.BorderStyle = BorderStyle.FixedSingle;
+      songRequestView1.Location = new Point(214, 88);
+      songRequestView1.Name = "songRequestView1";
+      songRequestView1.Size = new Size(331, 252);
+      songRequestView1.TabIndex = 7;
+      // 
       // MainForm
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       ClientSize = new Size(648, 356);
+      Controls.Add(songRequestView1);
       Controls.Add(btnBanKnownBotsInChat);
       Controls.Add(btnMassBan);
       Controls.Add(lblTwConnected);
@@ -150,5 +160,6 @@
     private OpenFileDialog ofd;
     private CheckBox cbFreezeChattersList;
     private Button btnBanKnownBotsInChat;
+    private SongRequestView songRequestView1;
   }
 }

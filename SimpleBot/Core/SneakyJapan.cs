@@ -16,7 +16,7 @@ namespace SimpleBot
     static long _currentRoundId;
     static bool _currentRoundOpen;
     static DateTime _currentRoundOpenTime;
-    static List<Chatter> _currentPlayers = new();
+    static readonly List<Chatter> _currentPlayers = new();
 
     public static void Init(Bot bot)
     {
