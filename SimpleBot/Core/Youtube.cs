@@ -1,5 +1,4 @@
-﻿using Microsoft.VisualBasic.Logging;
-using Microsoft.Web.WebView2.WinForms;
+﻿using Microsoft.Web.WebView2.WinForms;
 using System.Globalization;
 using System.Net;
 using System.Web;
@@ -21,7 +20,7 @@ namespace SimpleBot
     public event EventHandler<string> VideoEnded = delegate { };
 
     private readonly object _webViewInitLock = new();
-    private bool IsWebViewInitialized = false;
+    public bool IsWebViewInitialized { get; private set; }
     private event EventHandler WebViewInitialized = delegate { };
 
     public void RegisterInitialized(EventHandler action)
@@ -140,12 +139,12 @@ document.body.append(tag);");
 
     public Task<string> SetVolume(int volume)
     {
-      return webView?.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.setVolume({volume})"));
+      return webView?.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.setVolume({volume})").LogErr());
     }
 
     public Task<string> PlayVideo(string videoId, int startSeconds = 0, int endSeconds = 0)
     {
-      return webView?.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})"));
+      return webView?.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})").LogErr());
     }
 
     public async Task Search(string query, List<YtVideo> results, int maxResults)

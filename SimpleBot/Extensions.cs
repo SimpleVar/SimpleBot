@@ -43,6 +43,13 @@ namespace SimpleBot
         Bot.Log("[Task Err] " + t.Exception);
     });
 
+    public static Task<T> LogErr<T>(this Task<T> task) => task.ContinueWith(t =>
+    {
+      if (t.Exception != null)
+        Bot.Log("[Task Err] " + t.Exception);
+      return t.Result;
+    });
+
     public static Task ThrowMainThread(this Task task) => task.ContinueWith(t =>
     {
       if (t.Exception != null) MainForm.Get.Invoke(() => {

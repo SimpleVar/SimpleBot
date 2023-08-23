@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
+using SimpleBot.Core;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -49,7 +50,6 @@ namespace SimpleBot
     public TwitchAPI _twApi;
     public TwitchApi_MoreEdges _twApi_More;
     public OBSWebsocket _obs;
-    public Youtube _yt;
 
     public bool IsOnline { get; private set; } = true;
     public string CHANNEL_ID { get; private set; }
@@ -72,7 +72,6 @@ namespace SimpleBot
 #endif
 
       Log("[init] Bot ctor");
-      _yt = new Youtube();
       _twJC = new JoinedChannel(CHANNEL);
 
       // Load persistent data
@@ -86,6 +85,7 @@ namespace SimpleBot
       ChatActivity.Load(Path.Combine(USER_DATA_FOLDER, "data\\chat_activity.txt")); // has IgnoredBotNames
       ViewersQueue.Load(Path.Combine(USER_DATA_FOLDER, "data\\viewers_queue.txt"));
       Quotes.Load(Path.Combine(USER_DATA_FOLDER, "data\\quotes.txt"));
+      SongRequest.Load(Path.Combine(USER_DATA_FOLDER, "data\\song_request.txt"));
       LoadCustomCommands(Path.Combine(USER_DATA_FOLDER, "data\\custom_commands.txt"));
       Log("[init] loaded user data");
     }
@@ -98,21 +98,6 @@ namespace SimpleBot
       _init = true;
       await Task.Yield();
       ChatterDataMgr.Init();
-
-      Log("[init] _yt");
-      await _yt.Init();
-      _yt.RegisterInitialized(async (o, e) =>
-      {
-        // TODO Continue here
-        //await _yt.SetVolume(20);
-        /*
-        await _yt.PlayVideo("IYnsfV5N2n8");
-        _yt.VideoEnded += (o, e) =>
-        {
-          _ = _yt.PlayVideo("IYnsfV5N2n8");
-        };
-        */
-      });
 
       if (Settings.Default.obs_enabled)
       {
@@ -191,6 +176,7 @@ namespace SimpleBot
 
       // Init custom thingies
       Log("[init] various systems");
+      await SongRequest.Init(this);
       ChatActivity.Init(this);
       if (Settings.Default.enable_all_SimpleVar_systems)
       {
@@ -429,7 +415,7 @@ namespace SimpleBot
         [BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems"},
         [BotCommandId.FollowAge] = new[] { "followage"},
         [BotCommandId.WatchTime] = new[] { "watchtime"},
-        [BotCommandId.Songs_Test] = new[] { "ssr"},
+        [BotCommandId.SongRequest_Add] = new[] { "ssr"},
         [BotCommandId.Queue_Curr] = new[] { "curr", "current"},
         [BotCommandId.Queue_Next] = new[] { "next"},
         [BotCommandId.Queue_All] = new[] { "queue"},
@@ -943,18 +929,14 @@ namespace SimpleBot
             TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
           }).LogErr();
           return;
-        case BotCommandId.Songs_Test:
-          if (args.Count == 0) return;
-          _ = Task.Run(async () =>
+        case BotCommandId.SongRequest_Add:
+          if (args.Count == 0)
           {
-            if (await _yt.Search(argsStr) is Youtube.YtVideo video)
-            {
-              _ = await _yt.PlayVideo(video.id);
-              TwSendMsg($"Immediately playing: {video.title} ({video.duration})", chatter);
-            }
-            else
-              TwSendMsg("No video found for: " + argsStr, chatter);
-          }).LogErr();
+            TwSendMsg("Give me something to search on YouTube. I accept a youtube link or video id", chatter);
+            return;
+          }
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_Add);
+          SongRequest.RequestSong(argsStr, chatter);
           return;
         case BotCommandId.Queue_Curr:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);
@@ -1266,6 +1248,7 @@ namespace SimpleBot
 
     ////////////////////////////////////////////////////////////////////////////////////
 
+    // TODO make a proper DSL for this shit (subset of js for easy learning/copypastas)
     /// <summary>
     /// Supports:
     ///   - $(name) $(input) $(arg0) $(arg1) etc
@@ -1275,9 +1258,11 @@ namespace SimpleBot
     ///   - $(fetch:w URL) $(w) $(w.data.name)
     /// Notes:
     ///   - Fetches must preceed the actual message
-    ///   - Any particle without '?' is required
+    ///   - Fetches res don't currently support fallback values
+    ///   - Any particle without '?' is considered a "required" input
     /// </summary>
     static readonly Regex rgxTwFormatParticle = new(@"\$\([^)]+\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    static readonly char[] newLineChars = { '\r', '\n' };
     string formatResponseText(string text, ChatMessage msgData, Chatter chatter, List<string> args, string argsStr, CustomCommandData? customCmd, out string error, Dictionary<string, JToken> fetchResults = null)
     {
       // fetches must come at the beginning, and they accumulate results into $(res) or a $(namedVar)
@@ -1414,12 +1399,34 @@ namespace SimpleBot
           // member access $(res.Results.0.Name)
           for (int j = 1; j < particleMembers.Length; j++)
           {
+            var member = particleMembers[j];
+            // some builtin functions
+            switch (member)
+            {
+              case "__splitLines":
+                {
+                  if (res.Type != JTokenType.String)
+                    return $"<cant read {string.Join('.', particleMembers.Take(j + 1))} on a non-string>";
+                  JArray jarr = new();
+                  foreach (var line in res.ToString().Split(newLineChars, StringSplitOptions.RemoveEmptyEntries))
+                    jarr.Add(new JValue(line));
+                  res = jarr;
+                  continue;
+                }
+              case "__randItem":
+                {
+                  if (res.Type != JTokenType.Array)
+                    return $"<cant read {string.Join('.', particleMembers.Take(j + 1))} on a non-array>";
+                  var jarr = (JArray)res;
+                  res = jarr.HasValues ? jarr[Rand.R.Next(jarr.Count)] : new JValue("");
+                  continue;
+                }
+            }
             if (!res.HasValues)
               return $"<cant read {string.Join('.', particleMembers.Take(j + 1))}>";
-            var member = particleMembers[j];
             try
             {
-              res = member.Length != 0 && member[0] >= '0' && member[0] <= '9' && int.TryParse(member, out int k)
+              res = member.Length != 0 && (member[0] is >= '0' and <= '9') && int.TryParse(member, out int k)
                 ? res[k] : res[member];
             }
             catch

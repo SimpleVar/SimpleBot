@@ -190,5 +190,41 @@ namespace SimpleBot {
                 this["active_window_tracking_enabled"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("30")]
+        public int SR_videoMinLength_inSeconds {
+            get {
+                return ((int)(this["SR_videoMinLength_inSeconds"]));
+            }
+            set {
+                this["SR_videoMinLength_inSeconds"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1500")]
+        public int SR_videoMaxLength_inSeconds {
+            get {
+                return ((int)(this["SR_videoMaxLength_inSeconds"]));
+            }
+            set {
+                this["SR_videoMaxLength_inSeconds"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        public int SR_maxOngoingRequestsBySameUser {
+            get {
+                return ((int)(this["SR_maxOngoingRequestsBySameUser"]));
+            }
+            set {
+                this["SR_maxOngoingRequestsBySameUser"] = value;
+            }
+        }
     }
 }

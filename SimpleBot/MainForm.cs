@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using SimpleBot.Core;
 using System.Diagnostics;
 
 namespace SimpleBot
@@ -24,11 +25,6 @@ namespace SimpleBot
       bot.BadCredentials += Bot_BadCredentials;
       ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
       _ = Task.Run(bot.Init).ThrowMainThread();
-    }
-
-    private void btnShowYoutubeForm_Click(object sender, EventArgs e)
-    {
-      bot._yt.Show();
     }
 
     private void Bot_BadCredentials(object sender, EventArgs e)
