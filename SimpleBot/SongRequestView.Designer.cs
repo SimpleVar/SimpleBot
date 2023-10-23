@@ -40,6 +40,11 @@
       labelVolume = new Label();
       label4 = new Label();
       nudMaxVolume = new NumericUpDown();
+      btnImportPlaylist = new Button();
+      btnExportPlaylist = new Button();
+      sfd = new SaveFileDialog();
+      ofd = new OpenFileDialog();
+      btnSkip = new Button();
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).BeginInit();
@@ -161,11 +166,52 @@
       nudMaxVolume.Value = new decimal(new int[] { 1, 0, 0, 0 });
       nudMaxVolume.ValueChanged += nudMaxVolume_ValueChanged;
       // 
+      // btnImportPlaylist
+      // 
+      btnImportPlaylist.Location = new Point(229, 3);
+      btnImportPlaylist.Name = "btnImportPlaylist";
+      btnImportPlaylist.Size = new Size(99, 23);
+      btnImportPlaylist.TabIndex = 12;
+      btnImportPlaylist.Text = "Import Playlist";
+      btnImportPlaylist.UseVisualStyleBackColor = true;
+      btnImportPlaylist.Click += btnImportPlaylist_Click;
+      // 
+      // btnExportPlaylist
+      // 
+      btnExportPlaylist.Location = new Point(229, 26);
+      btnExportPlaylist.Name = "btnExportPlaylist";
+      btnExportPlaylist.Size = new Size(99, 23);
+      btnExportPlaylist.TabIndex = 12;
+      btnExportPlaylist.Text = "Export Playlist";
+      btnExportPlaylist.UseVisualStyleBackColor = true;
+      btnExportPlaylist.Click += btnExportPlaylist_Click;
+      // 
+      // sfd
+      // 
+      sfd.Filter = "Text Files|*.txt";
+      // 
+      // ofd
+      // 
+      ofd.Filter = "Text Files|*.txt";
+      // 
+      // btnSkip
+      // 
+      btnSkip.Location = new Point(124, 3);
+      btnSkip.Name = "btnSkip";
+      btnSkip.Size = new Size(48, 23);
+      btnSkip.TabIndex = 13;
+      btnSkip.Text = "Skip";
+      btnSkip.UseVisualStyleBackColor = true;
+      btnSkip.Click += btnSkip_Click;
+      // 
       // SongRequestView
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       BorderStyle = BorderStyle.FixedSingle;
+      Controls.Add(btnSkip);
+      Controls.Add(btnExportPlaylist);
+      Controls.Add(btnImportPlaylist);
       Controls.Add(labelVolume);
       Controls.Add(sliderVolume);
       Controls.Add(label6);
@@ -203,5 +249,10 @@
     private Label labelVolume;
     private Label label4;
     private NumericUpDown nudMaxVolume;
+    private Button btnImportPlaylist;
+    private Button btnExportPlaylist;
+    private SaveFileDialog sfd;
+    private OpenFileDialog ofd;
+    private Button btnSkip;
   }
 }

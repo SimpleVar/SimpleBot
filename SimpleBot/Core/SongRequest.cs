@@ -1,4 +1,6 @@
-﻿using System.Globalization;
+﻿using System.Configuration;
+using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace SimpleBot.Core
 {
@@ -7,6 +9,7 @@ namespace SimpleBot.Core
     public struct Req
     {
       public string ogRequesterDisplayName, ytVideoId, title, duration;
+      [JsonIgnore]
       public int _shuffleRandVal; // used in tandom with Array.Sort
     }
     enum ReqResult { OK, AlreadyExists, TooManyOngoingRequestsByUser, TooShort, TooLong, FailedToParseDuration };
@@ -36,6 +39,7 @@ namespace SimpleBot.Core
 
     #region User Settings
 
+    public const int VOL_MIN = 0, VOL_MAX = 100;
     static int _SR_volume = Settings.Default.SR_volume; // 0-100
     static int _SR_maxVolume = Settings.Default.SR_maxVolume; // 0-100
     static int _SR_minDuration_inSeconds = Settings.Default.SR_minDuration_inSeconds;
@@ -150,7 +154,7 @@ namespace SimpleBot.Core
         try
         {
           _yt.VideoEnded += _yt_VideoEnded;
-          await _SetVolume(_SR_volume);
+          await _SetVolume(_SR_volume, true);
           string videoId = _sr.CurrSong.ytVideoId;
           if (videoId != null)
             await _yt.PlayVideo(videoId);
@@ -191,6 +195,14 @@ namespace SimpleBot.Core
     }
 
     #region API
+
+    public static Req[] GetPlaylist()
+    {
+      lock (_lock)
+      {
+        return _sr.Playlist.ToArray();
+      }
+    }
 
     public static void GetCurrSong(Chatter chatter)
     {
@@ -235,10 +247,11 @@ namespace SimpleBot.Core
       }).LogErr();
     }
 
-    public static async Task<int> _SetVolume(int volume)
+    public static async Task<int> _SetVolume(int volume, bool forceUpdate = false)
     {
+      volume = Math.Max(VOL_MIN, Math.Min(VOL_MAX, volume));
       int ogVol = _SR_volume;
-      if (ogVol == volume)
+      if (ogVol == volume && !forceUpdate)
         return volume;
       int vol, maxVol;
       lock (_lock)
@@ -248,7 +261,7 @@ namespace SimpleBot.Core
         //_save_noLock(); // avoid this save, its useless. The volume will be saved when a song changes
         (vol, maxVol) = (_SR_volume, _SR_maxVolume);
       }
-      if (vol != ogVol)
+      if (vol != ogVol || forceUpdate)
       {
         await _yt.SetVolume(vol);
         NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
@@ -256,10 +269,11 @@ namespace SimpleBot.Core
       return vol;
     }
 
-    public static async Task _SetMaxVolume(int maxVolume)
+    public static async Task<int> _SetMaxVolume(int maxVolume)
     {
+      maxVolume = Math.Max(VOL_MIN, Math.Min(VOL_MAX, maxVolume));
       if (_SR_maxVolume == maxVolume)
-        return;
+        return maxVolume;
       int ogVol = _SR_volume;
       int vol, maxVol;
       lock (_lock)
@@ -274,6 +288,40 @@ namespace SimpleBot.Core
         await _yt.SetVolume(vol);
       }
       NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
+      return maxVol;
+    }
+
+    public static void RemoveManySongsFromPlaylist(HashSet<string> videoIds)
+    {
+      lock (_lock)
+      {
+        var removesBeforeNextToPlay = 0;
+        var N = Math.Min(_sr.Playlist.Count, _sr.CurrIndexToPlayInPlaylist);
+        for (int i = 0; i < N; i++)
+        {
+          if (videoIds.Contains(_sr.Playlist[i].ytVideoId))
+            removesBeforeNextToPlay++;
+        }
+        _sr.CurrIndexToPlayInPlaylist -= removesBeforeNextToPlay;
+        _sr.Playlist.RemoveAll(x => videoIds.Contains(x.ytVideoId));
+      }
+    }
+
+    public static void RemoveSongFromPlaylist(string videoId)
+    {
+      lock (_lock)
+      {
+        for (int i = 0; i < _sr.Playlist.Count; i++)
+        {
+          if (_sr.Playlist[i].ytVideoId == videoId)
+          {
+            _sr.Playlist.RemoveAt(i);
+            if (i < _sr.CurrIndexToPlayInPlaylist)
+              _sr.CurrIndexToPlayInPlaylist--;
+            return;
+          }
+        }
+      }
     }
 
     public static void SaveCurrSongToPlaylist()
@@ -335,14 +383,35 @@ namespace SimpleBot.Core
         _ = Task.Run(async () => await _yt.PlayVideo(videoId)).LogErr();
     }
 
-    static ReqResult AddToQueue(Req r, bool isStreamerRequest)
+    public static void ImportToPlaylist_nochecks(Req[] reqs)
+    {
+      /*
+        // NightBot export:
+        JSON.stringify( [...document.querySelectorAll('.ibox-content tbody tr')].map(r => {
+          const tds = [...r.querySelectorAll('td')];
+          return {ytVideoId: tds[0].querySelector('a').href.replace('https://youtu.be/', ''), title: tds[0].innerText, duration: tds[2].innerText};
+        }) )
+      */
+
+      int importCount = 0;
+      lock (_lock)
+      {
+        var s = _sr.Playlist.Select(r => r.ytVideoId).ToHashSet();
+        var newReqs = reqs.Where(r => !s.Contains(r.ytVideoId)).ToArray();
+        _sr.Playlist.AddRange(newReqs);
+        importCount = newReqs.Length;
+      }
+      MessageBox.Show("Added " + importCount + " new songs to the playlist");
+    }
+    
+    static ReqResult _addToQueue(Req r, bool isStreamerRequest)
     {
       int maxReqsByUser = int.MaxValue;
       if (!isStreamerRequest)
       {
-        if (!TimeSpan.TryParse(r.duration, CultureInfo.InvariantCulture, out TimeSpan dur))
+        if (!TimeSpan.TryParse("0:" + r.duration, CultureInfo.InvariantCulture, out TimeSpan dur))
           return ReqResult.FailedToParseDuration;
-        if (dur.TotalSeconds < SR_minDuration_inSeconds)
+        if (dur.TotalSeconds < _SR_minDuration_inSeconds)
           return ReqResult.TooShort;
         if (dur.TotalSeconds > _SR_maxDuration_inSeconds)
           return ReqResult.TooLong;
@@ -389,7 +458,7 @@ namespace SimpleBot.Core
         return "No video found for: " + query;
 
       var isStreamerRequest = string.IsNullOrWhiteSpace(requestedBy);
-      var res = AddToQueue(new Req
+      var res = _addToQueue(new Req
       {
         ytVideoId = video.id,
         title = video.title,

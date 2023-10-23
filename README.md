@@ -11,6 +11,7 @@
  - [ ] make a todo list
  - [ ] make a readme
  - [ ] Remove Newtonsoft.Json and use System.Text.Json
+ - [ ] Read and see how and wether to automatically refresh access tokens for twitch
 
 
 

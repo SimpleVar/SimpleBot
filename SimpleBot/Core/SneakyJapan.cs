@@ -1,4 +1,5 @@
-﻿using TwitchLib.Api.Helix.Models.Moderation.BanUser;
+﻿using System.Text;
+using TwitchLib.Api.Helix.Models.Moderation.BanUser;
 
 namespace SimpleBot
 {
@@ -169,6 +170,37 @@ namespace SimpleBot
         chatter.SneakyJapanStats.NewGamePlus++;
         _bot.TwSendMsg($"svBEST peepoJapan MercyWing1 {FullJapanName(chatter)} MercyWing2 Congratulations on achieving NewGame+ ({chatter.SneakyJapanStats.NewGamePlus})!! peepoJapan SeemsGood peepoJapan PartyHat Kreygasm");
       }
+    }
+
+    public static void Do_Leaderboard()
+    {
+      var chatters = ChatterDataMgr.All();
+      Array.Sort(chatters, (a, b) => b.SneakyJapanStats.GetRankingScore() - a.SneakyJapanStats.GetRankingScore());
+      var sb = new StringBuilder("peepoJapan Japan top ten: ");
+      for (int i = 0; i < 10 && i < chatters.Length; i++)
+      {
+        var j = chatters[i].SneakyJapanStats;
+        sb.Append(chatters[i].DisplayName);
+        if (j.NewGamePlus != 0)
+          sb.Append(' ').Append('(').Append('+').Append(j.NewGamePlus).Append(')');
+        sb.Append(' ').Append(j.Exp);
+        sb.Append(" | ");
+      }
+
+      Chatter mostBuffedIndividual = null;
+      int mostBuffValue = 0;
+      foreach (var c in chatters)
+      {
+        if (c.SneakyJapanStats.TemporaryBuff > mostBuffValue)
+        {
+          mostBuffValue = c.SneakyJapanStats.TemporaryBuff;
+          mostBuffedIndividual = c;
+        }
+      }
+      if (mostBuffedIndividual != null)
+        sb.Append("current biggest buff: ").Append(mostBuffedIndividual.DisplayName).Append(' ').Append('+').Append(mostBuffValue);
+
+      _bot.TwSendMsg(sb.ToString());
     }
 
     static string FullJapanName(Chatter chatter) => $"{chatter.DisplayName} ({chatter.SneakyJapanStats.Exp} exp - {GetMasteryTitle(chatter.SneakyJapanStats.Exp)}{(chatter.SneakyJapanStats.NewGamePlus == 0 ? "" : " +" + chatter.SneakyJapanStats.NewGamePlus)})";

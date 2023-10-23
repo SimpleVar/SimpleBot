@@ -1,4 +1,5 @@
 ﻿using Microsoft.Web.WebView2.WinForms;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Web;
@@ -74,7 +75,8 @@ scr.innerHTML = `function onYouTubeIframeAPIReady() {
     playerVars: { 'autoplay': 1, 'controls': 1 },
     events: {
       'onReady': () => { document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
-      'onStateChange': e => { if (e.data === 0) window.chrome.webview.postMessage(document._loadedVideoId ?? '') }
+      'onStateChange': e => { if (e.data === 0) window.chrome.webview.postMessage(document._loadedVideoId ?? ''); },
+      'onError': e => { if (e.data < 101) window.chrome.webview.postMessage(document._loadedVideoId ?? ''); }
     }
   });
 }
@@ -82,7 +84,28 @@ function playNow(id, start, end) {
   document._loadedVideoId = id
   document.ytPlayer?.loadVideoById(id, start, end)
 }
-`;
+// skip ads (TODO see if works?)
+// https://github.com/0x48piraj/fadblock/blob/master/src/chrome/js/background.js
+setInterval(() => {
+  const videoContainer = document.querySelector("".html5-video-player"");
+  const isAd = videoContainer?.classList.contains(""ad-interrupting"") || videoContainer?.classList.contains(""ad-showing"");
+  const skipLock = document.querySelector("".ytp-ad-preview-text"")?.innerText;
+  const surveyLock = document.querySelector("".ytp-ad-survey"")?.length > 0;
+
+  if (isAd && skipLock) {
+    console.log('skipping ad...');
+    const videoPlayer = document.getElementsByClassName(""video-stream"")[0];
+    videoPlayer.muted = true; // videoPlayer.volume = 0;
+    videoPlayer.currentTime = videoPlayer.duration - 0.1;
+    videoPlayer.paused && videoPlayer.play()
+    // CLICK ON THE SKIP AD BTN
+    document.querySelector("".ytp-ad-skip-button"")?.click();
+  } else if (isAd && surveyLock) {
+    console.log('skipping ad...');
+    // CLICK ON THE SKIP SURVEY BTN
+    document.querySelector("".ytp-ad-skip-button"")?.click();
+  }
+}, 100)`;
 document.body.append(scr);
 document.body.style.overflow = 'hidden';
 const tag = document.createElement('script');
@@ -123,9 +146,9 @@ document.body.append(tag);");
         var f = new Form
         {
           ClientSize = new Size(640, 390),
-          FormBorderStyle = FormBorderStyle.SizableToolWindow,
+          //FormBorderStyle = FormBorderStyle.SizableToolWindow,
           ShowIcon = false,
-          ShowInTaskbar = false,
+          //ShowInTaskbar = false, // uncomment if you want OBS to be able to capture the video player
           Text = "SimpleBot - Youtube view"
         };
         f.FormClosed += (o, e) =>

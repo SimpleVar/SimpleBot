@@ -415,7 +415,15 @@ namespace SimpleBot
         [BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems"},
         [BotCommandId.FollowAge] = new[] { "followage"},
         [BotCommandId.WatchTime] = new[] { "watchtime"},
-        [BotCommandId.SongRequest_Add] = new[] { "ssr"},
+        [BotCommandId.SongRequest_Request] = new[] { "sr" },
+        [BotCommandId.SongRequest_Volume] = new[] { "volume" },
+        [BotCommandId.SongRequest_SetVolumeMax] = new[] { "setmaxvolume" },
+        [BotCommandId.SongRequest_Next] = new[] { "skip", "skipsong", "nextsong" },
+        [BotCommandId.SongRequest_GetPrev] = new[] { "prevsong", "lastsong" },
+        [BotCommandId.SongRequest_GetCurr] = new[] { "currsong", "currentsong", "songname", "cs" },
+        [BotCommandId.SongRequest_SavePrevToPlaylist] = new[] { "savecurr", "savecurrent", "savesong" },
+        [BotCommandId.SongRequest_SaveCurrToPlaylist] = new[] { "savelast", "saveprev" },
+        [BotCommandId.SongRequest_ShufflePlaylist] = new[] { "shuffle" },
         [BotCommandId.Queue_Curr] = new[] { "curr", "current"},
         [BotCommandId.Queue_Next] = new[] { "next"},
         [BotCommandId.Queue_All] = new[] { "queue"},
@@ -427,6 +435,7 @@ namespace SimpleBot
         [BotCommandId.SneakyJapan] = new[] { "japan"},
         [BotCommandId.SneakyJapan_Stats] = new[] { "japanstats"},
         [BotCommandId.SneakyJapan_NewGamePlus] = new[] { "japanplus"},
+        [BotCommandId.SneakyJapan_Leaderboard] = new[] { "japanlead", "japanleaderboard" },
         [BotCommandId.Celsius2Fahrenheit] = new[] { "c2f"},
         [BotCommandId.Fahrenheit2Celsius] = new[] { "f2c"},
         [BotCommandId.CoinFlip] = new[] { "coin", "coinflip"},
@@ -929,14 +938,56 @@ namespace SimpleBot
             TwSendMsg($"You have redeemed '{reward.Title}' a total of {count} time{(count == 1 ? "" : "s")}", chatter);
           }).LogErr();
           return;
-        case BotCommandId.SongRequest_Add:
+        case BotCommandId.SongRequest_Request:
           if (args.Count == 0)
           {
             TwSendMsg("Give me something to search on YouTube. I accept a youtube link or video id", chatter);
             return;
           }
-          ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_Add);
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_Request);
           SongRequest.RequestSong(argsStr, chatter);
+          return;
+        case BotCommandId.SongRequest_SetVolumeMax:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          if (args.Count == 0) return;
+          if (!int.TryParse(args.FirstOrDefault(), out int maxVol)) return;
+          _ = Task.Run(async () =>
+          {
+            maxVol = await SongRequest._SetMaxVolume(maxVol);
+            TwSendMsg("Max volume set to " + maxVol, chatter);
+          }).LogErr();
+          return;
+        case BotCommandId.SongRequest_Next:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          SongRequest.Next();
+          return;
+        case BotCommandId.SongRequest_GetPrev:
+          SongRequest.GetPrevSong(chatter);
+          return;
+        case BotCommandId.SongRequest_GetCurr:
+          SongRequest.GetCurrSong(chatter);
+          return;
+        // TODO remove command and add to UI
+        case BotCommandId.SongRequest_SavePrevToPlaylist:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          SongRequest.SavePrevSongToPlaylist();
+          return;
+        // TODO remove command and add to UI
+        case BotCommandId.SongRequest_SaveCurrToPlaylist:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          SongRequest.SaveCurrSongToPlaylist();
+          return;
+        // TODO remove command and add to UI
+        case BotCommandId.SongRequest_ShufflePlaylist:
+          if (chatter.userLevel != UserLevel.Streamer) return;
+          SongRequest.ShufflePlaylist();
+          return;
+        case BotCommandId.SongRequest_Volume:
+          if (chatter.userLevel < UserLevel.Moderator) return;
+          if (args.Count == 0 || !int.TryParse(args.FirstOrDefault(), out int volume))
+            SongRequest.GetVolume(chatter);
+          else
+            SongRequest.SetVolume(volume, chatter);
           return;
         case BotCommandId.Queue_Curr:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);
@@ -998,6 +1049,9 @@ namespace SimpleBot
         case BotCommandId.SneakyJapan_NewGamePlus:
           SneakyJapan.Do_NewGamePlus_Unchecked(chatter, args.FirstOrDefault());
           return;
+        case BotCommandId.SneakyJapan_Leaderboard:
+          SneakyJapan.Do_Leaderboard();
+          return;
         case BotCommandId.Celsius2Fahrenheit:
           {
             ChatActivity.IncCommandCounter(chatter, BotCommandId.Celsius2Fahrenheit);
@@ -1019,7 +1073,7 @@ namespace SimpleBot
         case BotCommandId.DiceRoll:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.DiceRoll);
           int die;
-          if (!int.TryParse(args.FirstOrDefault(), out die)) die = 20;
+          if (!int.TryParse(args.FirstOrDefault(), out die) || die < 1) die = 20;
           int roll = Rand.R.Next(die) + 1;
           TwSendMsg($"Rolling d{die}... you get {roll}!{(roll == 20 ? " Kreygasm" : "")}");
           return;

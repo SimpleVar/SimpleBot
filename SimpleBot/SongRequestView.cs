@@ -1,4 +1,5 @@
 ﻿using SimpleBot.Core;
+using System.Text;
 
 namespace SimpleBot
 {
@@ -68,5 +69,34 @@ namespace SimpleBot
       Task.Run(async () => await SongRequest._SetVolume(vol)).LogErr();
     }
 
+    private void btnImportPlaylist_Click(object sender, EventArgs e)
+    {
+      if (ofd.ShowDialog() != DialogResult.OK)
+        return;
+      SongRequest.Req[] songs;
+      try
+      {
+        songs = File.ReadAllText(ofd.FileName).FromJson<SongRequest.Req[]>();
+      }
+      catch (Exception ex)
+      {
+        MessageBox.Show("Error: " + ex.Message);
+        return;
+      }
+      SongRequest.ImportToPlaylist_nochecks(songs);
+    }
+
+    private void btnExportPlaylist_Click(object sender, EventArgs e)
+    {
+      if (sfd.ShowDialog() != DialogResult.OK)
+        return;
+      var json = SongRequest.GetPlaylist().ToJson();
+      File.WriteAllText(sfd.FileName, json);
+    }
+
+    private void btnSkip_Click(object sender, EventArgs e)
+    {
+      SongRequest.Next();
+    }
   }
 }

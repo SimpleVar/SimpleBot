@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Windows.Navigation;
 
 namespace SimpleBot
 {
@@ -17,5 +18,7 @@ namespace SimpleBot
     public int LastRoll;
     [JsonIgnore]
     public long LastRollRoundId;
+
+    public int GetRankingScore() => NewGamePlus * 10000 + Exp;
   }
 }
