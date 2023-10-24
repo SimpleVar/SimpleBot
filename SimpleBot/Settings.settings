@@ -48,7 +48,7 @@
       <Value Profile="(Default)">30</Value>
     </Setting>
     <Setting Name="SR_maxDuration_inSeconds" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">1500</Value>
+      <Value Profile="(Default)">5400</Value>
     </Setting>
     <Setting Name="SR_maxSongsInQueuePerUser" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">5</Value>

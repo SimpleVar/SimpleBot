@@ -1,6 +1,7 @@
 ﻿using System.Configuration;
 using System.Globalization;
 using System.Text.Json.Serialization;
+using VideoLibrary;
 
 namespace SimpleBot.Core
 {
@@ -40,7 +41,11 @@ namespace SimpleBot.Core
     #region User Settings
 
     public const int VOL_MIN = 0, VOL_MAX = 100;
+#if DEBUG
+    static int _SR_volume = 0;
+#else
     static int _SR_volume = Settings.Default.SR_volume; // 0-100
+#endif
     static int _SR_maxVolume = Settings.Default.SR_maxVolume; // 0-100
     static int _SR_minDuration_inSeconds = Settings.Default.SR_minDuration_inSeconds;
     static int _SR_maxDuration_inSeconds = Settings.Default.SR_maxDuration_inSeconds;
@@ -96,7 +101,7 @@ namespace SimpleBot.Core
       }
     }
 
-    #endregion
+#endregion
 
     static string _filePath;
     static Bot _bot;

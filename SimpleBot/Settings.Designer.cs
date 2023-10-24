@@ -205,7 +205,7 @@ namespace SimpleBot {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("1500")]
+        [global::System.Configuration.DefaultSettingValueAttribute("5400")]
         public int SR_maxDuration_inSeconds {
             get {
                 return ((int)(this["SR_maxDuration_inSeconds"]));

@@ -1,10 +1,22 @@
 ﻿using Newtonsoft.Json;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace SimpleBot
 {
   static class Extensions
   {
+    public static string ToShortDurationString(this TimeSpan dur)
+    {
+      dur = dur.Duration();
+      if (dur.Days > 0)
+        return dur.ToString(@"d\:h\:mm\:ss", CultureInfo.InvariantCulture);
+      else if (dur.Hours > 0)
+        return dur.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture);
+      else
+        return dur.ToString(@"m\:ss", CultureInfo.InvariantCulture);
+    }
+
     public static T AtRand<T>(this T[] arr) => arr.Length == 0 ? default : arr[Rand.R.Next(arr.Length)];
 
     public static EventHandler Debounce(this EventHandler func, int ms)

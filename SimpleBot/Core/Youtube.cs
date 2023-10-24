@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Web;
 using VideoLibrary;
 using VideoLibrary.Exceptions;
@@ -75,10 +76,13 @@ scr.innerHTML = `function onYouTubeIframeAPIReady() {
     playerVars: { 'autoplay': 1, 'controls': 1 },
     events: {
       'onReady': () => { document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
-      'onStateChange': e => { if (e.data === 0) window.chrome.webview.postMessage(document._loadedVideoId ?? ''); },
-      'onError': e => { if (e.data < 101) window.chrome.webview.postMessage(document._loadedVideoId ?? ''); }
+      'onStateChange': e => { if (e.data === 0) skipMe(); },
+      'onError': e => { console.log('ytErr', e); if (e.data < 101) skipMe(); }
     }
   });
+}
+function skipMe() {
+  window.chrome.webview.postMessage(document._loadedVideoId ?? '');
 }
 function playNow(id, start, end) {
   document._loadedVideoId = id
@@ -105,7 +109,16 @@ setInterval(() => {
     // CLICK ON THE SKIP SURVEY BTN
     document.querySelector("".ytp-ad-skip-button"")?.click();
   }
-}, 100)`;
+}, 100);
+// setInterval(() => {
+//   const videoContainer = document.querySelector("".html5-video-player"");
+//   const isErr = videoContainer?.classList.contains(""ytp-embed-error"");
+//   console.log(isErr)
+//   if (isErr) {
+//     console.log('trying to skip embed err...');
+//     playNow(document._loadedVideoId)
+//   }
+// }, 100)`;
 document.body.append(scr);
 document.body.style.overflow = 'hidden';
 const tag = document.createElement('script');
@@ -170,6 +183,24 @@ document.body.append(tag);");
       return webView?.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})").LogErr());
     }
 
+    private string GetIdFromUrl(string url)
+    {
+      try
+      {
+        return HttpUtility.ParseQueryString(new Uri(new StringBuilder(url)
+          .Replace("youtu.be/", "youtube.com/watch?v=")
+          .Replace("youtube.com/embed/", "youtube.com/watch?v=")
+          .Replace("/v/", "/watch?v=")
+          .Replace("/watch#", "/watch?")
+          .Replace("youtube.com/shorts/", "youtube.com/watch?v=")
+          .ToString()).Query)["v"];
+      }
+      catch
+      {
+        return null;
+      }
+    }
+
     public async Task Search(string query, List<YtVideo> results, int maxResults)
     {
       var couldBeId = true;
@@ -180,18 +211,23 @@ document.body.append(tag);");
       }
 
       YouTubeVideo video = null;
+      string videoId = query;
       if (couldBeId)
         video = tryGetVideo("youtube.com/watch?v=" + query);
-      else if (query.Contains("youtu.be/") || query.Contains("youtube."))
-        video = tryGetVideo(query);
+      else
+      {
+        videoId = GetIdFromUrl(query);
+        if (videoId != null)
+          video = tryGetVideo(query);
+      }
       
       if (video != null)
       {
         results.Add(new()
         {
-          id = query,
+          id = videoId,
           title = video.Title,
-          duration = TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToString("g", CultureInfo.InvariantCulture)
+          duration = TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToShortDurationString()
         });
         return;
       }
