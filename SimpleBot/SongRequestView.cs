@@ -1,5 +1,4 @@
 ﻿using SimpleBot.Core;
-using System.Text;
 
 namespace SimpleBot
 {
@@ -22,6 +21,7 @@ namespace SimpleBot
     private void SongRequest_NeedUpdateUI_SongList(object sender, SongRequest.SRData e)
     {
       // TODO
+      lblCurrSong.Text = $"({e.CurrSong.duration}) {e.CurrSong.title}\r\nRequested by: {e.CurrSong.ogRequesterDisplayName}";
     }
 
     private void SongRequest_NeedUpdateUI_Volume(object sender, (int volume, int maxVolume) e)

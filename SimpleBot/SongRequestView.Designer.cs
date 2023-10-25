@@ -45,6 +45,7 @@
       sfd = new SaveFileDialog();
       ofd = new OpenFileDialog();
       btnSkip = new Button();
+      lblCurrSong = new Label();
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).BeginInit();
@@ -204,11 +205,21 @@
       btnSkip.UseVisualStyleBackColor = true;
       btnSkip.Click += btnSkip_Click;
       // 
+      // lblCurrSong
+      // 
+      lblCurrSong.AutoSize = true;
+      lblCurrSong.Location = new Point(7, 196);
+      lblCurrSong.Name = "lblCurrSong";
+      lblCurrSong.Size = new Size(37, 15);
+      lblCurrSong.TabIndex = 14;
+      lblCurrSong.Text = "Song:";
+      // 
       // SongRequestView
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       BorderStyle = BorderStyle.FixedSingle;
+      Controls.Add(lblCurrSong);
       Controls.Add(btnSkip);
       Controls.Add(btnExportPlaylist);
       Controls.Add(btnImportPlaylist);
@@ -254,5 +265,6 @@
     private SaveFileDialog sfd;
     private OpenFileDialog ofd;
     private Button btnSkip;
+    private Label lblCurrSong;
   }
 }

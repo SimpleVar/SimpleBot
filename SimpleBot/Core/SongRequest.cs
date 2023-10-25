@@ -162,7 +162,13 @@ namespace SimpleBot.Core
           await _SetVolume(_SR_volume, true);
           string videoId = _sr.CurrSong.ytVideoId;
           if (videoId != null)
+          {
             await _yt.PlayVideo(videoId);
+            lock (_lock)
+            {
+              NeedUpdateUI_SongList?.Invoke(null, _sr);
+            }
+          }
           else
             Next();
         }
