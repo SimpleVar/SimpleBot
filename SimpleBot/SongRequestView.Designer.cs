@@ -46,6 +46,9 @@
       ofd = new OpenFileDialog();
       btnSkip = new Button();
       lblCurrSong = new Label();
+      btnPrev = new Button();
+      btnSaveCurrToPlaylist = new Button();
+      btnSavePrevToPlaylist = new Button();
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).BeginInit();
@@ -96,7 +99,7 @@
       nudMaxSeconds.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
       nudMaxSeconds.Name = "nudMaxSeconds";
       nudMaxSeconds.Size = new Size(64, 23);
-      nudMaxSeconds.TabIndex = 4;
+      nudMaxSeconds.TabIndex = 3;
       nudMaxSeconds.ValueChanged += nudMaxSeconds_ValueChanged;
       // 
       // label3
@@ -105,7 +108,7 @@
       label3.Location = new Point(7, 92);
       label3.Name = "label3";
       label3.Size = new Size(120, 15);
-      label3.TabIndex = 5;
+      label3.TabIndex = 4;
       label3.Text = "Limit queues per user";
       // 
       // nudMaxPerUser
@@ -115,37 +118,37 @@
       nudMaxPerUser.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
       nudMaxPerUser.Name = "nudMaxPerUser";
       nudMaxPerUser.Size = new Size(64, 23);
-      nudMaxPerUser.TabIndex = 6;
+      nudMaxPerUser.TabIndex = 5;
       nudMaxPerUser.Value = new decimal(new int[] { 1, 0, 0, 0 });
       nudMaxPerUser.ValueChanged += nudMaxPerUser_ValueChanged;
       // 
       // sliderVolume
       // 
-      sliderVolume.Location = new Point(56, 148);
+      sliderVolume.Location = new Point(55, 177);
       sliderVolume.Maximum = 100;
       sliderVolume.Name = "sliderVolume";
       sliderVolume.Size = new Size(180, 45);
       sliderVolume.SmallChange = 2;
-      sliderVolume.TabIndex = 10;
+      sliderVolume.TabIndex = 11;
       sliderVolume.TickFrequency = 10;
       sliderVolume.Scroll += sliderVolume_Scroll;
       // 
       // label6
       // 
       label6.AutoSize = true;
-      label6.Location = new Point(7, 150);
+      label6.Location = new Point(6, 179);
       label6.Name = "label6";
       label6.Size = new Size(47, 15);
-      label6.TabIndex = 9;
+      label6.TabIndex = 10;
       label6.Text = "Volume";
       // 
       // labelVolume
       // 
       labelVolume.AutoSize = true;
-      labelVolume.Location = new Point(234, 150);
+      labelVolume.Location = new Point(241, 179);
       labelVolume.Name = "labelVolume";
       labelVolume.Size = new Size(25, 15);
-      labelVolume.TabIndex = 11;
+      labelVolume.TabIndex = 17;
       labelVolume.Text = "100";
       // 
       // label4
@@ -154,7 +157,7 @@
       label4.Location = new Point(7, 121);
       label4.Name = "label4";
       label4.Size = new Size(117, 15);
-      label4.TabIndex = 7;
+      label4.TabIndex = 6;
       label4.Text = "Limit volume (0-100)";
       // 
       // nudMaxVolume
@@ -163,7 +166,7 @@
       nudMaxVolume.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
       nudMaxVolume.Name = "nudMaxVolume";
       nudMaxVolume.Size = new Size(64, 23);
-      nudMaxVolume.TabIndex = 8;
+      nudMaxVolume.TabIndex = 7;
       nudMaxVolume.Value = new decimal(new int[] { 1, 0, 0, 0 });
       nudMaxVolume.ValueChanged += nudMaxVolume_ValueChanged;
       // 
@@ -172,7 +175,7 @@
       btnImportPlaylist.Location = new Point(229, 3);
       btnImportPlaylist.Name = "btnImportPlaylist";
       btnImportPlaylist.Size = new Size(99, 23);
-      btnImportPlaylist.TabIndex = 12;
+      btnImportPlaylist.TabIndex = 13;
       btnImportPlaylist.Text = "Import Playlist";
       btnImportPlaylist.UseVisualStyleBackColor = true;
       btnImportPlaylist.Click += btnImportPlaylist_Click;
@@ -182,7 +185,7 @@
       btnExportPlaylist.Location = new Point(229, 26);
       btnExportPlaylist.Name = "btnExportPlaylist";
       btnExportPlaylist.Size = new Size(99, 23);
-      btnExportPlaylist.TabIndex = 12;
+      btnExportPlaylist.TabIndex = 14;
       btnExportPlaylist.Text = "Export Playlist";
       btnExportPlaylist.UseVisualStyleBackColor = true;
       btnExportPlaylist.Click += btnExportPlaylist_Click;
@@ -197,10 +200,10 @@
       // 
       // btnSkip
       // 
-      btnSkip.Location = new Point(124, 3);
+      btnSkip.Location = new Point(280, 84);
       btnSkip.Name = "btnSkip";
       btnSkip.Size = new Size(48, 23);
-      btnSkip.TabIndex = 13;
+      btnSkip.TabIndex = 16;
       btnSkip.Text = "Skip";
       btnSkip.UseVisualStyleBackColor = true;
       btnSkip.Click += btnSkip_Click;
@@ -208,18 +211,51 @@
       // lblCurrSong
       // 
       lblCurrSong.AutoSize = true;
-      lblCurrSong.Location = new Point(7, 196);
+      lblCurrSong.Location = new Point(7, 209);
       lblCurrSong.Name = "lblCurrSong";
       lblCurrSong.Size = new Size(37, 15);
-      lblCurrSong.TabIndex = 14;
+      lblCurrSong.TabIndex = 12;
       lblCurrSong.Text = "Song:";
+      // 
+      // btnPrev
+      // 
+      btnPrev.Location = new Point(255, 55);
+      btnPrev.Name = "btnPrev";
+      btnPrev.Size = new Size(73, 23);
+      btnPrev.TabIndex = 15;
+      btnPrev.Text = "Playlist--";
+      btnPrev.UseVisualStyleBackColor = true;
+      btnPrev.Click += btnPrev_Click;
+      // 
+      // btnSaveCurrToPlaylist
+      // 
+      btnSaveCurrToPlaylist.Location = new Point(3, 148);
+      btnSaveCurrToPlaylist.Name = "btnSaveCurrToPlaylist";
+      btnSaveCurrToPlaylist.Size = new Size(111, 23);
+      btnSaveCurrToPlaylist.TabIndex = 8;
+      btnSaveCurrToPlaylist.Text = "Save to Playlist";
+      btnSaveCurrToPlaylist.UseVisualStyleBackColor = true;
+      btnSaveCurrToPlaylist.Click += btnSaveCurrToPlaylist_Click;
+      // 
+      // btnSavePrevToPlaylist
+      // 
+      btnSavePrevToPlaylist.Location = new Point(120, 148);
+      btnSavePrevToPlaylist.Name = "btnSavePrevToPlaylist";
+      btnSavePrevToPlaylist.Size = new Size(161, 23);
+      btnSavePrevToPlaylist.TabIndex = 9;
+      btnSavePrevToPlaylist.Text = "Save previous to Playlist";
+      btnSavePrevToPlaylist.UseVisualStyleBackColor = true;
+      btnSavePrevToPlaylist.Click += btnSavePrevToPlaylist_Click;
       // 
       // SongRequestView
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       BorderStyle = BorderStyle.FixedSingle;
+      Controls.Add(btnSavePrevToPlaylist);
+      Controls.Add(btnSaveCurrToPlaylist);
       Controls.Add(lblCurrSong);
+      Controls.Add(btnPrev);
       Controls.Add(btnSkip);
       Controls.Add(btnExportPlaylist);
       Controls.Add(btnImportPlaylist);
@@ -266,5 +302,8 @@
     private OpenFileDialog ofd;
     private Button btnSkip;
     private Label lblCurrSong;
+    private Button btnPrev;
+    private Button btnSaveCurrToPlaylist;
+    private Button btnSavePrevToPlaylist;
   }
 }

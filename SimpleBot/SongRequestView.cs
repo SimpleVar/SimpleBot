@@ -98,5 +98,20 @@ namespace SimpleBot
     {
       SongRequest.Next();
     }
+
+    private void btnPrev_Click(object sender, EventArgs e)
+    {
+      SongRequest.PlaylistBackOne();
+    }
+
+    private void btnSaveCurrToPlaylist_Click(object sender, EventArgs e)
+    {
+      SongRequest.SaveCurrSongToPlaylist();
+    }
+
+    private void btnSavePrevToPlaylist_Click(object sender, EventArgs e)
+    {
+      SongRequest.SavePrevSongToPlaylist();
+    }
   }
 }

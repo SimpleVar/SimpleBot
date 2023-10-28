@@ -367,6 +367,32 @@ namespace SimpleBot.Core
       }
     }
 
+    public static void PlaylistBackOne()
+    {
+      if (_sr.Playlist.Count <= 0)
+        return;
+      string videoId = null;
+      lock (_lock)
+      {
+        if (_sr.Playlist.Count <= 0)
+          return;
+        if (_sr.Queue.Count != 0)
+        {
+          // go back in the playlist, but don't change the current song
+          _sr.CurrIndexToPlayInPlaylist = _sr.CurrIndexToPlayInPlaylist > 0 ? _sr.CurrIndexToPlayInPlaylist - 1 : _sr.Playlist.Count - 1;
+          return;
+        }
+        _sr.PrevSong = _sr.CurrSong;
+        _sr.CurrIndexToPlayInPlaylist = _sr.CurrIndexToPlayInPlaylist > 0 ? _sr.CurrIndexToPlayInPlaylist - 1 : _sr.Playlist.Count - 1;
+        _sr.CurrSong = _sr.Playlist[_sr.CurrIndexToPlayInPlaylist];
+
+        _onSongListChange_noLock();
+        videoId = _sr.CurrSong.ytVideoId;
+      }
+      if (videoId != null)
+        _ = Task.Run(async () => await _yt.PlayVideo(videoId)).LogErr();
+    }
+
     public static void Next()
     {
       string videoId = null;

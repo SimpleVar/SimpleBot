@@ -42,6 +42,7 @@
       // 
       // listChatters
       // 
+      listChatters.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
       listChatters.ItemHeight = 15;
       listChatters.Location = new Point(12, 63);
       listChatters.Name = "listChatters";
@@ -86,9 +87,9 @@
       // 
       // btnMassBan
       // 
-      btnMassBan.Location = new Point(271, 23);
+      btnMassBan.Location = new Point(224, 63);
       btnMassBan.Name = "btnMassBan";
-      btnMassBan.Size = new Size(337, 59);
+      btnMassBan.Size = new Size(122, 56);
       btnMassBan.TabIndex = 5;
       btnMassBan.Text = "Mass Ban from list";
       btnMassBan.UseVisualStyleBackColor = true;
@@ -114,6 +115,7 @@
       // 
       // btnBanKnownBotsInChat
       // 
+      btnBanKnownBotsInChat.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
       btnBanKnownBotsInChat.Location = new Point(12, 313);
       btnBanKnownBotsInChat.Name = "btnBanKnownBotsInChat";
       btnBanKnownBotsInChat.Size = new Size(196, 23);
@@ -125,7 +127,7 @@
       // songRequestView1
       // 
       songRequestView1.BorderStyle = BorderStyle.FixedSingle;
-      songRequestView1.Location = new Point(214, 88);
+      songRequestView1.Location = new Point(12, 342);
       songRequestView1.Name = "songRequestView1";
       songRequestView1.Size = new Size(331, 252);
       songRequestView1.TabIndex = 7;
@@ -134,7 +136,7 @@
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
-      ClientSize = new Size(648, 356);
+      ClientSize = new Size(358, 606);
       Controls.Add(songRequestView1);
       Controls.Add(btnBanKnownBotsInChat);
       Controls.Add(btnMassBan);
