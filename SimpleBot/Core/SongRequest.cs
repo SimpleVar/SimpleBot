@@ -163,7 +163,7 @@ namespace SimpleBot.Core
           string videoId = _sr.CurrSong.ytVideoId;
           if (videoId != null)
           {
-            await _yt.PlayVideo(videoId);
+            _ = await _yt.PlayVideo(videoId);
             lock (_lock)
             {
               NeedUpdateUI_SongList?.Invoke(null, _sr);
@@ -274,7 +274,7 @@ namespace SimpleBot.Core
       }
       if (vol != ogVol || forceUpdate)
       {
-        await _yt.SetVolume(vol);
+        _ = await _yt.SetVolume(vol);
         NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
       }
       return vol;
@@ -296,7 +296,7 @@ namespace SimpleBot.Core
       }
       if (vol != ogVol)
       {
-        await _yt.SetVolume(vol);
+        _ = await _yt.SetVolume(vol);
       }
       NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
       return maxVol;

@@ -81,6 +81,13 @@ scr.innerHTML = `function onYouTubeIframeAPIReady() {
     }
   });
 }
+function pauseOrResume() {
+  const p = document.ytPlayer;
+  if (!p) return;
+  const isPaused = p.getPlayerState() == 2;
+  p[isPaused ? 'playVideo' : 'pauseVideo']();
+  return +isPaused;
+}
 function skipMe() {
   window.chrome.webview.postMessage(document._loadedVideoId ?? '');
 }
@@ -152,24 +159,44 @@ document.body.append(tag);");
       });
     }
 
-    public void Show()
+    public Task<string> PauseOrResume()
+    {
+      return webView?.Invoke(() => webView.ExecuteScriptAsync($"pauseOrResume()").LogErr());
+    }
+
+    Form _ytViewForm;
+    public void ShowOrHide(IWin32Window parentWindow, Action<bool> onVisibilityChanged)
     {
       webView?.Invoke(() =>
       {
-        var f = new Form
+        if (_ytViewForm == null)
         {
-          ClientSize = new Size(640, 390),
-          //FormBorderStyle = FormBorderStyle.SizableToolWindow,
-          ShowIcon = false,
-          //ShowInTaskbar = false, // uncomment if you want OBS to be able to capture the video player
-          Text = "SimpleBot - Youtube view"
-        };
-        f.FormClosed += (o, e) =>
-        {
-          f.Controls.Clear();
-        };
-        f.Controls.Add(webView);
-        f.Show();
+          _ytViewForm = new Form
+          {
+            ClientSize = new Size(640, 390),
+            ShowIcon = false,
+#if false // dont set these properties if you want OBS to be able to capture the video player
+            FormBorderStyle = FormBorderStyle.SizableToolWindow,
+            ShowInTaskbar = false,
+#endif
+            Text = "SimpleBot - Youtube view"
+          };
+          _ytViewForm.FormClosing += (o, e) =>
+          {
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+              e.Cancel = true;
+              _ytViewForm.Hide();
+            }
+          };
+          _ytViewForm.VisibleChanged += (o, e) => onVisibilityChanged(_ytViewForm.Visible);
+          _ytViewForm.Controls.Add(webView);
+        }
+
+        if (_ytViewForm.Visible)
+          _ytViewForm.Hide();
+        else
+          _ytViewForm.Show();
       });
     }
 

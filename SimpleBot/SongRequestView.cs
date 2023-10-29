@@ -1,4 +1,5 @@
 ﻿using SimpleBot.Core;
+using System.Windows.Forms;
 
 namespace SimpleBot
 {
@@ -39,7 +40,10 @@ namespace SimpleBot
 
     private void btnShowYoutubeForm_Click(object sender, EventArgs e)
     {
-      SongRequest._yt?.Show();
+      SongRequest._yt?.ShowOrHide(this, isVisible =>
+      {
+        btnShowYoutubeForm.ForeColor = isVisible ? Color.ForestGreen : SystemColors.ControlText;
+      });
     }
 
     private void nudMinSeconds_ValueChanged(object sender, EventArgs e)
@@ -112,6 +116,12 @@ namespace SimpleBot
     private void btnSavePrevToPlaylist_Click(object sender, EventArgs e)
     {
       SongRequest.SavePrevSongToPlaylist();
+    }
+
+    private async void btnTogglePlayPause_Click(object sender, EventArgs e)
+    {
+      var playing = await SongRequest._yt.PauseOrResume() == "1";
+      btnTogglePlayPause.Text = playing ? "Pause" : "Play";
     }
   }
 }

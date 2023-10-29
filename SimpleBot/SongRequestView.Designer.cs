@@ -49,6 +49,7 @@
       btnPrev = new Button();
       btnSaveCurrToPlaylist = new Button();
       btnSavePrevToPlaylist = new Button();
+      btnTogglePlayPause = new Button();
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).BeginInit();
@@ -129,7 +130,7 @@
       sliderVolume.Name = "sliderVolume";
       sliderVolume.Size = new Size(180, 45);
       sliderVolume.SmallChange = 2;
-      sliderVolume.TabIndex = 11;
+      sliderVolume.TabIndex = 4;
       sliderVolume.TickFrequency = 10;
       sliderVolume.Scroll += sliderVolume_Scroll;
       // 
@@ -203,7 +204,7 @@
       btnSkip.Location = new Point(280, 84);
       btnSkip.Name = "btnSkip";
       btnSkip.Size = new Size(48, 23);
-      btnSkip.TabIndex = 16;
+      btnSkip.TabIndex = 3;
       btnSkip.Text = "Skip";
       btnSkip.UseVisualStyleBackColor = true;
       btnSkip.Click += btnSkip_Click;
@@ -222,7 +223,7 @@
       btnPrev.Location = new Point(255, 55);
       btnPrev.Name = "btnPrev";
       btnPrev.Size = new Size(73, 23);
-      btnPrev.TabIndex = 15;
+      btnPrev.TabIndex = 1;
       btnPrev.Text = "Playlist--";
       btnPrev.UseVisualStyleBackColor = true;
       btnPrev.Click += btnPrev_Click;
@@ -247,11 +248,22 @@
       btnSavePrevToPlaylist.UseVisualStyleBackColor = true;
       btnSavePrevToPlaylist.Click += btnSavePrevToPlaylist_Click;
       // 
+      // btnTogglePlayPause
+      // 
+      btnTogglePlayPause.Location = new Point(124, 3);
+      btnTogglePlayPause.Name = "btnTogglePlayPause";
+      btnTogglePlayPause.Size = new Size(65, 23);
+      btnTogglePlayPause.TabIndex = 2;
+      btnTogglePlayPause.Text = "Pause";
+      btnTogglePlayPause.UseVisualStyleBackColor = true;
+      btnTogglePlayPause.Click += btnTogglePlayPause_Click;
+      // 
       // SongRequestView
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       BorderStyle = BorderStyle.FixedSingle;
+      Controls.Add(btnTogglePlayPause);
       Controls.Add(btnSavePrevToPlaylist);
       Controls.Add(btnSaveCurrToPlaylist);
       Controls.Add(lblCurrSong);
@@ -305,5 +317,6 @@
     private Button btnPrev;
     private Button btnSaveCurrToPlaylist;
     private Button btnSavePrevToPlaylist;
+    private Button btnTogglePlayPause;
   }
 }
