@@ -1,3 +1,6 @@
+﻿using System.Diagnostics;
+using System.Text;
+
 namespace SimpleBot
 {
   internal static class Program

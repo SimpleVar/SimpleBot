@@ -6,7 +6,7 @@
       <Value Profile="(Default)">42</Value>
     </Setting>
     <Setting Name="ObsWebsocketUrl" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ws://192.168.1.17:4455</Value>
+      <Value Profile="(Default)">ws://192.168.1.11:4455</Value>
     </Setting>
     <Setting Name="ObsWebsocketPassword" Type="System.String" Scope="User">
       <Value Profile="(Default)" />

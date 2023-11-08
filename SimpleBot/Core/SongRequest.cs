@@ -218,21 +218,25 @@ namespace SimpleBot.Core
     public static void GetCurrSong(Chatter chatter)
     {
       string songTitle;
+      string vidId;
       lock (_lock)
       {
         songTitle = _sr.CurrSong.title;
+        vidId = _sr.CurrSong.ytVideoId;
       }
-      _bot.TwSendMsg("Current song is: " + songTitle, chatter);
+      _bot.TwSendMsg("Current song is: " + songTitle + " https://youtu.be/" + vidId, chatter);
     }
 
     public static void GetPrevSong(Chatter chatter)
     {
       string songTitle;
+      string vidId;
       lock (_lock)
       {
         songTitle = _sr.PrevSong.title;
+        vidId = _sr.PrevSong.ytVideoId;
       }
-      _bot.TwSendMsg("Previous song was: " + songTitle, chatter);
+      _bot.TwSendMsg("Previous song was: " + songTitle + " https://youtu.be/" + vidId, chatter);
     }
 
     public static void GetVolume(Chatter chatter)

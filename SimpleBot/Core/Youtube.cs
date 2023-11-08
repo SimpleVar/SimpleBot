@@ -234,7 +234,7 @@ document.body.append(tag);");
       for (int i = 0; couldBeId && i < query.Length; i++)
       {
         char c = query[i];
-        couldBeId = c != '-' && c != '_' && !char.IsLetterOrDigit(c);
+        couldBeId = c == '-' || c == '_' || char.IsLetterOrDigit(c);
       }
 
       YouTubeVideo video = null;
@@ -373,7 +373,7 @@ document.body.append(tag);");
 
     unsafe void parse_quoted(ref ParseState s)
     {
-      int qLen = 0;
+      s.quotedBuffLen = 0;
       int c = 0;
       while (c != '"')
       {
@@ -382,12 +382,12 @@ document.body.append(tag);");
           case '\\': _ = readByte(ref s); break; // The quoted buff will contain zero instead of escaped chars
           case '"': break;
           default:
-            if (qLen < ParseState.QUOTED_BUFF_SIZE)
-              s.quotedBuff[qLen++] = (sbyte)c;
+            if (s.quotedBuffLen < ParseState.QUOTED_BUFF_SIZE)
+              s.quotedBuff[s.quotedBuffLen++] = (byte)c;
             break;
         }
       }
-      s.quotedBuff[qLen] = 0;
+      s.quotedBuff[s.quotedBuffLen] = 0;
     }
 
     void parse_jval(ref ParseState s)
@@ -539,7 +539,8 @@ document.body.append(tag);");
       public const int QUOTED_BUFF_SIZE = 127;
       public Stream sourceStream;
       public byte[] buff;
-      public fixed sbyte quotedBuff[QUOTED_BUFF_SIZE + 1];
+      public fixed byte quotedBuff[QUOTED_BUFF_SIZE + 1];
+      public int quotedBuffLen;
       public int buffLen, buffIdx;
       public List<YtVideo> results;
       public YtVideo currVideo;
@@ -563,9 +564,9 @@ document.body.append(tag);");
       public string BuildQuotedStr()
       {
         quotedBuff[QUOTED_BUFF_SIZE] = 0; // safe-gaurd
-        fixed (sbyte* s = quotedBuff)
+        fixed (byte* s = quotedBuff)
         {
-          return new string(s);
+          return Encoding.Default.GetString(s, quotedBuffLen);
         }
       }
     }

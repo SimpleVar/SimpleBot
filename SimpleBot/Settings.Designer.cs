@@ -37,7 +37,7 @@ namespace SimpleBot {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("ws://192.168.1.17:4455")]
+        [global::System.Configuration.DefaultSettingValueAttribute("ws://192.168.1.11:4455")]
         public string ObsWebsocketUrl {
             get {
                 return ((string)(this["ObsWebsocketUrl"]));

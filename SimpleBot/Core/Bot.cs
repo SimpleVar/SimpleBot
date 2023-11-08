@@ -490,6 +490,18 @@ namespace SimpleBot
 
     private void twOnMessage(object sender, OnMessageReceivedArgs e)
     {
+      try
+      {
+        _twOnMessage(sender, e);
+      }
+      catch (Exception ex)
+      {
+        Log("ERROR in twOnMessage: " + ex.ToString());
+      }
+    }
+
+    private void _twOnMessage(object sender, OnMessageReceivedArgs e)
+    {
       Chatter chatter = ChatActivity.OnMessage(e.ChatMessage);
       if (chatter == null) return; // ignored bot user
       
