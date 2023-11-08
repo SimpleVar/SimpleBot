@@ -50,6 +50,7 @@
       btnSaveCurrToPlaylist = new Button();
       btnSavePrevToPlaylist = new Button();
       btnTogglePlayPause = new Button();
+      lblQueueSize = new Label();
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).BeginInit();
@@ -173,6 +174,7 @@
       // 
       // btnImportPlaylist
       // 
+      btnImportPlaylist.Anchor = AnchorStyles.Top | AnchorStyles.Right;
       btnImportPlaylist.Location = new Point(229, 3);
       btnImportPlaylist.Name = "btnImportPlaylist";
       btnImportPlaylist.Size = new Size(99, 23);
@@ -183,6 +185,7 @@
       // 
       // btnExportPlaylist
       // 
+      btnExportPlaylist.Anchor = AnchorStyles.Top | AnchorStyles.Right;
       btnExportPlaylist.Location = new Point(229, 26);
       btnExportPlaylist.Name = "btnExportPlaylist";
       btnExportPlaylist.Size = new Size(99, 23);
@@ -201,6 +204,7 @@
       // 
       // btnSkip
       // 
+      btnSkip.Anchor = AnchorStyles.Top | AnchorStyles.Right;
       btnSkip.Location = new Point(280, 84);
       btnSkip.Name = "btnSkip";
       btnSkip.Size = new Size(48, 23);
@@ -212,7 +216,7 @@
       // lblCurrSong
       // 
       lblCurrSong.AutoSize = true;
-      lblCurrSong.Location = new Point(7, 209);
+      lblCurrSong.Location = new Point(7, 224);
       lblCurrSong.Name = "lblCurrSong";
       lblCurrSong.Size = new Size(37, 15);
       lblCurrSong.TabIndex = 12;
@@ -220,6 +224,7 @@
       // 
       // btnPrev
       // 
+      btnPrev.Anchor = AnchorStyles.Top | AnchorStyles.Right;
       btnPrev.Location = new Point(255, 55);
       btnPrev.Name = "btnPrev";
       btnPrev.Size = new Size(73, 23);
@@ -258,6 +263,16 @@
       btnTogglePlayPause.UseVisualStyleBackColor = true;
       btnTogglePlayPause.Click += btnTogglePlayPause_Click;
       // 
+      // lblQueueSize
+      // 
+      lblQueueSize.AutoSize = true;
+      lblQueueSize.ForeColor = SystemColors.GrayText;
+      lblQueueSize.Location = new Point(7, 209);
+      lblQueueSize.Name = "lblQueueSize";
+      lblQueueSize.Size = new Size(62, 15);
+      lblQueueSize.TabIndex = 12;
+      lblQueueSize.Text = "0 in queue";
+      // 
       // SongRequestView
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
@@ -266,6 +281,7 @@
       Controls.Add(btnTogglePlayPause);
       Controls.Add(btnSavePrevToPlaylist);
       Controls.Add(btnSaveCurrToPlaylist);
+      Controls.Add(lblQueueSize);
       Controls.Add(lblCurrSong);
       Controls.Add(btnPrev);
       Controls.Add(btnSkip);
@@ -284,7 +300,7 @@
       Controls.Add(label1);
       Controls.Add(btnShowYoutubeForm);
       Name = "SongRequestView";
-      Size = new Size(331, 252);
+      Size = new Size(331, 259);
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).EndInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).EndInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).EndInit();
@@ -318,5 +334,6 @@
     private Button btnSaveCurrToPlaylist;
     private Button btnSavePrevToPlaylist;
     private Button btnTogglePlayPause;
+    private Label lblQueueSize;
   }
 }

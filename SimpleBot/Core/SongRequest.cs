@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Configuration;
 using System.Globalization;
 using System.Text.Json.Serialization;
 using VideoLibrary;
@@ -9,9 +10,22 @@ namespace SimpleBot.Core
   {
     public struct Req
     {
-      public string ogRequesterDisplayName, ytVideoId, title, duration;
+      public string ogRequesterDisplayName, ytVideoId, title, author, duration;
       [JsonIgnore]
       public int _shuffleRandVal; // used in tandom with Array.Sort
+
+      const string DASHES = "‑-‐‑‒–—―﹘﹣－"; // "‑\u002D\u2010\u2011\u2012\u2013\u2014\u2015\uFE58\uFE63\uFF0D"
+
+      public string ToLongString()
+      {
+        // heuristic on whether there is a space-dash-space
+        for (int i = 1; i < title.Length - 1; i++)
+        {
+          if (title[i - 1] == ' ' && title[i + 1] == ' ' && DASHES.Contains(title[i]))
+            return $"{title} https://youtu.be/{ytVideoId}";
+        }
+        return $"{title} - {author} ({duration}) https://youtu.be/{ytVideoId}";
+      }
     }
     enum ReqResult { OK, AlreadyExists, TooManyOngoingRequestsByUser, TooShort, TooLong, FailedToParseDuration };
     public class SRData
@@ -217,26 +231,22 @@ namespace SimpleBot.Core
 
     public static void GetCurrSong(Chatter chatter)
     {
-      string songTitle;
-      string vidId;
+      string songStr;
       lock (_lock)
       {
-        songTitle = _sr.CurrSong.title;
-        vidId = _sr.CurrSong.ytVideoId;
+        songStr = _sr.CurrSong.ToLongString();
       }
-      _bot.TwSendMsg("Current song is: " + songTitle + " https://youtu.be/" + vidId, chatter);
+      _bot.TwSendMsg("Current song is: " + songStr, chatter);
     }
 
     public static void GetPrevSong(Chatter chatter)
     {
-      string songTitle;
-      string vidId;
+      string songStr;
       lock (_lock)
       {
-        songTitle = _sr.PrevSong.title;
-        vidId = _sr.PrevSong.ytVideoId;
+        songStr = _sr.PrevSong.ToLongString();
       }
-      _bot.TwSendMsg("Previous song was: " + songTitle + " https://youtu.be/" + vidId, chatter);
+      _bot.TwSendMsg("Previous song was: " + songStr, chatter);
     }
 
     public static void GetVolume(Chatter chatter)
@@ -445,10 +455,10 @@ namespace SimpleBot.Core
       MessageBox.Show("Added " + importCount + " new songs to the playlist");
     }
     
-    static ReqResult _addToQueue(Req r, bool isStreamerRequest)
+    static ReqResult _addToQueue(Req r, bool ignoreLimits)
     {
       int maxReqsByUser = int.MaxValue;
-      if (!isStreamerRequest)
+      if (!ignoreLimits)
       {
         if (!TimeSpan.TryParse("0:" + r.duration, CultureInfo.InvariantCulture, out TimeSpan dur))
           return ReqResult.FailedToParseDuration;
@@ -461,12 +471,23 @@ namespace SimpleBot.Core
       lock (_lock)
       {
         int reqsByUser = 0;
-        for (int i = 0; i < _sr.Queue.Count; i++)
+        if (ignoreLimits)
         {
-          if (_sr.Queue[i].ytVideoId == r.ytVideoId)
-            return ReqResult.AlreadyExists;
-          if (_sr.Queue[i].ogRequesterDisplayName == r.ogRequesterDisplayName && ++reqsByUser > maxReqsByUser)
-            return ReqResult.TooManyOngoingRequestsByUser;
+          for (int i = 0; i < _sr.Queue.Count; i++)
+          {
+            if (_sr.Queue[i].ytVideoId == r.ytVideoId)
+              return ReqResult.AlreadyExists;
+          }
+        }
+        else
+        {
+          for (int i = 0; i < _sr.Queue.Count; i++)
+          {
+            if (_sr.Queue[i].ytVideoId == r.ytVideoId)
+              return ReqResult.AlreadyExists;
+            if (_sr.Queue[i].ogRequesterDisplayName == r.ogRequesterDisplayName && ++reqsByUser > maxReqsByUser)
+              return ReqResult.TooManyOngoingRequestsByUser;
+          }
         }
 
         _sr.Queue.Add(r);
@@ -479,7 +500,7 @@ namespace SimpleBot.Core
     {
       _ = Task.Run(async () =>
       {
-        var response = await _RequestSong(query, chatter.DisplayName);
+        var response = await _RequestSong(query, chatter);
         _bot.TwSendMsg(response, chatter);
       }).LogErr();
     }
@@ -490,7 +511,7 @@ namespace SimpleBot.Core
     /// <param name="query"></param>
     /// <param name="requestedBy"></param>
     /// <returns></returns>
-    public static async Task<string> _RequestSong(string query, string requestedBy)
+    public static async Task<string> _RequestSong(string query, Chatter requestedBy)
     {
       if (!_yt.IsWebViewInitialized)
         return "SongRequest is not initialized";
@@ -498,18 +519,19 @@ namespace SimpleBot.Core
       if (await _yt.Search(query) is not Youtube.YtVideo video)
         return "No video found for: " + query;
 
-      var isStreamerRequest = string.IsNullOrWhiteSpace(requestedBy);
-      var res = _addToQueue(new Req
+      var req = new Req
       {
         ytVideoId = video.id,
         title = video.title,
+        author = video.author,
         duration = video.duration,
-        ogRequesterDisplayName = isStreamerRequest ? _bot.CHANNEL : requestedBy
-      }, isStreamerRequest);
+        ogRequesterDisplayName = requestedBy?.DisplayName ?? _bot.CHANNEL
+      };
+      var res = _addToQueue(req, ignoreLimits: string.Equals(req.ogRequesterDisplayName, _bot.CHANNEL, StringComparison.InvariantCultureIgnoreCase));
 
       return res switch
       {
-        ReqResult.OK => $"Added #{_sr.Queue.Count} ({video.duration}): {video.title}",
+        ReqResult.OK => $"Added #{_sr.Queue.Count} {req.ToLongString()}",
         ReqResult.AlreadyExists => $"\"{video.title}\" is already in the queue",
         ReqResult.TooManyOngoingRequestsByUser => "You have enough requests already in the queue",
         ReqResult.TooShort => "The video is too short D:",

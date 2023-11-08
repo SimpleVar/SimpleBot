@@ -13,7 +13,7 @@ namespace SimpleBot
   {
     public struct YtVideo
     {
-      public string id, title, duration;
+      public string id, title, author, duration;
     }
 
     const int BUFF_SIZE = 1024;
@@ -250,17 +250,30 @@ document.body.append(tag);");
       
       if (video != null)
       {
+        var author = video.Info.Author;
+        // hack
+        if (author.EndsWith(" - topic", StringComparison.InvariantCultureIgnoreCase))
+          author = author[..^8];
         results.Add(new()
         {
           id = videoId,
           title = video.Title,
-          duration = TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToShortDurationString()
+          duration = TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToShortDurationString(),
+          author = author
         });
         return;
       }
 
       using Stream s = await _web.GetStreamAsync("https://www.youtube.com/results?sp=EgIQAQ%253D%253D&search_query=" + HttpUtility.UrlEncode(query));
-      parseSearchResults(s, results, maxResults);
+      try
+      {
+        parseSearchResults(s, results, maxResults);
+      }
+      catch (Exception ex)
+      {
+        Debugger.Break();
+        throw;
+      }
     }
 
     public async Task<YtVideo?> Search(string query)
@@ -481,6 +494,8 @@ document.body.append(tag);");
                     s.phase = Phase.In_videoRenderer_id;
                   else if (s.IsQuotedEqualTo("title"))
                     s.phase = Phase.In_videoRenderer_title;
+                  else if (s.IsQuotedEqualTo("ownerText"))
+                    s.phase = Phase.In_videoRenderer_author;
                   else if (s.IsQuotedEqualTo("lengthText"))
                     s.phase = Phase.In_videoRenderer_duration;
                 }
@@ -488,7 +503,8 @@ document.body.append(tag);");
             }
             bool isAttrGood =
               (s.phase == Phase.In_videoRenderer_title && s.IsQuotedEqualTo("text")) ||
-              (s.phase == Phase.In_videoRenderer_duration && s.IsQuotedEqualTo("simpleText"));
+              (s.phase == Phase.In_videoRenderer_duration && s.IsQuotedEqualTo("simpleText")) ||
+              (s.phase == Phase.In_videoRenderer_author && s.IsQuotedEqualTo("text"));
             parse_jval(ref s);
             switch (s.phase)
             {
@@ -502,6 +518,13 @@ document.body.append(tag);");
                   outPhase = Phase.Finished_videoRenderer_attr;
                 }
                 break;
+              case Phase.In_videoRenderer_author:
+                if (isAttrGood)
+                {
+                  s.currVideo.author = s.BuildQuotedStr();
+                  outPhase = Phase.Finished_videoRenderer_attr;
+                }
+                break;
               case Phase.In_videoRenderer_duration:
                 if (isAttrGood)
                 {
@@ -510,14 +533,22 @@ document.body.append(tag);");
                 }
                 break;
             }
-            s.phase = outPhase;
-            if (s.currVideo.id != null && s.currVideo.title != null && s.currVideo.duration != null)
+            if (s.phase == Phase.LookingFor_videoRenderer_attr && outPhase == Phase.LookingFor_videoRenderer)
             {
+              // id, title, dur are required for a song request. author is not required.
+              if (s.currVideo.id == null || s.currVideo.title == null || s.currVideo.duration == null)
+              {
+                Debugger.Break();
+                throw new ApplicationException("Missing video data after parsing, maybe a json attr name mismatch?");
+              }
+
               s.results.Add(s.currVideo);
               s.currVideo.id = null;
               s.currVideo.title = null;
+              s.currVideo.author = null;
               s.currVideo.duration = null;
             }
+            s.phase = outPhase;
             break;
         }
       }
@@ -531,6 +562,7 @@ document.body.append(tag);");
       Finished_videoRenderer_attr,
       In_videoRenderer_id,
       In_videoRenderer_title,
+      In_videoRenderer_author,
       In_videoRenderer_duration,
     }
 
