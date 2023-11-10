@@ -4,9 +4,6 @@ using TwitchLib.Api.Core.HttpCallHandlers;
 using TwitchLib.Api.Core.Interfaces;
 using TwitchLib.Api.Core.RateLimiter;
 using TwitchLib.Api.Helix.Models.Chat;
-using TwitchLib.Api.Helix.Models.Chat.ChatSettings;
-using TwitchLib.Api.Helix.Models.Polls;
-using TwitchLib.EventSub.Core.SubscriptionTypes.Channel;
 
 namespace SimpleBot
 {

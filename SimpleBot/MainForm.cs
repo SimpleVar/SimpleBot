@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using System.Diagnostics;
 
 namespace SimpleBot
 {
@@ -95,7 +94,7 @@ namespace SimpleBot
       catch (Exception ex)
       {
         Bot.Log("[Ban] ERROR: " + ex);
-        Debug.WriteLine(ex);
+        System.Diagnostics.Debug.WriteLine(ex);
       }
       Bot.Log($"[Ban] {(success ? "Banned" : "Failed to ban")} {name}");
       return success;

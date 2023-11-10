@@ -1,11 +1,29 @@
 ﻿using Newtonsoft.Json;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace SimpleBot
 {
   static class Extensions
   {
+    public static string ReduceWhitespace(this string s)
+    {
+      StringBuilder res = null;
+      bool isPrevWhiteSpace = false;
+      for (int i = 0; i < s.Length; i++)
+      {
+        char c = s[i];
+        bool ws = char.IsWhiteSpace(c);
+        if (ws & isPrevWhiteSpace)
+          continue;
+        isPrevWhiteSpace = ws;
+        res ??= new StringBuilder(s.Length);
+        res.Append(c);
+      }
+      return res.ToString();
+    }
+
     public static string ToShortDurationString(this TimeSpan dur)
     {
       dur = dur.Duration();

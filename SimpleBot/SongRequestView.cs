@@ -1,6 +1,4 @@
-﻿using SimpleBot.Core;
-
-namespace SimpleBot
+﻿namespace SimpleBot
 {
   public partial class SongRequestView : UserControl
   {
@@ -21,7 +19,7 @@ namespace SimpleBot
     private void SongRequest_NeedUpdateUI_SongList(object sender, SongRequest.SRData e)
     {
       // TODO
-      lblCurrSong.Text = $"{e.CurrSong.ToLongString()}\r\nRequested by: {e.CurrSong.ogRequesterDisplayName}";
+      lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\nRequested by: {e.CurrSong.ogRequesterDisplayName}";
       lblQueueSize.Text = e.Queue.Count + " in queue";
     }
 

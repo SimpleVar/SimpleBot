@@ -1,10 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Configuration;
+﻿using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Serialization;
-using VideoLibrary;
 
-namespace SimpleBot.Core
+namespace SimpleBot
 {
   static class SongRequest
   {
@@ -16,15 +14,25 @@ namespace SimpleBot.Core
 
       const string DASHES = "‑-‐‑‒–—―﹘﹣－"; // "‑\u002D\u2010\u2011\u2012\u2013\u2014\u2015\uFE58\uFE63\uFF0D"
 
-      public string ToLongString()
+      public string ToLongString(bool includeLink = true, bool includeDuration = true)
       {
-        // heuristic on whether there is a space-dash-space
-        for (int i = 1; i < title.Length - 1; i++)
+        bool inclAuthor = true;
+        if (!string.IsNullOrEmpty(author))
         {
-          if (title[i - 1] == ' ' && title[i + 1] == ' ' && DASHES.Contains(title[i]))
-            return $"{title} https://youtu.be/{ytVideoId}";
+          // heuristic on whether there is a space-dash-space
+          for (int i = 1; i < title.Length - 1; i++)
+          {
+            if (title[i - 1] == ' ' && title[i + 1] == ' ' && DASHES.Contains(title[i]))
+            {
+              inclAuthor = false;
+              break;
+            }
+          }
         }
-        return $"{title} - {author} ({duration}) https://youtu.be/{ytVideoId}";
+        var tit = inclAuthor ? title + " - " + author : title;
+        var dur = includeDuration ? " (" + duration + ")" : string.Empty;
+        var link = includeLink ? " https://youtu.be/" + ytVideoId : string.Empty;
+        return tit + dur + link;
       }
     }
     enum ReqResult { OK, AlreadyExists, TooManyOngoingRequestsByUser, TooShort, TooLong, FailedToParseDuration };
@@ -115,7 +123,7 @@ namespace SimpleBot.Core
       }
     }
 
-#endregion
+    #endregion
 
     static string _filePath;
     static Bot _bot;
@@ -220,6 +228,92 @@ namespace SimpleBot.Core
     }
 
     #region API
+
+    public struct RefetchDataInPlaylist_Res { public int dirtyCount, updatedCount; }
+
+    /// <summary>
+    /// Do not make changes to the playlist while this long-running operation runs, they will be forgotten.
+    /// </summary>
+    /// <param name="isDirtyPredicate">Predicate per request in the playlist, to determine if it needs to be refetched</param>
+    /// <param name="onUpdate_beforeAndAfter">Callback per refetched request</param>
+    public static async Task<RefetchDataInPlaylist_Res> RefetchDataInPlaylist(bool searchByTitleIfNoResultById,
+      Func<Req, bool> isDirtyPredicate, Action<Req, Req> onUpdate_beforeAndAfter)
+    {
+      Req[] playlistCopy = GetPlaylist();
+      RefetchDataInPlaylist_Res ret = new();
+      for (int i = 0; i < playlistCopy.Length; i++)
+      {
+        Req req = playlistCopy[i];
+        if (!isDirtyPredicate(req))
+          continue;
+
+        ret.dirtyCount++;
+        Youtube.YtVideo? videoRes = null;
+        if (!string.IsNullOrEmpty(req.ytVideoId))
+        {
+          var id = req.ytVideoId.Trim();
+          // attempt to fix a corrupt id
+          for (int j = 0; j < id.Length; j++)
+          {
+            char c = id[j];
+            if (!(c == '-' || c == '_' || char.IsLetterOrDigit(c)))
+            {
+              id = id[..j];
+              break;
+            }
+          }
+          if (id.Length == 11) // YT video id is length 11
+            videoRes = await _yt.Search("https://youtu.be/" + id);
+        }
+        if (searchByTitleIfNoResultById && videoRes == null && !string.IsNullOrEmpty(req.title))
+        {
+          videoRes = await _yt.Search(req.title);
+        }
+
+        if (videoRes is not Youtube.YtVideo video)
+        {
+          onUpdate_beforeAndAfter(req, default); // a dirty video that could not be found
+          continue;
+        }
+        if (req.ytVideoId == video.id && req.title == video.title && req.author == video.author && req.duration == video.duration)
+          continue; // the req was marked dirty but the data is up-to-date
+
+        // happy update
+        ret.updatedCount++;
+        var newReq = new Req
+        {
+          ytVideoId = video.id,
+          title = video.title,
+          author = video.author,
+          duration = video.duration,
+          ogRequesterDisplayName = req.ogRequesterDisplayName
+        };
+
+#if DEBUG
+        if (!TimeSpan.TryParse("0:" + newReq.duration, CultureInfo.InvariantCulture, out TimeSpan dur))
+        {
+          Debugger.Break();
+        }
+        /*
+        Debug.WriteLine(req.ToLongString());
+        Debug.WriteLine(newReq.ToLongString());
+        Debug.WriteLine("---");
+        */
+#endif
+
+        onUpdate_beforeAndAfter(req, newReq);
+        playlistCopy[i] = newReq;
+      }
+
+      // no async from here on out, treat me kindly mr. compiler
+      lock (_lock)
+      {
+        _sr.Playlist.Clear();
+        _sr.Playlist.AddRange(playlistCopy);
+        _onSongListChange_noLock();
+      }
+      return ret;
+    }
 
     public static Req[] GetPlaylist()
     {
@@ -454,7 +548,7 @@ namespace SimpleBot.Core
       }
       MessageBox.Show("Added " + importCount + " new songs to the playlist");
     }
-    
+
     static ReqResult _addToQueue(Req r, bool ignoreLimits)
     {
       int maxReqsByUser = int.MaxValue;

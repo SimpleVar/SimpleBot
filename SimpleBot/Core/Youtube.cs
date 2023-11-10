@@ -1,8 +1,8 @@
 ﻿using Microsoft.Web.WebView2.WinForms;
 using System.Diagnostics;
-using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Web;
 using VideoLibrary;
 using VideoLibrary.Exceptions;
@@ -50,8 +50,6 @@ namespace SimpleBot
 
     public Task Init()
     {
-      //var env = await CoreWebView2Environment.CreateAsync(null, null, new("--allow-insecure-localhost --unsafely-treat-insecure-origin-as-secure=about:blank"));
-      //await webView.EnsureCoreWebView2Async(env);
       return Extensions.RunThreadSTA(async () =>
       {
         webView = new WebView2 { Dock = DockStyle.Fill };
@@ -214,13 +212,16 @@ document.body.append(tag);");
     {
       try
       {
-        return HttpUtility.ParseQueryString(new Uri(new StringBuilder(url)
+        url = new StringBuilder(url)
+          .Replace("http://", "")
+          .Replace("https://", "")
           .Replace("youtu.be/", "youtube.com/watch?v=")
           .Replace("youtube.com/embed/", "youtube.com/watch?v=")
           .Replace("/v/", "/watch?v=")
           .Replace("/watch#", "/watch?")
           .Replace("youtube.com/shorts/", "youtube.com/watch?v=")
-          .ToString()).Query)["v"];
+          .ToString();
+        return HttpUtility.ParseQueryString(new Uri("https://" + url).Query)["v"];
       }
       catch
       {
@@ -230,7 +231,8 @@ document.body.append(tag);");
 
     public async Task Search(string query, List<YtVideo> results, int maxResults)
     {
-      var couldBeId = true;
+      query = query.Trim();
+      var couldBeId = query.Length == 11; // YT video id is length 11
       for (int i = 0; couldBeId && i < query.Length; i++)
       {
         char c = query[i];
@@ -240,27 +242,28 @@ document.body.append(tag);");
       YouTubeVideo video = null;
       string videoId = query;
       if (couldBeId)
-        video = tryGetVideo("youtube.com/watch?v=" + query);
+        video = tryGetVideo("https://youtube.com/watch?v=" + query);
       else
       {
         videoId = GetIdFromUrl(query);
         if (videoId != null)
-          video = tryGetVideo(query);
+          video = tryGetVideo("https://youtube.com/watch?v=" + videoId);
       }
       
       if (video != null)
       {
         var author = video.Info.Author;
-        // hack
-        if (author.EndsWith(" - topic", StringComparison.InvariantCultureIgnoreCase))
-          author = author[..^8];
-        results.Add(new()
+        var req = new YtVideo()
         {
           id = videoId,
-          title = video.Title,
+          title = video.Title.ReduceWhitespace().Trim(),
           duration = TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToShortDurationString(),
-          author = author
-        });
+          author = author.Trim()
+        };
+        // hack
+        if (req.author.EndsWith(" - topic", StringComparison.InvariantCultureIgnoreCase))
+          req.author = req.author[..^8];
+        results.Add(req);
         return;
       }
 
@@ -291,6 +294,15 @@ document.body.append(tag);");
       }
       catch (ArgumentException) { }
       catch (UnavailableStreamException) { }
+      catch (InvalidOperationException ex)
+      {
+        // seems to happen when video is made private
+        Debugger.Break();
+      }
+      catch (Exception ex)
+      {
+        Debugger.Break();
+      }
       return null;
     }
 
@@ -528,7 +540,10 @@ document.body.append(tag);");
               case Phase.In_videoRenderer_duration:
                 if (isAttrGood)
                 {
-                  s.currVideo.duration = s.BuildQuotedStr();
+                  string dur = s.BuildQuotedStr();
+                  if (dur.Length > 2 && dur[0] == '0' && dur[1] != ':')
+                    dur = dur[1..];
+                  s.currVideo.duration = dur;
                   outPhase = Phase.Finished_videoRenderer_attr;
                 }
                 break;
