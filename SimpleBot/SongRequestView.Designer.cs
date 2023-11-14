@@ -51,19 +51,36 @@
       btnSavePrevToPlaylist = new Button();
       btnTogglePlayPause = new Button();
       lblQueueSize = new Label();
+      label5 = new Label();
+      btnRemoveCurrFromPlaylist = new Button();
+      dgvQueueAndPlaylist = new DataGridView();
+      Index = new DataGridViewTextBoxColumn();
+      Title = new DataGridViewTextBoxColumn();
+      Author = new DataGridViewTextBoxColumn();
+      Duration = new DataGridViewLinkColumn();
+      RequestedBy = new DataGridViewTextBoxColumn();
+      VideoId = new DataGridViewTextBoxColumn();
+      panel1 = new Panel();
+      panelSettings = new Panel();
+      panel4 = new Panel();
+      btnShowHideSettings = new Button();
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).BeginInit();
       ((System.ComponentModel.ISupportInitialize)sliderVolume).BeginInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxVolume).BeginInit();
+      ((System.ComponentModel.ISupportInitialize)dgvQueueAndPlaylist).BeginInit();
+      panel1.SuspendLayout();
+      panelSettings.SuspendLayout();
+      panel4.SuspendLayout();
       SuspendLayout();
       // 
       // btnShowYoutubeForm
       // 
-      btnShowYoutubeForm.Location = new Point(3, 3);
+      btnShowYoutubeForm.Location = new Point(84, 3);
       btnShowYoutubeForm.Name = "btnShowYoutubeForm";
-      btnShowYoutubeForm.Size = new Size(115, 23);
-      btnShowYoutubeForm.TabIndex = 0;
+      btnShowYoutubeForm.Size = new Size(107, 23);
+      btnShowYoutubeForm.TabIndex = 1;
       btnShowYoutubeForm.Text = "YouTube Player";
       btnShowYoutubeForm.UseVisualStyleBackColor = true;
       btnShowYoutubeForm.Click += btnShowYoutubeForm_Click;
@@ -71,33 +88,33 @@
       // label1
       // 
       label1.AutoSize = true;
-      label1.Location = new Point(7, 34);
+      label1.Location = new Point(3, 4);
       label1.Name = "label1";
       label1.Size = new Size(130, 15);
-      label1.TabIndex = 1;
+      label1.TabIndex = 0;
       label1.Text = "Min duration (seconds)";
       // 
       // nudMinSeconds
       // 
-      nudMinSeconds.Location = new Point(145, 32);
+      nudMinSeconds.Location = new Point(141, 2);
       nudMinSeconds.Maximum = new decimal(new int[] { 180, 0, 0, 0 });
       nudMinSeconds.Name = "nudMinSeconds";
       nudMinSeconds.Size = new Size(64, 23);
-      nudMinSeconds.TabIndex = 2;
+      nudMinSeconds.TabIndex = 1;
       nudMinSeconds.ValueChanged += nudMinSeconds_ValueChanged;
       // 
       // label2
       // 
       label2.AutoSize = true;
-      label2.Location = new Point(7, 63);
+      label2.Location = new Point(3, 33);
       label2.Name = "label2";
       label2.Size = new Size(132, 15);
-      label2.TabIndex = 3;
+      label2.TabIndex = 2;
       label2.Text = "Max duration (seconds)";
       // 
       // nudMaxSeconds
       // 
-      nudMaxSeconds.Location = new Point(145, 61);
+      nudMaxSeconds.Location = new Point(141, 31);
       nudMaxSeconds.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
       nudMaxSeconds.Name = "nudMaxSeconds";
       nudMaxSeconds.Size = new Size(64, 23);
@@ -107,7 +124,7 @@
       // label3
       // 
       label3.AutoSize = true;
-      label3.Location = new Point(7, 92);
+      label3.Location = new Point(3, 62);
       label3.Name = "label3";
       label3.Size = new Size(120, 15);
       label3.TabIndex = 4;
@@ -115,7 +132,7 @@
       // 
       // nudMaxPerUser
       // 
-      nudMaxPerUser.Location = new Point(145, 90);
+      nudMaxPerUser.Location = new Point(141, 60);
       nudMaxPerUser.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
       nudMaxPerUser.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
       nudMaxPerUser.Name = "nudMaxPerUser";
@@ -126,37 +143,37 @@
       // 
       // sliderVolume
       // 
-      sliderVolume.Location = new Point(55, 177);
+      sliderVolume.Location = new Point(54, 50);
       sliderVolume.Maximum = 100;
       sliderVolume.Name = "sliderVolume";
       sliderVolume.Size = new Size(180, 45);
       sliderVolume.SmallChange = 2;
-      sliderVolume.TabIndex = 4;
+      sliderVolume.TabIndex = 19;
       sliderVolume.TickFrequency = 10;
       sliderVolume.Scroll += sliderVolume_Scroll;
       // 
       // label6
       // 
       label6.AutoSize = true;
-      label6.Location = new Point(6, 179);
+      label6.Location = new Point(5, 52);
       label6.Name = "label6";
       label6.Size = new Size(47, 15);
-      label6.TabIndex = 10;
+      label6.TabIndex = 18;
       label6.Text = "Volume";
       // 
       // labelVolume
       // 
       labelVolume.AutoSize = true;
-      labelVolume.Location = new Point(241, 179);
+      labelVolume.Location = new Point(240, 52);
       labelVolume.Name = "labelVolume";
       labelVolume.Size = new Size(25, 15);
-      labelVolume.TabIndex = 17;
+      labelVolume.TabIndex = 20;
       labelVolume.Text = "100";
       // 
       // label4
       // 
       label4.AutoSize = true;
-      label4.Location = new Point(7, 121);
+      label4.Location = new Point(3, 91);
       label4.Name = "label4";
       label4.Size = new Size(117, 15);
       label4.TabIndex = 6;
@@ -164,7 +181,7 @@
       // 
       // nudMaxVolume
       // 
-      nudMaxVolume.Location = new Point(145, 119);
+      nudMaxVolume.Location = new Point(141, 89);
       nudMaxVolume.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
       nudMaxVolume.Name = "nudMaxVolume";
       nudMaxVolume.Size = new Size(64, 23);
@@ -174,22 +191,20 @@
       // 
       // btnImportPlaylist
       // 
-      btnImportPlaylist.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-      btnImportPlaylist.Location = new Point(229, 3);
+      btnImportPlaylist.Location = new Point(218, 2);
       btnImportPlaylist.Name = "btnImportPlaylist";
-      btnImportPlaylist.Size = new Size(99, 23);
-      btnImportPlaylist.TabIndex = 13;
+      btnImportPlaylist.Size = new Size(107, 23);
+      btnImportPlaylist.TabIndex = 8;
       btnImportPlaylist.Text = "Import Playlist";
       btnImportPlaylist.UseVisualStyleBackColor = true;
       btnImportPlaylist.Click += btnImportPlaylist_Click;
       // 
       // btnExportPlaylist
       // 
-      btnExportPlaylist.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-      btnExportPlaylist.Location = new Point(229, 26);
+      btnExportPlaylist.Location = new Point(218, 31);
       btnExportPlaylist.Name = "btnExportPlaylist";
-      btnExportPlaylist.Size = new Size(99, 23);
-      btnExportPlaylist.TabIndex = 14;
+      btnExportPlaylist.Size = new Size(107, 23);
+      btnExportPlaylist.TabIndex = 9;
       btnExportPlaylist.Text = "Export Playlist";
       btnExportPlaylist.UseVisualStyleBackColor = true;
       btnExportPlaylist.Click += btnExportPlaylist_Click;
@@ -204,11 +219,10 @@
       // 
       // btnSkip
       // 
-      btnSkip.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-      btnSkip.Location = new Point(280, 84);
+      btnSkip.Location = new Point(197, 3);
       btnSkip.Name = "btnSkip";
-      btnSkip.Size = new Size(48, 23);
-      btnSkip.TabIndex = 3;
+      btnSkip.Size = new Size(49, 23);
+      btnSkip.TabIndex = 2;
       btnSkip.Text = "Skip";
       btnSkip.UseVisualStyleBackColor = true;
       btnSkip.Click += btnSkip_Click;
@@ -216,49 +230,49 @@
       // lblCurrSong
       // 
       lblCurrSong.AutoSize = true;
-      lblCurrSong.Location = new Point(7, 224);
+      lblCurrSong.Location = new Point(5, 95);
       lblCurrSong.Name = "lblCurrSong";
-      lblCurrSong.Size = new Size(37, 15);
-      lblCurrSong.TabIndex = 12;
-      lblCurrSong.Text = "Song:";
+      lblCurrSong.Size = new Size(37, 30);
+      lblCurrSong.TabIndex = 22;
+      lblCurrSong.Text = "Song:\r\n ";
+      lblCurrSong.UseMnemonic = false;
       // 
       // btnPrev
       // 
-      btnPrev.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-      btnPrev.Location = new Point(255, 55);
+      btnPrev.Location = new Point(274, 2);
       btnPrev.Name = "btnPrev";
-      btnPrev.Size = new Size(73, 23);
-      btnPrev.TabIndex = 1;
-      btnPrev.Text = "Playlist--";
+      btnPrev.Size = new Size(53, 42);
+      btnPrev.TabIndex = 15;
+      btnPrev.Text = "Go Back";
       btnPrev.UseVisualStyleBackColor = true;
       btnPrev.Click += btnPrev_Click;
       // 
       // btnSaveCurrToPlaylist
       // 
-      btnSaveCurrToPlaylist.Location = new Point(3, 148);
+      btnSaveCurrToPlaylist.Location = new Point(133, 2);
       btnSaveCurrToPlaylist.Name = "btnSaveCurrToPlaylist";
-      btnSaveCurrToPlaylist.Size = new Size(111, 23);
-      btnSaveCurrToPlaylist.TabIndex = 8;
-      btnSaveCurrToPlaylist.Text = "Save to Playlist";
+      btnSaveCurrToPlaylist.Size = new Size(58, 42);
+      btnSaveCurrToPlaylist.TabIndex = 13;
+      btnSaveCurrToPlaylist.Text = "Save Current";
       btnSaveCurrToPlaylist.UseVisualStyleBackColor = true;
       btnSaveCurrToPlaylist.Click += btnSaveCurrToPlaylist_Click;
       // 
       // btnSavePrevToPlaylist
       // 
-      btnSavePrevToPlaylist.Location = new Point(120, 148);
+      btnSavePrevToPlaylist.Location = new Point(197, 2);
       btnSavePrevToPlaylist.Name = "btnSavePrevToPlaylist";
-      btnSavePrevToPlaylist.Size = new Size(161, 23);
-      btnSavePrevToPlaylist.TabIndex = 9;
-      btnSavePrevToPlaylist.Text = "Save previous to Playlist";
+      btnSavePrevToPlaylist.Size = new Size(71, 42);
+      btnSavePrevToPlaylist.TabIndex = 14;
+      btnSavePrevToPlaylist.Text = "Save Previous";
       btnSavePrevToPlaylist.UseVisualStyleBackColor = true;
       btnSavePrevToPlaylist.Click += btnSavePrevToPlaylist_Click;
       // 
       // btnTogglePlayPause
       // 
-      btnTogglePlayPause.Location = new Point(124, 3);
+      btnTogglePlayPause.Location = new Point(252, 3);
       btnTogglePlayPause.Name = "btnTogglePlayPause";
-      btnTogglePlayPause.Size = new Size(65, 23);
-      btnTogglePlayPause.TabIndex = 2;
+      btnTogglePlayPause.Size = new Size(52, 23);
+      btnTogglePlayPause.TabIndex = 3;
       btnTogglePlayPause.Text = "Pause";
       btnTogglePlayPause.UseVisualStyleBackColor = true;
       btnTogglePlayPause.Click += btnTogglePlayPause_Click;
@@ -267,45 +281,196 @@
       // 
       lblQueueSize.AutoSize = true;
       lblQueueSize.ForeColor = SystemColors.GrayText;
-      lblQueueSize.Location = new Point(7, 209);
+      lblQueueSize.Location = new Point(5, 80);
       lblQueueSize.Name = "lblQueueSize";
       lblQueueSize.Size = new Size(62, 15);
-      lblQueueSize.TabIndex = 12;
+      lblQueueSize.TabIndex = 21;
       lblQueueSize.Text = "0 in queue";
+      // 
+      // label5
+      // 
+      label5.AutoSize = true;
+      label5.Location = new Point(5, 16);
+      label5.Name = "label5";
+      label5.Size = new Size(47, 15);
+      label5.TabIndex = 11;
+      label5.Text = "Playlist:";
+      // 
+      // btnRemoveCurrFromPlaylist
+      // 
+      btnRemoveCurrFromPlaylist.Location = new Point(58, 2);
+      btnRemoveCurrFromPlaylist.Name = "btnRemoveCurrFromPlaylist";
+      btnRemoveCurrFromPlaylist.Size = new Size(69, 42);
+      btnRemoveCurrFromPlaylist.TabIndex = 12;
+      btnRemoveCurrFromPlaylist.Text = "Remove Current";
+      btnRemoveCurrFromPlaylist.UseVisualStyleBackColor = true;
+      btnRemoveCurrFromPlaylist.Click += btnRemoveCurrFromPlaylist_Click;
+      // 
+      // dgvQueueAndPlaylist
+      // 
+      dgvQueueAndPlaylist.AllowUserToAddRows = false;
+      dgvQueueAndPlaylist.AllowUserToDeleteRows = false;
+      dgvQueueAndPlaylist.AllowUserToResizeRows = false;
+      dgvQueueAndPlaylist.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+      dgvQueueAndPlaylist.BackgroundColor = SystemColors.ControlLightLight;
+      dgvQueueAndPlaylist.ClipboardCopyMode = DataGridViewClipboardCopyMode.EnableWithoutHeaderText;
+      dgvQueueAndPlaylist.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+      dgvQueueAndPlaylist.Columns.AddRange(new DataGridViewColumn[] { Index, Title, Author, Duration, RequestedBy, VideoId });
+      dgvQueueAndPlaylist.Location = new Point(-1, 128);
+      dgvQueueAndPlaylist.Name = "dgvQueueAndPlaylist";
+      dgvQueueAndPlaylist.ReadOnly = true;
+      dgvQueueAndPlaylist.RowHeadersVisible = false;
+      dgvQueueAndPlaylist.RowTemplate.Height = 25;
+      dgvQueueAndPlaylist.SelectionMode = DataGridViewSelectionMode.CellSelect;
+      dgvQueueAndPlaylist.ShowCellToolTips = false;
+      dgvQueueAndPlaylist.Size = new Size(589, 150);
+      dgvQueueAndPlaylist.StandardTab = true;
+      dgvQueueAndPlaylist.TabIndex = 23;
+      dgvQueueAndPlaylist.CellContentDoubleClick += dgvQueueAndPlaylist_CellContentDoubleClick;
+      // 
+      // Index
+      // 
+      Index.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+      Index.HeaderText = "#";
+      Index.Name = "Index";
+      Index.ReadOnly = true;
+      Index.Resizable = DataGridViewTriState.False;
+      Index.SortMode = DataGridViewColumnSortMode.NotSortable;
+      Index.Width = 20;
+      // 
+      // Title
+      // 
+      Title.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+      Title.HeaderText = "Title";
+      Title.Name = "Title";
+      Title.ReadOnly = true;
+      Title.SortMode = DataGridViewColumnSortMode.NotSortable;
+      // 
+      // Author
+      // 
+      Author.HeaderText = "Author";
+      Author.Name = "Author";
+      Author.ReadOnly = true;
+      Author.SortMode = DataGridViewColumnSortMode.NotSortable;
+      // 
+      // Duration
+      // 
+      Duration.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+      Duration.HeaderText = "Length";
+      Duration.Name = "Duration";
+      Duration.ReadOnly = true;
+      Duration.Resizable = DataGridViewTriState.False;
+      Duration.TrackVisitedState = false;
+      Duration.Width = 50;
+      // 
+      // RequestedBy
+      // 
+      RequestedBy.HeaderText = "Requested By";
+      RequestedBy.Name = "RequestedBy";
+      RequestedBy.ReadOnly = true;
+      RequestedBy.SortMode = DataGridViewColumnSortMode.NotSortable;
+      // 
+      // VideoId
+      // 
+      VideoId.HeaderText = "VideoId";
+      VideoId.Name = "VideoId";
+      VideoId.ReadOnly = true;
+      VideoId.Resizable = DataGridViewTriState.False;
+      VideoId.SortMode = DataGridViewColumnSortMode.NotSortable;
+      VideoId.Visible = false;
+      // 
+      // panel1
+      // 
+      panel1.Controls.Add(lblCurrSong);
+      panel1.Controls.Add(lblQueueSize);
+      panel1.Controls.Add(btnRemoveCurrFromPlaylist);
+      panel1.Controls.Add(dgvQueueAndPlaylist);
+      panel1.Controls.Add(label6);
+      panel1.Controls.Add(sliderVolume);
+      panel1.Controls.Add(label5);
+      panel1.Controls.Add(labelVolume);
+      panel1.Controls.Add(btnPrev);
+      panel1.Controls.Add(btnSavePrevToPlaylist);
+      panel1.Controls.Add(btnSaveCurrToPlaylist);
+      panel1.Dock = DockStyle.Fill;
+      panel1.Location = new Point(0, 144);
+      panel1.Margin = new Padding(0);
+      panel1.Name = "panel1";
+      panel1.Size = new Size(587, 277);
+      panel1.TabIndex = 2;
+      // 
+      // panelSettings
+      // 
+      panelSettings.AutoSize = true;
+      panelSettings.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+      panelSettings.Controls.Add(label1);
+      panelSettings.Controls.Add(nudMinSeconds);
+      panelSettings.Controls.Add(label2);
+      panelSettings.Controls.Add(nudMaxSeconds);
+      panelSettings.Controls.Add(btnExportPlaylist);
+      panelSettings.Controls.Add(label3);
+      panelSettings.Controls.Add(btnImportPlaylist);
+      panelSettings.Controls.Add(nudMaxPerUser);
+      panelSettings.Controls.Add(nudMaxVolume);
+      panelSettings.Controls.Add(label4);
+      panelSettings.Dock = DockStyle.Top;
+      panelSettings.Location = new Point(0, 0);
+      panelSettings.Margin = new Padding(0);
+      panelSettings.MinimumSize = new Size(328, 115);
+      panelSettings.Name = "panelSettings";
+      panelSettings.Size = new Size(587, 115);
+      panelSettings.TabIndex = 0;
+      panelSettings.Visible = false;
+      // 
+      // panel4
+      // 
+      panel4.AutoSize = true;
+      panel4.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+      panel4.Controls.Add(btnShowHideSettings);
+      panel4.Controls.Add(btnTogglePlayPause);
+      panel4.Controls.Add(btnShowYoutubeForm);
+      panel4.Controls.Add(btnSkip);
+      panel4.Dock = DockStyle.Top;
+      panel4.Location = new Point(0, 115);
+      panel4.Margin = new Padding(0);
+      panel4.MinimumSize = new Size(226, 29);
+      panel4.Name = "panel4";
+      panel4.Size = new Size(587, 29);
+      panel4.TabIndex = 1;
+      // 
+      // btnShowHideSettings
+      // 
+      btnShowHideSettings.Location = new Point(3, 3);
+      btnShowHideSettings.Name = "btnShowHideSettings";
+      btnShowHideSettings.Size = new Size(75, 23);
+      btnShowHideSettings.TabIndex = 0;
+      btnShowHideSettings.Text = "Show Settings";
+      btnShowHideSettings.UseVisualStyleBackColor = true;
+      btnShowHideSettings.Click += btnShowHideSettings_Click;
       // 
       // SongRequestView
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
       BorderStyle = BorderStyle.FixedSingle;
-      Controls.Add(btnTogglePlayPause);
-      Controls.Add(btnSavePrevToPlaylist);
-      Controls.Add(btnSaveCurrToPlaylist);
-      Controls.Add(lblQueueSize);
-      Controls.Add(lblCurrSong);
-      Controls.Add(btnPrev);
-      Controls.Add(btnSkip);
-      Controls.Add(btnExportPlaylist);
-      Controls.Add(btnImportPlaylist);
-      Controls.Add(labelVolume);
-      Controls.Add(sliderVolume);
-      Controls.Add(label6);
-      Controls.Add(nudMaxVolume);
-      Controls.Add(label4);
-      Controls.Add(nudMaxPerUser);
-      Controls.Add(label3);
-      Controls.Add(nudMaxSeconds);
-      Controls.Add(label2);
-      Controls.Add(nudMinSeconds);
-      Controls.Add(label1);
-      Controls.Add(btnShowYoutubeForm);
+      Controls.Add(panel1);
+      Controls.Add(panel4);
+      Controls.Add(panelSettings);
+      DoubleBuffered = true;
+      MinimumSize = new Size(587, 225);
       Name = "SongRequestView";
-      Size = new Size(331, 259);
+      Size = new Size(587, 421);
       ((System.ComponentModel.ISupportInitialize)nudMinSeconds).EndInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).EndInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).EndInit();
       ((System.ComponentModel.ISupportInitialize)sliderVolume).EndInit();
       ((System.ComponentModel.ISupportInitialize)nudMaxVolume).EndInit();
+      ((System.ComponentModel.ISupportInitialize)dgvQueueAndPlaylist).EndInit();
+      panel1.ResumeLayout(false);
+      panel1.PerformLayout();
+      panelSettings.ResumeLayout(false);
+      panelSettings.PerformLayout();
+      panel4.ResumeLayout(false);
       ResumeLayout(false);
       PerformLayout();
     }
@@ -335,5 +500,18 @@
     private Button btnSavePrevToPlaylist;
     private Button btnTogglePlayPause;
     private Label lblQueueSize;
+    private Label label5;
+    private Button btnRemoveCurrFromPlaylist;
+    private DataGridView dgvQueueAndPlaylist;
+    private DataGridViewTextBoxColumn Index;
+    private DataGridViewTextBoxColumn Title;
+    private DataGridViewTextBoxColumn Author;
+    private DataGridViewLinkColumn Duration;
+    private DataGridViewTextBoxColumn RequestedBy;
+    private DataGridViewTextBoxColumn VideoId;
+    private Panel panel1;
+    private Panel panelSettings;
+    private Panel panel4;
+    private Button btnShowHideSettings;
   }
 }

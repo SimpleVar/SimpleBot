@@ -1,4 +1,6 @@
-﻿namespace SimpleBot
+﻿using System.Diagnostics;
+
+namespace SimpleBot
 {
   public partial class SongRequestView : UserControl
   {
@@ -16,11 +18,45 @@
       nudMaxVolume.Value = sliderVolume.Maximum;
     }
 
+    private void dgvQueueAndPlaylist_CellContentDoubleClick(object sender, DataGridViewCellEventArgs e)
+    {
+      if (e.ColumnIndex != 3)
+        return;
+      var videoId = dgvQueueAndPlaylist.Rows[e.RowIndex].Cells[5].Value as string;
+      if (string.IsNullOrEmpty(videoId))
+        return;
+
+      Process.Start(new ProcessStartInfo("https://youtu.be/" + videoId) { UseShellExecute = true });
+    }
+
     private void SongRequest_NeedUpdateUI_SongList(object sender, SongRequest.SRData e)
     {
-      // TODO
-      lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\nRequested by: {e.CurrSong.ogRequesterDisplayName}";
-      lblQueueSize.Text = e.Queue.Count + " in queue";
+      BeginInvoke(() =>
+      {
+        lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\nRequested by: {e.CurrSong.ogRequesterDisplayName}";
+        lblQueueSize.Text = e.Queue.Count + " in queue";
+
+        dgvQueueAndPlaylist.SuspendLayout();
+        dgvQueueAndPlaylist.Rows.Clear();
+        // queue
+        for (int i = 0; i < e.Queue.Count; i++)
+        {
+          var q = e.Queue[i];
+          dgvQueueAndPlaylist.Rows.Add(i + 1, q.title, q.author, q.duration, q.ogRequesterDisplayName, q.ytVideoId);
+        }
+        // playlist
+        for (int i = e.CurrIndexToPlayInPlaylist + 1; i < e.Playlist.Count; i++)
+        {
+          var p = e.Playlist[i];
+          dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
+        }
+        for (int i = 0; i <= e.CurrIndexToPlayInPlaylist; i++)
+        {
+          var p = e.Playlist[i];
+          dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
+        }
+        dgvQueueAndPlaylist.ResumeLayout(true);
+      });
     }
 
     private void SongRequest_NeedUpdateUI_Volume(object sender, (int volume, int maxVolume) e)
@@ -116,10 +152,20 @@
       SongRequest.SavePrevSongToPlaylist();
     }
 
+    private void btnRemoveCurrFromPlaylist_Click(object sender, EventArgs e)
+    {
+      SongRequest.RemoveCurrSongFromPlaylist();
+    }
+
     private async void btnTogglePlayPause_Click(object sender, EventArgs e)
     {
       var playing = await SongRequest._yt.PauseOrResume() == "1";
       btnTogglePlayPause.Text = playing ? "Pause" : "Play";
+    }
+
+    private void btnShowHideSettings_Click(object sender, EventArgs e)
+    {
+      btnShowHideSettings.Text = (panelSettings.Visible = !panelSettings.Visible) ? "Hide Settings" : "Show Settings";
     }
   }
 }

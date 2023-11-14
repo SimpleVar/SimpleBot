@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Serialization;
+using static SimpleBot.SongRequest;
 
 namespace SimpleBot
 {
@@ -14,7 +15,7 @@ namespace SimpleBot
 
       const string DASHES = "‑-‐‑‒–—―﹘﹣－"; // "‑\u002D\u2010\u2011\u2012\u2013\u2014\u2015\uFE58\uFE63\uFF0D"
 
-      public string ToLongString(bool includeLink = true, bool includeDuration = true)
+      public string FullTitle()
       {
         bool inclAuthor = true;
         if (!string.IsNullOrEmpty(author))
@@ -29,7 +30,12 @@ namespace SimpleBot
             }
           }
         }
-        var tit = inclAuthor ? title + " - " + author : title;
+        return  inclAuthor ? title + " - " + author : title;
+      }
+
+      public string ToLongString(bool includeLink = true, bool includeDuration = true)
+      {
+        var tit = FullTitle();
         var dur = includeDuration ? " (" + duration + ")" : string.Empty;
         var link = includeLink ? " https://youtu.be/" + ytVideoId : string.Empty;
         return tit + dur + link;
@@ -53,8 +59,8 @@ namespace SimpleBot
     }
 
     /// <summary>
-    /// Fired when the current played song is changed, or anything is changed in the queue, or a song is added to the playlist
-    /// Callbacks are executed in LOCKED context, so just read the data and get out!
+    /// Fired when the current played song is changed, or anything is changed in the queue, or a song is added to the playlist.
+    /// The entire SRData object is deep copied and is safe to read from freely.
     /// </summary>
     public static event EventHandler<SRData> NeedUpdateUI_SongList;
 
@@ -188,7 +194,7 @@ namespace SimpleBot
             _ = await _yt.PlayVideo(videoId);
             lock (_lock)
             {
-              NeedUpdateUI_SongList?.Invoke(null, _sr);
+              FireNeedUpdateUI_SongList_noLock();
             }
           }
           else
@@ -208,10 +214,23 @@ namespace SimpleBot
         Next();
     }
 
+    static void FireNeedUpdateUI_SongList_noLock()
+    {
+      SRData copy = new()
+      {
+        Queue = new(_sr.Queue),
+        Playlist = new(_sr.Playlist),
+        CurrIndexToPlayInPlaylist = _sr.CurrIndexToPlayInPlaylist,
+        PrevSong = _sr.PrevSong,
+        CurrSong = _sr.CurrSong
+      };
+      _ = Task.Run(() => NeedUpdateUI_SongList?.Invoke(null, copy));
+    }
+
     static void _onSongListChange_noLock()
     {
       _save_noLock();
-      NeedUpdateUI_SongList?.Invoke(null, _sr);
+      FireNeedUpdateUI_SongList_noLock();
       // TODO save changes to github
     }
 
@@ -443,6 +462,16 @@ namespace SimpleBot
       }
     }
 
+    public static void RemoveCurrSongFromPlaylist()
+    {
+      string id;
+      lock (_lock)
+      {
+        id = _sr.CurrSong.ytVideoId;
+      }
+      RemoveSongFromPlaylist(id);
+    }
+
     public static void SaveCurrSongToPlaylist()
     {
       lock (_lock)
@@ -588,6 +617,28 @@ namespace SimpleBot
         _onSongListChange_noLock();
       }
       return ReqResult.OK;
+    }
+
+    public static void WrongSong(Chatter chatter)
+    {
+      Req? removedReq = null;
+      int removedIndex = 0;
+      lock (_lock)
+      {
+        for (int i = _sr.Queue.Count - 1; i >= 0; i--)
+        {
+          if (string.Equals(_sr.Queue[i].ogRequesterDisplayName, chatter.DisplayName, StringComparison.InvariantCultureIgnoreCase))
+          {
+            removedIndex = i;
+            removedReq = _sr.Queue[i];
+            _sr.Queue.RemoveAt(i);
+            _onSongListChange_noLock();
+            break;
+          }
+        }
+      }
+      if (removedReq is Req r)
+        _bot.TwSendMsg($"Removed #{removedIndex + 1} {r.FullTitle()}", chatter);
     }
 
     public static void RequestSong(string query, Chatter chatter)

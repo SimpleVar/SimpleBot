@@ -37,12 +37,11 @@
       ofd = new OpenFileDialog();
       cbFreezeChattersList = new CheckBox();
       btnBanKnownBotsInChat = new Button();
-      songRequestView = new SongRequestView();
+      srv = new SongRequestView();
       SuspendLayout();
       // 
       // listChatters
       // 
-      listChatters.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
       listChatters.ItemHeight = 15;
       listChatters.Location = new Point(12, 63);
       listChatters.Name = "listChatters";
@@ -87,8 +86,7 @@
       // 
       // btnMassBan
       // 
-      btnMassBan.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-      btnMassBan.Location = new Point(224, 63);
+      btnMassBan.Location = new Point(12, 297);
       btnMassBan.Name = "btnMassBan";
       btnMassBan.Size = new Size(122, 56);
       btnMassBan.TabIndex = 5;
@@ -116,7 +114,6 @@
       // 
       // btnBanKnownBotsInChat
       // 
-      btnBanKnownBotsInChat.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
       btnBanKnownBotsInChat.Location = new Point(12, 268);
       btnBanKnownBotsInChat.Name = "btnBanKnownBotsInChat";
       btnBanKnownBotsInChat.Size = new Size(196, 23);
@@ -125,21 +122,22 @@
       btnBanKnownBotsInChat.UseVisualStyleBackColor = true;
       btnBanKnownBotsInChat.Click += btnBanKnownBotsInChat_Click;
       // 
-      // songRequestView
+      // srv
       // 
-      songRequestView.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-      songRequestView.BorderStyle = BorderStyle.FixedSingle;
-      songRequestView.Location = new Point(12, 297);
-      songRequestView.Name = "songRequestView";
-      songRequestView.Size = new Size(331, 259);
-      songRequestView.TabIndex = 7;
+      srv.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+      srv.BorderStyle = BorderStyle.FixedSingle;
+      srv.Location = new Point(214, 30);
+      srv.MinimumSize = new Size(589, 423);
+      srv.Name = "srv";
+      srv.Size = new Size(589, 423);
+      srv.TabIndex = 7;
       // 
       // MainForm
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
-      ClientSize = new Size(358, 568);
-      Controls.Add(songRequestView);
+      ClientSize = new Size(803, 453);
+      Controls.Add(srv);
       Controls.Add(btnBanKnownBotsInChat);
       Controls.Add(btnMassBan);
       Controls.Add(lblTwConnected);
@@ -147,6 +145,7 @@
       Controls.Add(listChatters);
       Controls.Add(btnUpdateChatters);
       Controls.Add(cbFreezeChattersList);
+      DoubleBuffered = true;
       Name = "MainForm";
       Text = "SimpleBot";
       ResumeLayout(false);
@@ -164,6 +163,6 @@
     private OpenFileDialog ofd;
     private CheckBox cbFreezeChattersList;
     private Button btnBanKnownBotsInChat;
-    private SongRequestView songRequestView;
+    private SongRequestView srv;
   }
 }

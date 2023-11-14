@@ -415,14 +415,15 @@ namespace SimpleBot
         [BotCommandId.FollowAge] = new[] { "followage"},
         [BotCommandId.WatchTime] = new[] { "watchtime"},
         [BotCommandId.SongRequest_Request] = new[] { "sr" },
-        [BotCommandId.SongRequest_Volume] = new[] { "volume" },
+        [BotCommandId.SongRequest_Volume] = new[] { "volume", "vol" },
         [BotCommandId.SongRequest_SetVolumeMax] = new[] { "setmaxvolume" },
         [BotCommandId.SongRequest_Next] = new[] { "skip", "skipsong", "nextsong" },
         [BotCommandId.SongRequest_GetPrev] = new[] { "prevsong", "lastsong" },
-        [BotCommandId.SongRequest_GetCurr] = new[] { "currsong", "currentsong", "songname", "cs" },
+        [BotCommandId.SongRequest_GetCurr] = new[] { "currsong", "currentsong", "songname", "cs", "song" },
         [BotCommandId.SongRequest_SavePrevToPlaylist] = new[] { "savecurr", "savecurrent", "savesong" },
         [BotCommandId.SongRequest_SaveCurrToPlaylist] = new[] { "savelast", "saveprev" },
         [BotCommandId.SongRequest_ShufflePlaylist] = new[] { "shuffle" },
+        [BotCommandId.SongRequest_WrongSong] = new[] { "wrongsong", "oops" },
         [BotCommandId.Queue_Curr] = new[] { "curr", "current"},
         [BotCommandId.Queue_Next] = new[] { "next"},
         [BotCommandId.Queue_All] = new[] { "queue"},
@@ -826,7 +827,7 @@ namespace SimpleBot
             return;
           }
         case BotCommandId.ShowBrb:
-          if (_isBrbEnabled || chatter.userLevel < UserLevel.VIP) return;
+          if (_isBrbEnabled || chatter.userLevel != UserLevel.Streamer) return;
           // TODO hotkey for this piece of code
           string brbFile = null;
           ChatActivity.IncCommandCounter(chatter, BotCommandId.ShowBrb);
@@ -970,12 +971,15 @@ namespace SimpleBot
           return;
         case BotCommandId.SongRequest_Next:
           if (chatter.userLevel != UserLevel.Streamer) return;
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_Next);
           SongRequest.Next();
           return;
         case BotCommandId.SongRequest_GetPrev:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_GetPrev);
           SongRequest.GetPrevSong(chatter);
           return;
         case BotCommandId.SongRequest_GetCurr:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_GetCurr);
           SongRequest.GetCurrSong(chatter);
           return;
         // TODO remove command and add to UI
@@ -993,12 +997,19 @@ namespace SimpleBot
           if (chatter.userLevel != UserLevel.Streamer) return;
           SongRequest.ShufflePlaylist();
           return;
+        case BotCommandId.SongRequest_WrongSong:
+          ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_WrongSong);
+          SongRequest.WrongSong(chatter);
+          return;
         case BotCommandId.SongRequest_Volume:
           if (chatter.userLevel < UserLevel.Moderator) return;
           if (args.Count == 0 || !int.TryParse(args.FirstOrDefault(), out int volume))
             SongRequest.GetVolume(chatter);
           else
+          {
+            ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_Volume);
             SongRequest.SetVolume(volume, chatter);
+          }
           return;
         case BotCommandId.Queue_Curr:
           ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);
