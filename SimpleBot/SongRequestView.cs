@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace SimpleBot
 {
@@ -16,6 +17,65 @@ namespace SimpleBot
       nudMaxPerUser.Value = SongRequest.SR_maxSongsInQueuePerUser;
       UpdateVolumeDisplay(SongRequest._GetVolume());
       nudMaxVolume.Value = sliderVolume.Maximum;
+
+      txtSearch.TextChanged += ((EventHandler)TxtSearch_TextChanged).Debounce(100);
+    }
+
+    private void cbIsSearchRegex_CheckedChanged(object sender, EventArgs e)
+    {
+      BeginInvoke(filterRows);
+    }
+
+    private void TxtSearch_TextChanged(object sender, EventArgs e)
+    {
+      BeginInvoke(filterRows);
+    }
+
+    void filterRows()
+    {
+      Regex rgx = null;
+      txtSearch.ForeColor = SystemColors.WindowText;
+      if (cbIsSearchRegex.Checked)
+      {
+        try
+        {
+          rgx = new Regex(txtSearch.Text, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        }
+        catch
+        {
+          txtSearch.ForeColor = Color.IndianRed;
+        }
+      }
+
+      dgvQueueAndPlaylist.SuspendLayout();
+      var autoSizeModes = new DataGridViewAutoSizeColumnMode[dgvQueueAndPlaylist.ColumnCount];
+      for (int i = 0; i < dgvQueueAndPlaylist.ColumnCount; i++)
+      {
+        var col = dgvQueueAndPlaylist.Columns[i];
+        autoSizeModes[i] = col.AutoSizeMode;
+        col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+      }
+
+      if (rgx != null)
+      {
+        for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
+        {
+          var row = dgvQueueAndPlaylist.Rows[i];
+          row.Visible = rgx.IsMatch((string)row.Cells[1].Value);
+        }
+      }
+      else
+      {
+        for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
+        {
+          var row = dgvQueueAndPlaylist.Rows[i];
+          row.Visible = ((string)row.Cells[1].Value).Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase);
+        }
+      }
+
+      for (int i = 0; i < dgvQueueAndPlaylist.ColumnCount; i++)
+        dgvQueueAndPlaylist.Columns[i].AutoSizeMode = autoSizeModes[i];
+      dgvQueueAndPlaylist.ResumeLayout(true);
     }
 
     private void dgvQueueAndPlaylist_CellContentDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -166,6 +226,11 @@ namespace SimpleBot
     private void btnShowHideSettings_Click(object sender, EventArgs e)
     {
       btnShowHideSettings.Text = (panelSettings.Visible = !panelSettings.Visible) ? "Hide Settings" : "Show Settings";
+    }
+
+    private void dgvQueueAndPlaylist_Leave(object sender, EventArgs e)
+    {
+      dgvQueueAndPlaylist.ClearSelection();
     }
   }
 }

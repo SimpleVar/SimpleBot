@@ -61,6 +61,8 @@
       RequestedBy = new DataGridViewTextBoxColumn();
       VideoId = new DataGridViewTextBoxColumn();
       panel1 = new Panel();
+      cbIsSearchRegex = new CheckBox();
+      txtSearch = new TextBox();
       panelSettings = new Panel();
       panel4 = new Panel();
       btnShowHideSettings = new Button();
@@ -310,6 +312,7 @@
       // 
       dgvQueueAndPlaylist.AllowUserToAddRows = false;
       dgvQueueAndPlaylist.AllowUserToDeleteRows = false;
+      dgvQueueAndPlaylist.AllowUserToOrderColumns = true;
       dgvQueueAndPlaylist.AllowUserToResizeRows = false;
       dgvQueueAndPlaylist.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
       dgvQueueAndPlaylist.BackgroundColor = SystemColors.ControlLightLight;
@@ -327,6 +330,7 @@
       dgvQueueAndPlaylist.StandardTab = true;
       dgvQueueAndPlaylist.TabIndex = 23;
       dgvQueueAndPlaylist.CellContentDoubleClick += dgvQueueAndPlaylist_CellContentDoubleClick;
+      dgvQueueAndPlaylist.Leave += dgvQueueAndPlaylist_Leave;
       // 
       // Index
       // 
@@ -381,6 +385,8 @@
       // 
       // panel1
       // 
+      panel1.Controls.Add(cbIsSearchRegex);
+      panel1.Controls.Add(txtSearch);
       panel1.Controls.Add(lblCurrSong);
       panel1.Controls.Add(lblQueueSize);
       panel1.Controls.Add(btnRemoveCurrFromPlaylist);
@@ -398,6 +404,24 @@
       panel1.Name = "panel1";
       panel1.Size = new Size(587, 277);
       panel1.TabIndex = 2;
+      // 
+      // cbIsSearchRegex
+      // 
+      cbIsSearchRegex.AutoSize = true;
+      cbIsSearchRegex.Location = new Point(425, 107);
+      cbIsSearchRegex.Name = "cbIsSearchRegex";
+      cbIsSearchRegex.Size = new Size(58, 19);
+      cbIsSearchRegex.TabIndex = 25;
+      cbIsSearchRegex.Text = "Regex";
+      cbIsSearchRegex.UseVisualStyleBackColor = true;
+      cbIsSearchRegex.CheckedChanged += cbIsSearchRegex_CheckedChanged;
+      // 
+      // txtSearch
+      // 
+      txtSearch.Location = new Point(486, 105);
+      txtSearch.Name = "txtSearch";
+      txtSearch.Size = new Size(100, 23);
+      txtSearch.TabIndex = 24;
       // 
       // panelSettings
       // 
@@ -513,5 +537,7 @@
     private Panel panelSettings;
     private Panel panel4;
     private Button btnShowHideSettings;
+    private TextBox txtSearch;
+    private CheckBox cbIsSearchRegex;
   }
 }
