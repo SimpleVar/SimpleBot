@@ -23,11 +23,12 @@ namespace SimpleBot
 
     private void cbIsSearchRegex_CheckedChanged(object sender, EventArgs e)
     {
-      BeginInvoke(filterRows);
+      filterRows();
     }
 
     private void TxtSearch_TextChanged(object sender, EventArgs e)
     {
+      // BeginInvoke - this event is debounced, therefore we're not running on main thread
       BeginInvoke(filterRows);
     }
 
@@ -93,6 +94,7 @@ namespace SimpleBot
 
     private void SongRequest_NeedUpdateUI_SongList(object sender, SongRequest.SRData e)
     {
+      // event comes from different thread
       BeginInvoke(() =>
       {
         bool isCurrFromPlaylist = e.CurrSong.ytVideoId == e.Playlist[e.CurrIndexToPlayInPlaylist].ytVideoId;
@@ -128,7 +130,8 @@ namespace SimpleBot
 
     private void SongRequest_NeedUpdateUI_Volume(object sender, (int volume, int maxVolume) e)
     {
-      Invoke(() => UpdateVolumeDisplay(e));
+      // event comes from different thread
+      BeginInvoke(() => UpdateVolumeDisplay(e));
     }
 
     void UpdateVolumeDisplay((int volume, int maxVolume) e)
