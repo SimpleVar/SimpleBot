@@ -116,9 +116,7 @@ namespace SimpleBot
           var p = e.Playlist[i];
           dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
         }
-        int maxIndexToDisplay = e.CurrIndexToPlayInPlaylist;
-        maxIndexToDisplay = isCurrFromPlaylist ? maxIndexToDisplay - 1 : maxIndexToDisplay;
-        for (int i = 0; i <= maxIndexToDisplay; i++)
+        for (int i = 0; i <= e.CurrIndexToPlayInPlaylist; i++)
         {
           var p = e.Playlist[i];
           dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
