@@ -241,8 +241,8 @@ namespace SimpleBot
         if (_sr.Playlist[i].ytVideoId == id)
           return;
 
-      _sr.Playlist.Insert(0, req);
       _sr.CurrIndexToPlayInPlaylist++;
+      _sr.Playlist.Insert(_sr.CurrIndexToPlayInPlaylist, req);
       _onSongListChange_noLock();
     }
 
@@ -441,7 +441,8 @@ namespace SimpleBot
             removesBeforeNextToPlay++;
         }
         _sr.CurrIndexToPlayInPlaylist -= removesBeforeNextToPlay;
-        _sr.Playlist.RemoveAll(x => videoIds.Contains(x.ytVideoId));
+        if (_sr.Playlist.RemoveAll(x => videoIds.Contains(x.ytVideoId)) != 0)
+          _onSongListChange_noLock();
       }
     }
 
@@ -454,8 +455,9 @@ namespace SimpleBot
           if (_sr.Playlist[i].ytVideoId == videoId)
           {
             _sr.Playlist.RemoveAt(i);
-            if (i < _sr.CurrIndexToPlayInPlaylist)
+            if (i <= _sr.CurrIndexToPlayInPlaylist)
               _sr.CurrIndexToPlayInPlaylist--;
+            _onSongListChange_noLock();
             return;
           }
         }

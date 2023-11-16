@@ -95,7 +95,8 @@ namespace SimpleBot
     {
       BeginInvoke(() =>
       {
-        lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\nRequested by: {e.CurrSong.ogRequesterDisplayName}";
+        bool isCurrFromPlaylist = e.CurrSong.ytVideoId == e.Playlist[e.CurrIndexToPlayInPlaylist].ytVideoId;
+        lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\n{(isCurrFromPlaylist ? "" : "*")}Requested by: {e.CurrSong.ogRequesterDisplayName}";
         lblQueueSize.Text = e.Queue.Count + " in queue";
         lblPlaylist.Text = "Playlist:\r\n" + e.Playlist.Count;
 
@@ -113,7 +114,9 @@ namespace SimpleBot
           var p = e.Playlist[i];
           dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
         }
-        for (int i = 0; i <= e.CurrIndexToPlayInPlaylist; i++)
+        int maxIndexToDisplay = e.CurrIndexToPlayInPlaylist;
+        maxIndexToDisplay = isCurrFromPlaylist ? maxIndexToDisplay - 1 : maxIndexToDisplay;
+        for (int i = 0; i <= maxIndexToDisplay; i++)
         {
           var p = e.Playlist[i];
           dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
