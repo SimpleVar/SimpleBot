@@ -75,6 +75,8 @@ namespace SimpleBot
 
       for (int i = 0; i < dgvQueueAndPlaylist.ColumnCount; i++)
         dgvQueueAndPlaylist.Columns[i].AutoSizeMode = autoSizeModes[i];
+
+      dgvQueueAndPlaylist.ClearSelection();
       dgvQueueAndPlaylist.ResumeLayout(true);
     }
 
@@ -95,6 +97,7 @@ namespace SimpleBot
       {
         lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\nRequested by: {e.CurrSong.ogRequesterDisplayName}";
         lblQueueSize.Text = e.Queue.Count + " in queue";
+        lblPlaylist.Text = "Playlist:\r\n" + e.Playlist.Count;
 
         dgvQueueAndPlaylist.SuspendLayout();
         dgvQueueAndPlaylist.Rows.Clear();
@@ -115,6 +118,7 @@ namespace SimpleBot
           var p = e.Playlist[i];
           dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
         }
+        dgvQueueAndPlaylist.ClearSelection();
         dgvQueueAndPlaylist.ResumeLayout(true);
       });
     }

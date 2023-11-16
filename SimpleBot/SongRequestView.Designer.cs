@@ -51,7 +51,7 @@
       btnSavePrevToPlaylist = new Button();
       btnTogglePlayPause = new Button();
       lblQueueSize = new Label();
-      label5 = new Label();
+      lblPlaylist = new Label();
       btnRemoveCurrFromPlaylist = new Button();
       dgvQueueAndPlaylist = new DataGridView();
       Index = new DataGridViewTextBoxColumn();
@@ -79,7 +79,7 @@
       // 
       // btnShowYoutubeForm
       // 
-      btnShowYoutubeForm.Location = new Point(84, 3);
+      btnShowYoutubeForm.Location = new Point(114, 3);
       btnShowYoutubeForm.Name = "btnShowYoutubeForm";
       btnShowYoutubeForm.Size = new Size(107, 23);
       btnShowYoutubeForm.TabIndex = 1;
@@ -221,7 +221,7 @@
       // 
       // btnSkip
       // 
-      btnSkip.Location = new Point(197, 3);
+      btnSkip.Location = new Point(227, 3);
       btnSkip.Name = "btnSkip";
       btnSkip.Size = new Size(49, 23);
       btnSkip.TabIndex = 2;
@@ -241,7 +241,7 @@
       // 
       // btnPrev
       // 
-      btnPrev.Location = new Point(274, 2);
+      btnPrev.Location = new Point(272, 2);
       btnPrev.Name = "btnPrev";
       btnPrev.Size = new Size(53, 42);
       btnPrev.TabIndex = 15;
@@ -251,7 +251,7 @@
       // 
       // btnSaveCurrToPlaylist
       // 
-      btnSaveCurrToPlaylist.Location = new Point(133, 2);
+      btnSaveCurrToPlaylist.Location = new Point(131, 2);
       btnSaveCurrToPlaylist.Name = "btnSaveCurrToPlaylist";
       btnSaveCurrToPlaylist.Size = new Size(58, 42);
       btnSaveCurrToPlaylist.TabIndex = 13;
@@ -261,7 +261,7 @@
       // 
       // btnSavePrevToPlaylist
       // 
-      btnSavePrevToPlaylist.Location = new Point(197, 2);
+      btnSavePrevToPlaylist.Location = new Point(195, 2);
       btnSavePrevToPlaylist.Name = "btnSavePrevToPlaylist";
       btnSavePrevToPlaylist.Size = new Size(71, 42);
       btnSavePrevToPlaylist.TabIndex = 14;
@@ -271,7 +271,7 @@
       // 
       // btnTogglePlayPause
       // 
-      btnTogglePlayPause.Location = new Point(252, 3);
+      btnTogglePlayPause.Location = new Point(282, 3);
       btnTogglePlayPause.Name = "btnTogglePlayPause";
       btnTogglePlayPause.Size = new Size(52, 23);
       btnTogglePlayPause.TabIndex = 3;
@@ -289,18 +289,18 @@
       lblQueueSize.TabIndex = 21;
       lblQueueSize.Text = "0 in queue";
       // 
-      // label5
+      // lblPlaylist
       // 
-      label5.AutoSize = true;
-      label5.Location = new Point(5, 16);
-      label5.Name = "label5";
-      label5.Size = new Size(47, 15);
-      label5.TabIndex = 11;
-      label5.Text = "Playlist:";
+      lblPlaylist.AutoSize = true;
+      lblPlaylist.Location = new Point(3, 8);
+      lblPlaylist.Name = "lblPlaylist";
+      lblPlaylist.Size = new Size(47, 30);
+      lblPlaylist.TabIndex = 11;
+      lblPlaylist.Text = "Playlist:\r ";
       // 
       // btnRemoveCurrFromPlaylist
       // 
-      btnRemoveCurrFromPlaylist.Location = new Point(58, 2);
+      btnRemoveCurrFromPlaylist.Location = new Point(56, 2);
       btnRemoveCurrFromPlaylist.Name = "btnRemoveCurrFromPlaylist";
       btnRemoveCurrFromPlaylist.Size = new Size(69, 42);
       btnRemoveCurrFromPlaylist.TabIndex = 12;
@@ -385,6 +385,7 @@
       // 
       // panel1
       // 
+      panel1.Controls.Add(lblPlaylist);
       panel1.Controls.Add(cbIsSearchRegex);
       panel1.Controls.Add(txtSearch);
       panel1.Controls.Add(lblCurrSong);
@@ -393,7 +394,6 @@
       panel1.Controls.Add(dgvQueueAndPlaylist);
       panel1.Controls.Add(label6);
       panel1.Controls.Add(sliderVolume);
-      panel1.Controls.Add(label5);
       panel1.Controls.Add(labelVolume);
       panel1.Controls.Add(btnPrev);
       panel1.Controls.Add(btnSavePrevToPlaylist);
@@ -466,7 +466,7 @@
       // 
       btnShowHideSettings.Location = new Point(3, 3);
       btnShowHideSettings.Name = "btnShowHideSettings";
-      btnShowHideSettings.Size = new Size(75, 23);
+      btnShowHideSettings.Size = new Size(105, 23);
       btnShowHideSettings.TabIndex = 0;
       btnShowHideSettings.Text = "Show Settings";
       btnShowHideSettings.UseVisualStyleBackColor = true;
@@ -524,7 +524,7 @@
     private Button btnSavePrevToPlaylist;
     private Button btnTogglePlayPause;
     private Label lblQueueSize;
-    private Label label5;
+    private Label lblPlaylist;
     private Button btnRemoveCurrFromPlaylist;
     private DataGridView dgvQueueAndPlaylist;
     private DataGridViewTextBoxColumn Index;
