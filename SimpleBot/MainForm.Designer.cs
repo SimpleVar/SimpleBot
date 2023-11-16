@@ -148,6 +148,7 @@
       DoubleBuffered = true;
       Name = "MainForm";
       Text = "SimpleBot";
+      Load += MainForm_Load;
       ResumeLayout(false);
       PerformLayout();
     }

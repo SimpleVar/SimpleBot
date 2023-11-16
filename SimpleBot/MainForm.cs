@@ -1,3 +1,4 @@
+using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 
 namespace SimpleBot
@@ -5,7 +6,7 @@ namespace SimpleBot
   public partial class MainForm : Form
   {
     public static MainForm Get { get; private set; }
-    readonly Bot bot = null;
+    Bot bot = null;
     bool _freezeChattersList = false;
     bool _isMultiselectingChatters = false;
 
@@ -17,12 +18,18 @@ namespace SimpleBot
 #if DEBUG
       Text += " (debug)";
 #endif
+    }
 
+    private async void MainForm_Load(object sender, EventArgs e)
+    {
+      var ytWebView = new WebView2 { Dock = DockStyle.Fill };
+      await ytWebView.EnsureCoreWebView2Async();
+      
       bot = new Bot();
       bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;
       bot.BadCredentials += Bot_BadCredentials;
       ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
-      _ = Task.Run(bot.Init).ThrowMainThread();
+      await bot.Init(ytWebView).ThrowMainThread();
     }
 
     private void Bot_BadCredentials(object sender, EventArgs e)

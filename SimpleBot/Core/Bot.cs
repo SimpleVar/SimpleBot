@@ -1,5 +1,6 @@
 ﻿using Humanizer;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
 using System.Collections.Concurrent;
@@ -90,7 +91,7 @@ namespace SimpleBot
     }
 
     bool _init = false;
-    public async Task Init()
+    public async Task Init(WebView2 ytWebView)
     {
       if (_init)
         throw new ApplicationException("Init should be called exactly once");
@@ -175,7 +176,7 @@ namespace SimpleBot
 
       // Init custom thingies
       Log("[init] various systems");
-      await SongRequest.Init(this);
+      await SongRequest.Init(this, ytWebView);
       ChatActivity.Init(this);
       if (Settings.Default.enable_all_SimpleVar_systems)
       {

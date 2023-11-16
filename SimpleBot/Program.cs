@@ -14,7 +14,7 @@ namespace SimpleBot
         Task.Run(async () =>
         {
           Bot bot = new(); // load data
-          await SongRequest.Init(bot);
+          await SongRequest.Init(bot, null); // TODO fix the null
           await Task.Delay(2000);
           await SongRequest._yt.PauseOrResume();
 

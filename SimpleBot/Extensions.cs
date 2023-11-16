@@ -110,34 +110,5 @@ namespace SimpleBot
       });
       return t.Result;
     });
-
-    public static Task RunThreadSTA(this Func<Task> action)
-    {
-      var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-      var thread = new Thread(() =>
-      {
-        Application.Idle += Application_Idle;
-        Application.Run();
-      });
-      thread.SetApartmentState(ApartmentState.STA);
-      thread.IsBackground = true;
-      thread.Start();
-      return tcs.Task;
-
-      async void Application_Idle(object sender, EventArgs e)
-      {
-        Application.Idle -= Application_Idle;
-        try
-        {
-          await action();
-          tcs.SetResult();
-        }
-        catch (Exception ex)
-        {
-          tcs.SetException(ex);
-          Application.ExitThread();
-        }
-      }
-    }
   }
 }

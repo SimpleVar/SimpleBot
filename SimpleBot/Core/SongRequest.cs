@@ -1,7 +1,7 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Web.WebView2.WinForms;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Serialization;
-using static SimpleBot.SongRequest;
 
 namespace SimpleBot
 {
@@ -177,7 +177,7 @@ namespace SimpleBot
       catch { }
     }
 
-    public static async Task Init(Bot bot)
+    public static async Task Init(Bot bot, WebView2 ytWebView)
     {
       Bot.Log("[init] _yt");
       _bot = bot;
@@ -205,7 +205,7 @@ namespace SimpleBot
           Bot.Log(ex.ToString());
         }
       });
-      await _yt.Init();
+      await _yt.Init(ytWebView);
     }
 
     private static void _yt_VideoEnded(object sender, string videoId)

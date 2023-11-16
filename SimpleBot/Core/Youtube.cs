@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Web;
 using VideoLibrary;
 using VideoLibrary.Exceptions;
@@ -48,24 +47,32 @@ namespace SimpleBot
       _yt = Client.For(YouTube.Default);
     }
 
-    public Task Init()
+    public Task Init(WebView2 existingWebView)
     {
-      return Extensions.RunThreadSTA(async () =>
+      webView = existingWebView;
+      webView.WebMessageReceived += (o, e) =>
       {
-        webView = new WebView2 { Dock = DockStyle.Fill };
-        webView.CoreWebView2InitializationCompleted += (o, e) =>
+        switch (e.WebMessageAsJson)
         {
-          if (e.InitializationException != null)
-          {
-            Bot.Log("[yt] ERR: WebView2 core mega bullshit init error: " + e.InitializationException.Message);
-            throw e.InitializationException;
-          }
-          Bot.Log("[yt] WebView2 core mega bullshit initialized");
-
-          webView.CoreWebView2.DOMContentLoaded += (o, e) =>
-          {
-            // inject the html source into google so that youtube likes as and plays embedded videos
-            _ = webView.ExecuteScriptAsync(@"document.body.innerHTML = '<div id=player></div>';
+          case "\"loaded baby\"":
+            if (!IsWebViewInitialized)
+            {
+              lock (_webViewInitLock)
+              {
+                IsWebViewInitialized = true;
+                WebViewInitialized.Invoke(this, null);
+              }
+            }
+            break;
+          default:
+            VideoEnded.Invoke(this, e.WebMessageAsJson[1..^1]); // removes quotes from string values
+            break;
+        }
+      };
+      webView.CoreWebView2.DOMContentLoaded += async (o, e) =>
+      {
+        // inject the html source into google so that youtube likes as and plays embedded videos
+        _ = await webView.ExecuteScriptAsync(@"document.body.innerHTML = '<div id=player></div>';
 const scr = document.createElement('script');
 scr.innerHTML = `function onYouTubeIframeAPIReady() {
   const player = new YT.Player('player', {
@@ -78,7 +85,7 @@ scr.innerHTML = `function onYouTubeIframeAPIReady() {
       'onError': e => { console.log('ytErr', e); if (e.data < 101) skipMe(); }
     }
   });
-}
+}`
 function pauseOrResume() {
   const p = document.ytPlayer;
   if (!p) return;
@@ -93,68 +100,16 @@ function playNow(id, start, end) {
   document._loadedVideoId = id
   document.ytPlayer?.loadVideoById(id, start, end)
 }
-// skip ads (TODO see if works?)
-// https://github.com/0x48piraj/fadblock/blob/master/src/chrome/js/background.js
-setInterval(() => {
-  const videoContainer = document.querySelector("".html5-video-player"");
-  const isAd = videoContainer?.classList.contains(""ad-interrupting"") || videoContainer?.classList.contains(""ad-showing"");
-  const skipLock = document.querySelector("".ytp-ad-preview-text"")?.innerText;
-  const surveyLock = document.querySelector("".ytp-ad-survey"")?.length > 0;
-
-  if (isAd && skipLock) {
-    console.log('skipping ad...');
-    const videoPlayer = document.getElementsByClassName(""video-stream"")[0];
-    videoPlayer.muted = true; // videoPlayer.volume = 0;
-    videoPlayer.currentTime = videoPlayer.duration - 0.1;
-    videoPlayer.paused && videoPlayer.play()
-    // CLICK ON THE SKIP AD BTN
-    document.querySelector("".ytp-ad-skip-button"")?.click();
-  } else if (isAd && surveyLock) {
-    console.log('skipping ad...');
-    // CLICK ON THE SKIP SURVEY BTN
-    document.querySelector("".ytp-ad-skip-button"")?.click();
-  }
-}, 100);
-// setInterval(() => {
-//   const videoContainer = document.querySelector("".html5-video-player"");
-//   const isErr = videoContainer?.classList.contains(""ytp-embed-error"");
-//   console.log(isErr)
-//   if (isErr) {
-//     console.log('trying to skip embed err...');
-//     playNow(document._loadedVideoId)
-//   }
-// }, 100)`;
 document.body.append(scr);
 document.body.style.overflow = 'hidden';
 const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
-document.body.append(tag);");
-          };
-
-          webView.WebMessageReceived += (o, e) =>
-          {
-            switch (e.WebMessageAsJson)
-            {
-              case "\"loaded baby\"":
-                if (!IsWebViewInitialized)
-                {
-                  lock (_webViewInitLock)
-                  {
-                    IsWebViewInitialized = true;
-                    WebViewInitialized.Invoke(this, null);
-                  }
-                }
-                break;
-              default:
-                VideoEnded.Invoke(this, e.WebMessageAsJson[1..^1]); // removes quotes from string values
-                break;
-            }
-          };
-          // now we are in an https secured url, Muahahahahahahahhahahahqahahahadhahssdhakjsawdg
-          webView.CoreWebView2.Navigate("https://www.google.com");
-        };
-        await webView.EnsureCoreWebView2Async();
-      });
+document.body.append(tag);
+");
+      };
+      // now we are in an https secured url, Muahahahahahahahhahahahqahahahadhahssdhakjsawdg
+      webView.Invoke(() => webView.CoreWebView2.Navigate("https://www.google.com"));
+      return Task.CompletedTask;
     }
 
     public Task<string> PauseOrResume()
