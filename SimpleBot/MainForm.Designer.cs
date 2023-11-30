@@ -47,10 +47,10 @@
       listChatters.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
       listChatters.IntegralHeight = false;
       listChatters.ItemHeight = 15;
-      listChatters.Location = new Point(12, 63);
+      listChatters.Location = new Point(0, 48);
       listChatters.Name = "listChatters";
       listChatters.SelectionMode = SelectionMode.MultiExtended;
-      listChatters.Size = new Size(196, 214);
+      listChatters.Size = new Size(196, 169);
       listChatters.TabIndex = 4;
       listChatters.SelectedIndexChanged += listChatters_SelectedIndexChanged;
       listChatters.KeyDown += listChatters_KeyDown;
@@ -58,7 +58,7 @@
       // labelChatters
       // 
       labelChatters.AutoSize = true;
-      labelChatters.Location = new Point(12, 45);
+      labelChatters.Location = new Point(-1, 30);
       labelChatters.Name = "labelChatters";
       labelChatters.Size = new Size(54, 15);
       labelChatters.TabIndex = 1;
@@ -66,7 +66,7 @@
       // 
       // btnUpdateChatters
       // 
-      btnUpdateChatters.Location = new Point(100, 41);
+      btnUpdateChatters.Location = new Point(138, 27);
       btnUpdateChatters.Name = "btnUpdateChatters";
       btnUpdateChatters.Size = new Size(58, 23);
       btnUpdateChatters.TabIndex = 2;
@@ -78,7 +78,7 @@
       // 
       lblTwConnected.AutoSize = true;
       lblTwConnected.ForeColor = SystemColors.GrayText;
-      lblTwConnected.Location = new Point(12, 16);
+      lblTwConnected.Location = new Point(0, 8);
       lblTwConnected.Name = "lblTwConnected";
       lblTwConnected.Size = new Size(113, 15);
       lblTwConnected.TabIndex = 0;
@@ -91,7 +91,7 @@
       // btnMassBan
       // 
       btnMassBan.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-      btnMassBan.Location = new Point(11, 300);
+      btnMassBan.Location = new Point(-1, 240);
       btnMassBan.Name = "btnMassBan";
       btnMassBan.Size = new Size(198, 40);
       btnMassBan.TabIndex = 6;
@@ -108,10 +108,9 @@
       // cbFreezeChattersList
       // 
       cbFreezeChattersList.AutoSize = true;
-      cbFreezeChattersList.CheckAlign = ContentAlignment.TopCenter;
-      cbFreezeChattersList.Location = new Point(164, 30);
+      cbFreezeChattersList.Location = new Point(78, 29);
       cbFreezeChattersList.Name = "cbFreezeChattersList";
-      cbFreezeChattersList.Size = new Size(44, 33);
+      cbFreezeChattersList.Size = new Size(59, 19);
       cbFreezeChattersList.TabIndex = 3;
       cbFreezeChattersList.Text = "Freeze";
       cbFreezeChattersList.UseVisualStyleBackColor = true;
@@ -120,7 +119,7 @@
       // btnBanKnownBotsInChat
       // 
       btnBanKnownBotsInChat.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-      btnBanKnownBotsInChat.Location = new Point(11, 275);
+      btnBanKnownBotsInChat.Location = new Point(-1, 215);
       btnBanKnownBotsInChat.Name = "btnBanKnownBotsInChat";
       btnBanKnownBotsInChat.Size = new Size(198, 23);
       btnBanKnownBotsInChat.TabIndex = 5;
@@ -132,7 +131,7 @@
       // 
       srv.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
       srv.BorderStyle = BorderStyle.FixedSingle;
-      srv.Location = new Point(214, 30);
+      srv.Location = new Point(195, 0);
       srv.MinimumSize = new Size(589, 423);
       srv.Name = "srv";
       srv.Size = new Size(589, 423);
@@ -143,7 +142,7 @@
       listRecentFollows.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
       listRecentFollows.FormattingEnabled = true;
       listRecentFollows.ItemHeight = 15;
-      listRecentFollows.Location = new Point(12, 363);
+      listRecentFollows.Location = new Point(0, 303);
       listRecentFollows.Name = "listRecentFollows";
       listRecentFollows.SelectionMode = SelectionMode.MultiExtended;
       listRecentFollows.Size = new Size(196, 79);
@@ -152,7 +151,7 @@
       // btnBanSelectedFollows
       // 
       btnBanSelectedFollows.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-      btnBanSelectedFollows.Location = new Point(11, 342);
+      btnBanSelectedFollows.Location = new Point(-1, 282);
       btnBanSelectedFollows.Name = "btnBanSelectedFollows";
       btnBanSelectedFollows.Size = new Size(198, 23);
       btnBanSelectedFollows.TabIndex = 7;
@@ -164,10 +163,10 @@
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
-      ClientSize = new Size(803, 442);
+      ClientSize = new Size(784, 382);
+      Controls.Add(srv);
       Controls.Add(listRecentFollows);
       Controls.Add(btnBanSelectedFollows);
-      Controls.Add(srv);
       Controls.Add(btnMassBan);
       Controls.Add(lblTwConnected);
       Controls.Add(labelChatters);
@@ -176,6 +175,7 @@
       Controls.Add(cbFreezeChattersList);
       Controls.Add(btnBanKnownBotsInChat);
       DoubleBuffered = true;
+      MinimumSize = new Size(550, 299);
       Name = "MainForm";
       Text = "SimpleBot";
       Load += MainForm_Load;

@@ -407,8 +407,9 @@
       // 
       // cbIsSearchRegex
       // 
+      cbIsSearchRegex.Anchor = AnchorStyles.Top | AnchorStyles.Right;
       cbIsSearchRegex.AutoSize = true;
-      cbIsSearchRegex.Location = new Point(425, 107);
+      cbIsSearchRegex.Location = new Point(426, 107);
       cbIsSearchRegex.Name = "cbIsSearchRegex";
       cbIsSearchRegex.Size = new Size(58, 19);
       cbIsSearchRegex.TabIndex = 25;
@@ -418,7 +419,8 @@
       // 
       // txtSearch
       // 
-      txtSearch.Location = new Point(486, 105);
+      txtSearch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+      txtSearch.Location = new Point(487, 105);
       txtSearch.Name = "txtSearch";
       txtSearch.Size = new Size(100, 23);
       txtSearch.TabIndex = 24;
