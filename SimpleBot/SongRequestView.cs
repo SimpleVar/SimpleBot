@@ -203,6 +203,7 @@ namespace SimpleBot
     private void btnSkip_Click(object sender, EventArgs e)
     {
       SongRequest.Next();
+      btnTogglePlayPause.Text = "Pause";
     }
 
     private void btnPrev_Click(object sender, EventArgs e)

@@ -250,5 +250,17 @@ namespace SimpleBot {
                 this["SR_volume"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("4")]
+        public int MaxFollowGreetingsPerEveryFewSeconds_negativeMeansNoLimit {
+            get {
+                return ((int)(this["MaxFollowGreetingsPerEveryFewSeconds_negativeMeansNoLimit"]));
+            }
+            set {
+                this["MaxFollowGreetingsPerEveryFewSeconds_negativeMeansNoLimit"] = value;
+            }
+        }
     }
 }

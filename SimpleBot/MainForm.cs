@@ -1,5 +1,6 @@
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
+using System.Drawing;
 
 namespace SimpleBot
 {
@@ -24,12 +25,67 @@ namespace SimpleBot
     {
       var ytWebView = new WebView2 { Dock = DockStyle.Fill };
       await ytWebView.EnsureCoreWebView2Async();
-      
+
       bot = new Bot();
       bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;
       bot.BadCredentials += Bot_BadCredentials;
+      bot.Follow += Bot_Follow;
       ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
       await bot.Init(ytWebView).ThrowMainThread();
+    }
+
+    private void Bot_Follow(object sender, string followerName)
+    {
+      BeginInvoke(() =>
+      {
+        listRecentFollows.Items.Add(followerName);
+      });
+    }
+
+    List<int> _recentFollowsIndicesToRemove = new();
+    private async void btnBanSelectedFollows_Click(object sender, EventArgs e)
+    {
+      if (listRecentFollows.SelectedIndices.Count == 0)
+        return;
+      var ogText = btnBanSelectedFollows.Text;
+      btnBanSelectedFollows.Text = "banning...";
+      btnBanSelectedFollows.Enabled = false;
+
+      _recentFollowsIndicesToRemove.Clear();
+      for (int i = 0; i < listRecentFollows.SelectedIndices.Count; i++)
+        _recentFollowsIndicesToRemove.Add(listRecentFollows.SelectedIndices[i]);
+
+      int totAttempts = 0;
+      int totBans = 0;
+      int totFails = 0;
+      const string reason = "From recent-follows list";
+      try
+      {
+        foreach (int _idx in _recentFollowsIndicesToRemove)
+        {
+          int idx = _idx - totAttempts;
+          var name = (string)listRecentFollows.Items[idx];
+          totAttempts++;
+          if (await Ban(name, reason).ConfigureAwait(true))
+            totBans++;
+          else
+            totFails++;
+          listRecentFollows.Items.RemoveAt(idx);
+        }
+      }
+      catch (Exception ex)
+      {
+        Bot.Log($"[Ban recent-follows] ERROR with {totAttempts} attempts, {totBans} bans and {totFails} fails. Err: {ex}");
+        btnBanSelectedFollows.Text = "error, see logs";
+        await Task.Delay(2000).ConfigureAwait(true);
+      }
+      finally
+      {
+        Bot.Log($"[Ban recent-follows] Finished with {totAttempts} attempts, {totBans} bans and {totFails} fails");
+        btnBanSelectedFollows.Enabled = true;
+        btnBanSelectedFollows.Text = ogText;
+        listRecentFollows.TopIndex = _recentFollowsIndicesToRemove[0]; // doesn't throw
+      }
     }
 
     private void Bot_BadCredentials(object sender, EventArgs e)

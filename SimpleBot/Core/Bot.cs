@@ -43,6 +43,7 @@ namespace SimpleBot
     public event EventHandler BadCredentials;
     public event EventHandler UpdatedTwitchConnected;
     public event EventHandler UpdatedOBSConnected;
+    public event EventHandler<string> Follow;
 
     #endregion
 
@@ -330,40 +331,73 @@ namespace SimpleBot
             break;
         }
       };
-      twEventSub.ChannelFollow += (o, e) =>
-      {
-        var name = e.Notification.Payload.Event.UserName;
-        TwSendMsg("Thanks for following @" + name);
-      };
       twEventSub.ChannelSubscribe += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
+        Log($"[sub] {ev.UserId} {ev.UserName} {ev.Tier} {ev.IsGift}");
         // TODO
       };
       twEventSub.ChannelSubscriptionGift += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
+        Log(ev.IsAnonymous ? $"[sub-gift] ANON ANON {ev.Tier} x{ev.Total}" : $"[sub-gift] {ev.UserId} {ev.UserName} {ev.Tier} x{ev.Total} (alltime:{ev.CumulativeTotal})");
         // TODO
       };
       twEventSub.ChannelSubscriptionMessage += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
+        Log($"[sub-msg] {ev.UserId} {ev.UserName} {ev.Tier} {ev.DurationMonths} {ev.StreakMonths ?? -1} (alltime:{ev.CumulativeTotal}) msg:{ev.Message.Text}");
         // TODO
       };
       twEventSub.ChannelCheer += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
+        Log(ev.IsAnonymous ? $"[cheer] ANON ANON {ev.Bits} x{ev.Message}" : $"[cheer] {ev.UserId} {ev.UserName} {ev.Bits} msg:{ev.Message}");
         // TODO
       };
       twEventSub.ChannelRaid += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
+        Log($"[raid] {ev.FromBroadcasterUserId} {ev.FromBroadcasterUserName} {ev.Viewers}");
         // TODO
       };
       twEventSub.ChannelCharityCampaignDonate += (o, e) =>
       {
         var ev = e.Notification.Payload.Event;
-        // TODO
+        try
+        {
+          Log($"[charity] {ev.UserId} {ev.UserName} {(ev.Amount.Value / (decimal)Math.Pow(10, ev.Amount.DecimalPlaces)).ToString("F" + ev.Amount.DecimalPlaces)} {ev.Currency} {ev.CampaignId}");
+        }
+        catch
+        {
+          Log("[charity] json: " + ev.ToJson());
+        }
+        TwSendMsg("@" + ev.UserName + " Spreads love in the world <3 Clap");
+      };
+      // limit the number of times we react to follows in chat, to not spam
+      DateTime followWindowExpiration = DateTime.MinValue;
+      int followWindowCount = 0;
+      int MAX_FOLLOW_GREETINGS_PER_WINDOW = Settings.Default.MaxFollowGreetingsPerEveryFewSeconds_negativeMeansNoLimit;
+      twEventSub.ChannelFollow += (o, e) =>
+      {
+        var ev = e.Notification.Payload.Event;
+        Log($"[follow] {ev.UserId} {ev.UserName} {ev.FollowedAt}");
+        Follow?.Invoke(this, ev.UserName);
+        if (MAX_FOLLOW_GREETINGS_PER_WINDOW == 0)
+          return;
+        if (MAX_FOLLOW_GREETINGS_PER_WINDOW > 0)
+        {
+          // don't send more than X msgs per T time
+          var now = DateTime.UtcNow;
+          // determine current "spam" levels (before we extend the window)
+          followWindowCount = now > followWindowExpiration ? 1 : followWindowCount + 1;
+          // always extend window, to make sure we have at least T time of silence
+          // - even follows that are just-nearly T time apart will still extend the window until considered spam (or until enough silence)
+          followWindowExpiration = now.AddSeconds(10);
+          if (followWindowCount > MAX_FOLLOW_GREETINGS_PER_WINDOW)
+            return;
+        }
+        TwSendMsg("Thanks for following @" + ev.UserName);
       };
       if (!(await twEventSub.ConnectAsync().ConfigureAwait(true)))
         Log("[twEventSub] failed to connect");
@@ -971,7 +1005,7 @@ namespace SimpleBot
           }).LogErr();
           return;
         case BotCommandId.SongRequest_Next:
-          if (chatter.userLevel != UserLevel.Streamer) return;
+          if (chatter.userLevel < UserLevel.VIP) return;
           ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_Next);
           SongRequest.Next();
           return;

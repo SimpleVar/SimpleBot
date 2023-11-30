@@ -38,15 +38,19 @@
       cbFreezeChattersList = new CheckBox();
       btnBanKnownBotsInChat = new Button();
       srv = new SongRequestView();
+      listRecentFollows = new ListBox();
+      btnBanSelectedFollows = new Button();
       SuspendLayout();
       // 
       // listChatters
       // 
+      listChatters.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
+      listChatters.IntegralHeight = false;
       listChatters.ItemHeight = 15;
       listChatters.Location = new Point(12, 63);
       listChatters.Name = "listChatters";
       listChatters.SelectionMode = SelectionMode.MultiExtended;
-      listChatters.Size = new Size(196, 199);
+      listChatters.Size = new Size(196, 214);
       listChatters.TabIndex = 4;
       listChatters.SelectedIndexChanged += listChatters_SelectedIndexChanged;
       listChatters.KeyDown += listChatters_KeyDown;
@@ -86,11 +90,12 @@
       // 
       // btnMassBan
       // 
-      btnMassBan.Location = new Point(12, 297);
+      btnMassBan.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+      btnMassBan.Location = new Point(11, 300);
       btnMassBan.Name = "btnMassBan";
-      btnMassBan.Size = new Size(122, 56);
-      btnMassBan.TabIndex = 5;
-      btnMassBan.Text = "Mass Ban from list";
+      btnMassBan.Size = new Size(198, 40);
+      btnMassBan.TabIndex = 6;
+      btnMassBan.Text = "Mass ban from list";
       btnMassBan.UseVisualStyleBackColor = true;
       btnMassBan.Click += btnMassBan_Click;
       // 
@@ -114,10 +119,11 @@
       // 
       // btnBanKnownBotsInChat
       // 
-      btnBanKnownBotsInChat.Location = new Point(12, 268);
+      btnBanKnownBotsInChat.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+      btnBanKnownBotsInChat.Location = new Point(11, 275);
       btnBanKnownBotsInChat.Name = "btnBanKnownBotsInChat";
-      btnBanKnownBotsInChat.Size = new Size(196, 23);
-      btnBanKnownBotsInChat.TabIndex = 6;
+      btnBanKnownBotsInChat.Size = new Size(198, 23);
+      btnBanKnownBotsInChat.TabIndex = 5;
       btnBanKnownBotsInChat.Text = "Ban them bots";
       btnBanKnownBotsInChat.UseVisualStyleBackColor = true;
       btnBanKnownBotsInChat.Click += btnBanKnownBotsInChat_Click;
@@ -130,21 +136,45 @@
       srv.MinimumSize = new Size(589, 423);
       srv.Name = "srv";
       srv.Size = new Size(589, 423);
-      srv.TabIndex = 7;
+      srv.TabIndex = 9;
+      // 
+      // listRecentFollows
+      // 
+      listRecentFollows.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+      listRecentFollows.FormattingEnabled = true;
+      listRecentFollows.ItemHeight = 15;
+      listRecentFollows.Location = new Point(12, 363);
+      listRecentFollows.Name = "listRecentFollows";
+      listRecentFollows.SelectionMode = SelectionMode.MultiExtended;
+      listRecentFollows.Size = new Size(196, 79);
+      listRecentFollows.TabIndex = 8;
+      // 
+      // btnBanSelectedFollows
+      // 
+      btnBanSelectedFollows.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+      btnBanSelectedFollows.Location = new Point(11, 342);
+      btnBanSelectedFollows.Name = "btnBanSelectedFollows";
+      btnBanSelectedFollows.Size = new Size(198, 23);
+      btnBanSelectedFollows.TabIndex = 7;
+      btnBanSelectedFollows.Text = "Ban selected recent follows:";
+      btnBanSelectedFollows.UseVisualStyleBackColor = true;
+      btnBanSelectedFollows.Click += btnBanSelectedFollows_Click;
       // 
       // MainForm
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
-      ClientSize = new Size(803, 453);
+      ClientSize = new Size(803, 442);
+      Controls.Add(listRecentFollows);
+      Controls.Add(btnBanSelectedFollows);
       Controls.Add(srv);
-      Controls.Add(btnBanKnownBotsInChat);
       Controls.Add(btnMassBan);
       Controls.Add(lblTwConnected);
       Controls.Add(labelChatters);
       Controls.Add(listChatters);
       Controls.Add(btnUpdateChatters);
       Controls.Add(cbFreezeChattersList);
+      Controls.Add(btnBanKnownBotsInChat);
       DoubleBuffered = true;
       Name = "MainForm";
       Text = "SimpleBot";
@@ -165,5 +195,7 @@
     private CheckBox cbFreezeChattersList;
     private Button btnBanKnownBotsInChat;
     private SongRequestView srv;
+    private ListBox listRecentFollows;
+    private Button btnBanSelectedFollows;
   }
 }
