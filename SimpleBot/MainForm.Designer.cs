@@ -132,9 +132,9 @@
       srv.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
       srv.BorderStyle = BorderStyle.FixedSingle;
       srv.Location = new Point(195, 0);
-      srv.MinimumSize = new Size(589, 423);
+      srv.MinimumSize = new Size(378, 310);
       srv.Name = "srv";
-      srv.Size = new Size(589, 423);
+      srv.Size = new Size(409, 382);
       srv.TabIndex = 9;
       // 
       // listRecentFollows
@@ -163,7 +163,7 @@
       // 
       AutoScaleDimensions = new SizeF(7F, 15F);
       AutoScaleMode = AutoScaleMode.Font;
-      ClientSize = new Size(784, 382);
+      ClientSize = new Size(604, 382);
       Controls.Add(srv);
       Controls.Add(listRecentFollows);
       Controls.Add(btnBanSelectedFollows);

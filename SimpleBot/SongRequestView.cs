@@ -5,9 +5,13 @@ namespace SimpleBot
 {
   public partial class SongRequestView : UserControl
   {
+    const string PAUSE_TEXT = "❚❚";
+    const string PLAY_TEXT = "▶";
+
     public SongRequestView()
     {
       InitializeComponent();
+      btnTogglePlayPause.Text = PAUSE_TEXT;
 
       SongRequest.NeedUpdateUI_Volume += SongRequest_NeedUpdateUI_Volume;
       SongRequest.NeedUpdateUI_SongList += SongRequest_NeedUpdateUI_SongList;
@@ -100,7 +104,7 @@ namespace SimpleBot
         bool isCurrFromPlaylist = e.CurrSong.ytVideoId == e.Playlist[e.CurrIndexToPlayInPlaylist].ytVideoId;
         lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\n{(isCurrFromPlaylist ? "" : "*")}Requested by: {e.CurrSong.ogRequesterDisplayName}";
         lblQueueSize.Text = e.Queue.Count + " in queue";
-        lblPlaylist.Text = "Playlist:\r\n" + e.Playlist.Count;
+        lblPlaylistLength.Text = "size: " + e.Playlist.Count;
 
         dgvQueueAndPlaylist.SuspendLayout();
         dgvQueueAndPlaylist.Rows.Clear();
@@ -203,7 +207,7 @@ namespace SimpleBot
     private void btnSkip_Click(object sender, EventArgs e)
     {
       SongRequest.Next();
-      btnTogglePlayPause.Text = "Pause";
+      btnTogglePlayPause.Text = PAUSE_TEXT;
     }
 
     private void btnPrev_Click(object sender, EventArgs e)
@@ -229,7 +233,7 @@ namespace SimpleBot
     private async void btnTogglePlayPause_Click(object sender, EventArgs e)
     {
       var playing = await SongRequest._yt.PauseOrResume() == "1";
-      btnTogglePlayPause.Text = playing ? "Pause" : "Play";
+      btnTogglePlayPause.Text = playing ? PAUSE_TEXT : PLAY_TEXT;
     }
 
     private void btnShowHideSettings_Click(object sender, EventArgs e)
