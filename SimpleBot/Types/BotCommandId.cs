@@ -29,8 +29,6 @@
     SongRequest_Next = 1203,
     SongRequest_GetPrev = 1204,
     SongRequest_GetCurr = 1205,
-    SongRequest_SavePrevToPlaylist = 1206,
-    SongRequest_SaveCurrToPlaylist = 1207,
     SongRequest_ShufflePlaylist = 1208,
     SongRequest_WrongSong = 1209,
     Queue_Curr = 1500,

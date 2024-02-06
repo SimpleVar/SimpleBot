@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Web.WebView2.WinForms;
+using System.Diagnostics;
 using System.Text;
 
 namespace SimpleBot
@@ -13,8 +14,11 @@ namespace SimpleBot
             {
                 Task.Run(async () =>
                 {
+                    var ytWebView = new WebView2 { Dock = DockStyle.Fill };
+                    await ytWebView.EnsureCoreWebView2Async();
+
                     Bot bot = new(); // load data
-                    await SongRequest.Init(bot, null); // TODO fix the null
+                    await SongRequest.Init(bot, ytWebView);
                     await Task.Delay(2000);
                     await SongRequest._yt.PauseOrResume();
 

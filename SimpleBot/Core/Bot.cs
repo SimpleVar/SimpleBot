@@ -470,8 +470,6 @@ namespace SimpleBot
               [BotCommandId.SongRequest_Next] = new[] { "skip", "skipsong", "nextsong" },
               [BotCommandId.SongRequest_GetPrev] = new[] { "prevsong", "lastsong" },
               [BotCommandId.SongRequest_GetCurr] = new[] { "currsong", "currentsong", "songname", "cs", "song" },
-              [BotCommandId.SongRequest_SavePrevToPlaylist] = new[] { "savecurr", "savecurrent", "savesong" },
-              [BotCommandId.SongRequest_SaveCurrToPlaylist] = new[] { "savelast", "saveprev" },
               [BotCommandId.SongRequest_ShufflePlaylist] = new[] { "shuffle" },
               [BotCommandId.SongRequest_WrongSong] = new[] { "wrongsong", "oops" },
               [BotCommandId.Queue_Curr] = new[] { "curr", "current" },
@@ -614,9 +612,6 @@ namespace SimpleBot
             var argsStr = string.Join(' ', args);
             BotCommandId cid = ParseBuiltinCommandId(cmd);
 
-            // TODO song requests
-            // TODO !worship
-            // TODO commands that change the scene like !bigcam
             switch (cid)
             {
                 case BotCommandId.ListCommands:
@@ -786,7 +781,7 @@ namespace SimpleBot
                                     return;
                                 }
                                 j++; // =
-                                     // TODO -cd cool down
+                                // TODO -cd cool down
                             }
                             else
                             {
@@ -1014,16 +1009,6 @@ namespace SimpleBot
                 case BotCommandId.SongRequest_GetCurr:
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_GetCurr);
                     SongRequest.GetCurrSong(chatter);
-                    return;
-                // TODO remove command and add to UI
-                case BotCommandId.SongRequest_SavePrevToPlaylist:
-                    if (chatter.userLevel != UserLevel.Streamer) return;
-                    SongRequest.SavePrevSongToPlaylist();
-                    return;
-                // TODO remove command and add to UI
-                case BotCommandId.SongRequest_SaveCurrToPlaylist:
-                    if (chatter.userLevel != UserLevel.Streamer) return;
-                    SongRequest.SaveCurrSongToPlaylist();
                     return;
                 // TODO remove command and add to UI
                 case BotCommandId.SongRequest_ShufflePlaylist:
