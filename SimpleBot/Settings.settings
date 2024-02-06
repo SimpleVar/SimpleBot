@@ -6,7 +6,7 @@
       <Value Profile="(Default)">42</Value>
     </Setting>
     <Setting Name="ObsWebsocketUrl" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ws://192.168.1.11:4455</Value>
+      <Value Profile="(Default)">ws://10.0.0.2:4455</Value>
     </Setting>
     <Setting Name="ObsWebsocketPassword" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
@@ -61,6 +61,12 @@
     </Setting>
     <Setting Name="MaxFollowGreetingsPerEveryFewSeconds_negativeMeansNoLimit" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">4</Value>
+    </Setting>
+    <Setting Name="LastMainFormPosition" Type="System.Drawing.Point" Scope="User">
+      <Value Profile="(Default)">0, 0</Value>
+    </Setting>
+    <Setting Name="LastMainFormSize" Type="System.Drawing.Size" Scope="User">
+      <Value Profile="(Default)">0, 0</Value>
     </Setting>
   </Settings>
 </SettingsFile>

@@ -112,7 +112,7 @@ namespace SimpleBot
       {
         var quickly = DateTime.UtcNow.Subtract(_currentRoundOpenTime).TotalMilliseconds < MS_QUICKNESS_THRESHOLD;
         var japan = chatter.SneakyJapanStats;
-        var buff = CalcBuff(japan.Exp);
+        var buff = CalcBuff(japan.Exp) + japan.NewGamePlus;
         var tagUser = FullJapanName(chatter);
         if (!_currentRoundOpen)
         {
@@ -162,7 +162,7 @@ namespace SimpleBot
         const string CONFIRM = "doit";
         if (confirmationStr != CONFIRM)
         {
-          _bot.TwSendMsg($"You may start fresh as a Weeb on NewGame+ ({chatter.SneakyJapanStats.NewGamePlus}), if you are sure send '{_bot.CMD_PREFIX}{Bot._builtinCommandsAliases[BotCommandId.SneakyJapan_NewGamePlus][0]} {CONFIRM}'", chatter);
+          _bot.TwSendMsg($"You may start fresh as a Weeb on NewGame+ ({chatter.SneakyJapanStats.NewGamePlus + 1}), if you are sure send '{_bot.CMD_PREFIX}{Bot._builtinCommandsAliases[BotCommandId.SneakyJapan_NewGamePlus][0]} {CONFIRM}'", chatter);
           return;
         }
         ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_Stats);
