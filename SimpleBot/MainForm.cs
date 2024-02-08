@@ -70,6 +70,7 @@ namespace SimpleBot
             HotkeyRegisteredHandle = this.Handle;
             RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_NEXT_TRACK);
             RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK);
+            RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE);
             RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE);
 #endif
         }
@@ -94,6 +95,9 @@ namespace SimpleBot
                     case VK_MEDIA_PREV_TRACK:
                         _ = Task.Run(SongRequest.PlaylistBackOne);
                         return;
+                    case VK_MEDIA_PLAY_PAUSE:
+                        _ = Task.Run(SongRequest.PlayPause);
+                        return;
                     case VK_PAUSE:
                         _ = Task.Run(bot.DoShowBrb);
                         return;
@@ -105,6 +109,7 @@ namespace SimpleBot
 
         const int VK_MEDIA_NEXT_TRACK = 0xB0;
         const int VK_MEDIA_PREV_TRACK = 0xB1;
+        const int VK_MEDIA_PLAY_PAUSE = 0xB3;
         const int VK_PAUSE = 0x13;
         const int WM_HOTKEY = 0x0312;
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);

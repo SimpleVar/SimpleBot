@@ -114,11 +114,6 @@ document.body.append(tag);
             return Task.CompletedTask;
         }
 
-        public Task<string> PauseOrResume()
-        {
-            return webView?.Invoke(() => webView.ExecuteScriptAsync($"pauseOrResume()").LogErr());
-        }
-
         Form _ytViewForm;
         public void ShowOrHide(IWin32Window parentWindow, Action<bool> onVisibilityChanged)
         {
@@ -164,6 +159,12 @@ document.body.append(tag);
         {
             this._lastPlayedVideoId = videoId;
             return webView?.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})").LogErr());
+        }
+
+        public async Task<bool> PauseOrResume()
+        {
+            var paused = (await webView?.Invoke(() => webView.ExecuteScriptAsync($"pauseOrResume()").LogErr())) != "1";
+            return paused;
         }
 
         private string GetIdFromUrl(string url)

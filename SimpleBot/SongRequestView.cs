@@ -15,6 +15,7 @@ namespace SimpleBot
 
       SongRequest.NeedUpdateUI_Volume += SongRequest_NeedUpdateUI_Volume;
       SongRequest.NeedUpdateUI_SongList += SongRequest_NeedUpdateUI_SongList;
+      SongRequest.NeedUpdateUI_Paused += (o, paused) => BeginInvoke(() => btnTogglePlayPause.Text = paused ? PLAY_TEXT : PAUSE_TEXT);
 
       nudMinSeconds.Value = SongRequest.SR_minDuration_inSeconds;
       nudMaxSeconds.Value = SongRequest.SR_maxDuration_inSeconds;
@@ -207,7 +208,6 @@ namespace SimpleBot
     private void btnSkip_Click(object sender, EventArgs e)
     {
       SongRequest.Next();
-      btnTogglePlayPause.Text = PAUSE_TEXT;
     }
 
     private void btnPrev_Click(object sender, EventArgs e)
@@ -232,8 +232,7 @@ namespace SimpleBot
 
     private async void btnTogglePlayPause_Click(object sender, EventArgs e)
     {
-      var playing = await SongRequest._yt.PauseOrResume() == "1";
-      btnTogglePlayPause.Text = playing ? PAUSE_TEXT : PLAY_TEXT;
+      await SongRequest.PlayPause();
     }
 
     private void btnShowHideSettings_Click(object sender, EventArgs e)
