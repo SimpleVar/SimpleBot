@@ -1,5 +1,7 @@
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
+using CharSet = System.Runtime.InteropServices.CharSet;
+using DllImportAttribute = System.Runtime.InteropServices.DllImportAttribute;
 
 namespace SimpleBot
 {
@@ -48,12 +50,16 @@ namespace SimpleBot
             base.OnResize(e);
         }
 
+        Point _initialLocation;
+        Size _initialSize;
         private async void MainForm_Load(object sender, EventArgs e)
         {
-            this.Location = Settings.Default.LastMainFormPosition;
+            Location = Settings.Default.LastMainFormPosition;
             var lastSize = Settings.Default.LastMainFormSize;
             if (!lastSize.IsEmpty)
-                this.Size = lastSize;
+                Size = lastSize;
+            _initialLocation = Location;
+            _initialSize = Size;
             _loadedPosAndSize = true;
 
             var ytWebView = new WebView2 { Dock = DockStyle.Fill };
@@ -67,15 +73,61 @@ namespace SimpleBot
             await bot.Init(ytWebView).ThrowMainThread();
 
 #if !DEBUG
-            HotkeyRegisteredHandle = this.Handle;
-            RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_NEXT_TRACK);
-            RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK);
-            RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE);
-            RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE);
+            if (Settings.Default.EnableMediaHotkeys)
+            {
+                HotkeyRegisteredHandle = this.Handle;
+                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_NEXT_TRACK);
+                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK);
+                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE);
+                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE);
+            }
 #endif
         }
 
-        #region Media Hotkeys
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            IntPtr h = GetSystemMenu(Handle, false);
+            AppendMenu(h, MF_SEPARATOR, 0xDEAD, string.Empty);
+            AppendMenu(h, MF_STRING, 0, "Re&position");
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            switch (m.Msg)
+            {
+                case WM_SYSCOMMAND:
+                    if (m.WParam == 0)
+                    {
+                        Location = _initialLocation;
+                        Size = _initialSize;
+                    }
+                    break;
+                case WM_HOTKEY:
+                    if (m.WParam.ToInt32() == 0)
+                    {
+                        switch (m.LParam >> 16)
+                        {
+                            case VK_MEDIA_NEXT_TRACK:
+                                _ = Task.Run(SongRequest.Next);
+                                return;
+                            case VK_MEDIA_PREV_TRACK:
+                                _ = Task.Run(SongRequest.PlaylistBackOne);
+                                return;
+                            case VK_MEDIA_PLAY_PAUSE:
+                                _ = Task.Run(SongRequest.PlayPause);
+                                return;
+                            case VK_PAUSE:
+                                _ = Task.Run(bot.DoShowBrb);
+                                return;
+                        }
+                    }
+                    break;
+            }
+            base.WndProc(ref m);
+        }
+
+        #region Global Hotkeys
 
         public static void UnregisterHotKeys()
         {
@@ -83,37 +135,19 @@ namespace SimpleBot
                 UnregisterHotKey(HotkeyRegisteredHandle, 0);
         }
 
-        protected override void WndProc(ref Message m)
-        {
-            if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == 0)
-            {
-                switch (m.LParam >> 16)
-                {
-                    case VK_MEDIA_NEXT_TRACK:
-                        _ = Task.Run(SongRequest.Next);
-                        return;
-                    case VK_MEDIA_PREV_TRACK:
-                        _ = Task.Run(SongRequest.PlaylistBackOne);
-                        return;
-                    case VK_MEDIA_PLAY_PAUSE:
-                        _ = Task.Run(SongRequest.PlayPause);
-                        return;
-                    case VK_PAUSE:
-                        _ = Task.Run(bot.DoShowBrb);
-                        return;
-                }
-            }
-
-            base.WndProc(ref m);
-        }
-
         const int VK_MEDIA_NEXT_TRACK = 0xB0;
         const int VK_MEDIA_PREV_TRACK = 0xB1;
         const int VK_MEDIA_PLAY_PAUSE = 0xB3;
         const int VK_PAUSE = 0x13;
         const int WM_HOTKEY = 0x0312;
-        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
-        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        const int WM_SYSCOMMAND = 0x112;
+        const int MF_STRING = 0x0;
+        const int MF_SEPARATOR = 0x800;
+        [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
+        [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        [DllImport("user32.dll")] private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool AppendMenu(IntPtr hMenu, int uFlags, int uIDNewItem, string lpNewItem);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool InsertMenu(IntPtr hMenu, int uPosition, int uFlags, int uIDNewItem, string lpNewItem);
 
         #endregion
 

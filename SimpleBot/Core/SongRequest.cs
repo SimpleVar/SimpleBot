@@ -430,8 +430,19 @@ namespace SimpleBot
             return maxVol;
         }
 
+        public static void MoveToTop(HashSet<string> videoIds)
+        {
+            _removeManySongsFromPlaylist(videoIds, true);
+        }
+
         public static void RemoveManySongsFromPlaylist(HashSet<string> videoIds)
         {
+            _removeManySongsFromPlaylist(videoIds, false);
+        }
+
+        static void _removeManySongsFromPlaylist(HashSet<string> videoIds, bool moveToTop)
+        {
+            List<Req> removedSongs = new();
             lock (_lock)
             {
                 var removesBeforeNextToPlay = 0;
@@ -442,8 +453,19 @@ namespace SimpleBot
                         removesBeforeNextToPlay++;
                 }
                 _sr.CurrIndexToPlayInPlaylist -= removesBeforeNextToPlay;
-                if (_sr.Playlist.RemoveAll(x => videoIds.Contains(x.ytVideoId)) != 0)
-                    _onSongListChange_noLock();
+                _sr.Playlist.RemoveAll(x =>
+                {
+                    if (!videoIds.Contains(x.ytVideoId))
+                        return false;
+                    removedSongs.Add(x);
+                    return true;
+                });
+                if (removedSongs.Count == 0)
+                    return;
+
+                if (moveToTop)
+                    _sr.Playlist.InsertRange(_sr.CurrIndexToPlayInPlaylist + 1, removedSongs);
+                _onSongListChange_noLock();
             }
         }
 

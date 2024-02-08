@@ -286,5 +286,17 @@ namespace SimpleBot {
                 this["LastMainFormSize"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableMediaHotkeys {
+            get {
+                return ((bool)(this["EnableMediaHotkeys"]));
+            }
+            set {
+                this["EnableMediaHotkeys"] = value;
+            }
+        }
     }
 }
