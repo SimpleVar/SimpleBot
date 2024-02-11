@@ -1,5 +1,6 @@
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
+using SimpleBot.Properties;
 using CharSet = System.Runtime.InteropServices.CharSet;
 using DllImportAttribute = System.Runtime.InteropServices.DllImportAttribute;
 
@@ -19,6 +20,7 @@ namespace SimpleBot
         {
             Get = this;
             InitializeComponent();
+            this.Icon = Resources.s_logo;
             this.ResizeRedraw = true;
 
 #if DEBUG

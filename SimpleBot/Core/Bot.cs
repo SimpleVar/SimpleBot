@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
+using SimpleBot.Properties;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -1250,6 +1251,9 @@ namespace SimpleBot
 
         public void DoShowBrb()
         {
+            _isBrbEnabled = true;
+            MainForm.Get.BeginInvoke(() => MainForm.Get.Icon = Resources.brb);
+
             string brbFile = null;
             if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
             {
@@ -1257,15 +1261,18 @@ namespace SimpleBot
                 File.WriteAllText(brbFile, "BRB");
             }
             _obs?.SetInputMute("Audio Input Capture", true);
-            _isBrbEnabled = true;
+            
             _ = Task.Run(async () =>
             {
                 var p = Cursor.Position;
                 do { await Task.Delay(1000); } while (Cursor.Position == p);
+                
+                MainForm.Get.BeginInvoke(() => MainForm.Get.Icon = Resources.s_logo);
+                _isBrbEnabled = false;
+
                 if (brbFile != null)
                     File.WriteAllText(brbFile, "");
                 _obs?.SetInputMute("Audio Input Capture", false);
-                _isBrbEnabled = false;
             });
         }
 

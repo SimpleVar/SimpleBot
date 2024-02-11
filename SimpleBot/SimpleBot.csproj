@@ -60,6 +60,10 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Resources\" />
+  </ItemGroup>
+
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Exec Command="if &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (taskkill /f /t /im $(TargetName).exe 2&gt;nul 1&gt;nul)&#xD;&#xA;Exit 0" />
   </Target>
