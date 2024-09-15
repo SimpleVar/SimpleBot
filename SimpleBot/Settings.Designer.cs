@@ -12,7 +12,7 @@ namespace SimpleBot {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.8.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.9.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -37,7 +37,7 @@ namespace SimpleBot {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("ws://10.0.0.2:4455")]
+        [global::System.Configuration.DefaultSettingValueAttribute("ws://10.0.0.3:4455")]
         public string ObsWebsocketUrl {
             get {
                 return ((string)(this["ObsWebsocketUrl"]));
@@ -296,6 +296,18 @@ namespace SimpleBot {
             }
             set {
                 this["EnableMediaHotkeys"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("20")]
+        public int TTS_volume_0_to_100 {
+            get {
+                return ((int)(this["TTS_volume_0_to_100"]));
+            }
+            set {
+                this["TTS_volume_0_to_100"] = value;
             }
         }
     }

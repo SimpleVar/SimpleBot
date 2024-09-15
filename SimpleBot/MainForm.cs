@@ -56,7 +56,10 @@ namespace SimpleBot
         Size _initialSize;
         private async void MainForm_Load(object sender, EventArgs e)
         {
-            Location = Settings.Default.LastMainFormPosition;
+            Point lastPos = Settings.Default.LastMainFormPosition;
+            if (lastPos.X < -10 || lastPos.Y < -10)
+                lastPos = Point.Empty;
+            Location = lastPos;
             var lastSize = Settings.Default.LastMainFormSize;
             if (!lastSize.IsEmpty)
                 Size = lastSize;
@@ -73,6 +76,7 @@ namespace SimpleBot
             bot.Follow += Bot_Follow;
             ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
             await bot.Init(ytWebView).ThrowMainThread();
+            Bot.Log("bot initialized");
 
 #if !DEBUG
             if (Settings.Default.EnableMediaHotkeys)
@@ -185,7 +189,7 @@ namespace SimpleBot
                     int idx = _idx - totAttempts;
                     var name = (string)listRecentFollows.Items[idx];
                     totAttempts++;
-                    if (await Ban(name, reason).ConfigureAwait(true))
+                    if (await bot.Ban(name, reason).ConfigureAwait(true))
                         totBans++;
                     else
                         totFails++;
@@ -249,39 +253,6 @@ namespace SimpleBot
             });
         }
 
-        async Task<bool> Ban(string name, string reason)
-        {
-            Bot.Log("[Ban] Attemping to ban " + name + " | reason: " + reason);
-            var success = false;
-            try
-            {
-                var uid = await bot._twApi.GetUserId(name.CanonicalUsername()).ConfigureAwait(true);
-                if (uid == null)
-                {
-                    Bot.Log("[Ban] " + name + " does not exist");
-                    return true;
-                }
-                if ((await bot._twApi.Helix.Moderation.GetBannedUsersAsync(bot.CHANNEL_ID, userIds: new() { uid })).Data.Length > 0)
-                {
-                    Bot.Log("[Ban] " + name + " already banned");
-                    return true;
-                }
-                var res = await bot._twApi.Helix.Moderation.BanUserAsync(bot.CHANNEL_ID, bot.CHANNEL_ID, new()
-                {
-                    UserId = uid,
-                    Reason = reason
-                }).ConfigureAwait(true);
-                success = res.Data.Length > 0;
-            }
-            catch (Exception ex)
-            {
-                Bot.Log("[Ban] ERROR: " + ex);
-                System.Diagnostics.Debug.WriteLine(ex);
-            }
-            Bot.Log($"[Ban] {(success ? "Banned" : "Failed to ban")} {name}");
-            return success;
-        }
-
         // https://twitchinsights.net/bots
         private async void btnMassBan_Click(object sender, EventArgs e)
         {
@@ -308,7 +279,7 @@ namespace SimpleBot
                             continue;
                         if (i != j)
                         {
-                            if (await Ban(line[i..j], reason).ConfigureAwait(true))
+                            if (await bot.Ban(line[i..j], reason).ConfigureAwait(true))
                                 totBans++;
                             else
                                 totFails++;
@@ -318,7 +289,7 @@ namespace SimpleBot
                     }
                     if (i != line.Length)
                     {
-                        if (await Ban(line[i..], reason).ConfigureAwait(true))
+                        if (await bot.Ban(line[i..], reason).ConfigureAwait(true))
                             totBans++;
                         else
                             totFails++;
@@ -384,7 +355,7 @@ namespace SimpleBot
                     string name = (knownBot[0] + "").CanonicalUsername();
                     if (name == "commanderroot" || name == "minecool_yt" || name == botNameCanonical || !users.Contains(name) || ChatActivity.IsIgnoredBot(name))
                         continue;
-                    var success = await Ban(name, $"known bot (stalkCount {stalkCount})");
+                    var success = await bot.Ban(name, $"known bot (stalkCount {stalkCount})");
                     if (success)
                         successCount++;
                 }

@@ -6,9 +6,12 @@ namespace SimpleBot
 {
   static class SetGameOrTitle
   {
-    enum KnownGame { Chess, Poker, Tetrio, GeoGuessr, Coding, JustChatting };
+    enum KnownGame { Chess, Poker, Tetrio, GeoGuessr, Coding, JustChatting, BindingOfIsaac, RocketLeague, SuperAutoPets };
     static KnownGame? TryGetKnownGame(string name) => name.ToLowerInvariant() switch
     {
+      "sap" => KnownGame.SuperAutoPets,
+      "binding" or "isaac" => KnownGame.BindingOfIsaac,
+      "rl" or "grl" => KnownGame.RocketLeague,
       "chess" or "ch" or "c" => KnownGame.Chess,
       "poker" or "p" => KnownGame.Poker,
       "tetr.io" or "tetrio" or "tetris" or "tet" or "t" => KnownGame.Tetrio,
@@ -61,6 +64,9 @@ namespace SimpleBot
         string id, name;
         switch (knownGame)
         {
+          case KnownGame.SuperAutoPets: id = "2114339342"; name = "Super Auto Pets"; break;
+          case KnownGame.BindingOfIsaac: id = "436344698"; name = "The Binding of Isaac: Afterbirth+"; break;
+          case KnownGame.RocketLeague: id = "30921"; name = "Rocket League"; break;
           case KnownGame.Chess: id = "743"; name = "Chess"; break;
           case KnownGame.Poker: id = "488190"; name = "Poker"; break;
           case KnownGame.Tetrio: id = "517447"; name = "TETR.IO"; break;
@@ -85,7 +91,7 @@ namespace SimpleBot
         g = games.FirstOrDefault(x => x.Name.Equals(query, StringComparison.InvariantCultureIgnoreCase));
         if (g == null)
         {
-          var gamesStr = string.Join(" | ", games.Select(x => x.Name).Distinct().Take(5));
+          var gamesStr = string.Join(" | ", games.Select(x => $"{x.Name} ({x.Id})").Distinct().Take(5));
           bot.TwSendMsg("Be more specific, several results: " + gamesStr, tagUser);
           return (null, null);
         }

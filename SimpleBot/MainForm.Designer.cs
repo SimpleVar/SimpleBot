@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             listChatters = new ListBox();
             labelChatters = new Label();
             btnUpdateChatters = new Button();
@@ -175,6 +176,7 @@
             Controls.Add(cbFreezeChattersList);
             Controls.Add(btnBanKnownBotsInChat);
             DoubleBuffered = true;
+            Icon = (Icon)resources.GetObject("$this.Icon");
             MinimumSize = new Size(511, 299);
             Name = "MainForm";
             Text = "SimpleBot";

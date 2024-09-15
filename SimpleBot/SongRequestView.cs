@@ -75,7 +75,7 @@ namespace SimpleBot
                 for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
                 {
                     var row = dgvQueueAndPlaylist.Rows[i];
-                    row.Visible = rgx.IsMatch((string)row.Cells[1].Value);
+                    row.Visible = rgx.IsMatch((string)row.Cells[1].Value) || (!string.IsNullOrEmpty((string)row.Cells[4].Value) && rgx.IsMatch((string)row.Cells[4].Value));
                 }
             }
             else
@@ -83,7 +83,8 @@ namespace SimpleBot
                 for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
                 {
                     var row = dgvQueueAndPlaylist.Rows[i];
-                    row.Visible = ((string)row.Cells[1].Value).Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase);
+                    row.Visible = ((string)row.Cells[1].Value).Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase)
+                               || (!string.IsNullOrEmpty((string)row.Cells[4].Value) && ((string)row.Cells[4].Value).Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase));
                 }
             }
 

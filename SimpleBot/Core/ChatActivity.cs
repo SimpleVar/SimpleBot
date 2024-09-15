@@ -45,6 +45,7 @@ namespace SimpleBot
 
     public static void Init(Bot bot)
     {
+      Bot.Log("[init] _chatActivity");
       _bot = bot;
       _ignoredBotNames = _settings.IgnoredBotUsernames.ToHashSet();
       _bot._tw.OnExistingUsersDetected += twOnExistingUsersDetected;

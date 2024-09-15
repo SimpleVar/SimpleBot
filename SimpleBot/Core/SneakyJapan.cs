@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using TwitchLib.Api.Helix.Models.Moderation.BanUser;
 
 namespace SimpleBot
 {
@@ -32,7 +31,8 @@ namespace SimpleBot
         async rid =>
       {
         if (!_bot.IsOnline) return MS_BEFORE_FIRST_ROUND;
-        if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 1).Count < 1)
+        if (!ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND)).Any(x => x.name == "milesplayzchess" || x.name == "itsqueenliv") &&
+            ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 3).Count < 3)
         {
           Bot.Log("Sneaky Japan delayed due to inactive chat");
           return MS_ROUND_DURATION;

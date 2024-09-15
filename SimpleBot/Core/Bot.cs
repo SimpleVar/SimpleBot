@@ -9,9 +9,11 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Speech.Synthesis;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using System.Windows.Interop;
 using TwitchLib.Api;
 using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
@@ -49,6 +51,7 @@ namespace SimpleBot
 
         #endregion
 
+        public SpeechSynthesizer _tts;
         public TwitchClient _tw;
         public TwitchAPI _twApi;
         public TwitchApi_MoreEdges _twApi_More;
@@ -61,9 +64,7 @@ namespace SimpleBot
         readonly ConcurrentDictionary<string, int> _redeemCounts = new(); // value = count, key = "user_id;reward_id"
         static string _rewardsKey(string userId, string rewardId) => userId + ";" + rewardId;
 
-#if !DEBUG
         static string _logFilePath;
-#endif
         bool _isBrbEnabled;
 
         public Bot()
@@ -101,6 +102,12 @@ namespace SimpleBot
             _init = true;
             await Task.Yield();
             ChatterDataMgr.Init();
+
+            _tts = new SpeechSynthesizer();
+            _tts.SetOutputToDefaultAudioDevice();
+            _tts.Volume = Math.Min(100, Settings.Default.TTS_volume_0_to_100 < 0 ? 20 : Settings.Default.TTS_volume_0_to_100);
+            _tts.SpeakCompleted += _tts_SpeakCompleted;
+            SpeechApiReflectionHelper.InjectOneCoreVoices(_tts);
 
             if (Settings.Default.obs_enabled)
             {
@@ -192,14 +199,23 @@ namespace SimpleBot
             {
                 SneakyJapan.Init(this);
                 LearnHiragana.Init(this);
+                /*
                 LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, async _ =>
                 {
                     if (!IsOnline) return;
                     if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(1200123), maxChattersNeeded: 2).Count < 2)
                         return;
                     await _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID,
-              "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
-              AnnouncementColors.Blue);
+                        "Simple Tree House https://discord.gg/48dDcAPwvD is where I chill and hang out :)",
+                        AnnouncementColors.Blue);
+                });
+                */
+                LongRunningPeriodicTask.Start(0, true, 1700069, 100039, 0, async _ =>
+                {
+                    if (!IsOnline) return;
+                    if (ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(1700069), maxChattersNeeded: 4).Count < 4)
+                        return;
+                    await _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID, "𝒮𝓅𝓇𝑒𝒶𝒹 𝓉𝒽𝑒 𝓁𝑜𝓋𝑒 <3 consider donating to 𝗦𝘁. 𝗝𝘂𝗱𝗲 𝗖𝗵𝗶𝗹𝗱𝗿𝗲𝗻'𝘀 𝗥𝗲𝘀𝗲𝗮𝗿𝗰𝗵 𝗛𝗼𝘀𝗽𝗶𝘁𝗮𝗹", AnnouncementColors.Orange);
                 });
                 /*
                 Chatter[] shoutouts = (new[]
@@ -426,8 +442,74 @@ namespace SimpleBot
             msg = $"[{DateTime.Now.ToLongTimeString()}] {msg}";
             Debug.WriteLine(msg);
 #if !DEBUG
-            File.AppendAllText(_logFilePath, msg + '\n');
+            if (_logFilePath != null)
+            {
+                File.AppendAllText(_logFilePath, msg + '\n');
+            }
 #endif
+        }
+
+        #region Speech
+
+        public record struct TTS_msg(string text, VoiceGender gender);
+        Queue<TTS_msg> _ttsQueue = new();
+        private void _tts_SpeakCompleted(object sender, SpeakCompletedEventArgs e)
+        {
+            lock (_ttsQueue)
+            {
+                _ttsQueue.Dequeue();
+                if (_ttsQueue.Count > 0)
+                    _speak(_ttsQueue.Peek());
+            }
+        }
+        public void Speak(TTS_msg msg)
+        {
+            lock (_ttsQueue)
+            {
+                _ttsQueue.Enqueue(msg);
+                if (_ttsQueue.Count == 1)
+                    _speak(msg);
+            }
+        }
+        void _speak(TTS_msg msg)
+        {
+            _tts.SelectVoiceByHints(msg.gender);
+            _tts.SpeakAsync(msg.text);
+        }
+
+        #endregion
+
+        public async Task<bool> Ban(string name, string reason)
+        {
+            Log("[Ban] Attemping to ban " + name + " | reason: " + reason);
+            var success = false;
+            try
+            {
+                var uid = await _twApi.GetUserId(name.CanonicalUsername()).ConfigureAwait(true);
+                if (uid == null)
+                {
+                    Log("[Ban] " + name + " does not exist");
+                    return true;
+                }
+                if ((await _twApi.Helix.Moderation.GetBannedUsersAsync(CHANNEL_ID, userIds: new() { uid })).Data.Length > 0)
+                {
+                    Log("[Ban] " + name + " already banned");
+                    return true;
+                }
+                var res = await _twApi.Helix.Moderation.BanUserAsync(CHANNEL_ID, CHANNEL_ID, new()
+                {
+                    UserId = uid,
+                    Reason = reason
+                }).ConfigureAwait(true);
+                success = res.Data.Length > 0;
+            }
+            catch (Exception ex)
+            {
+                Log("[Ban] ERROR: " + ex);
+                Debug.WriteLine(ex);
+            }
+            Log($"[Ban] {(success ? "Banned" : "Failed to ban")} {name}");
+            return success;
         }
 
         public void TwSendMsg(string msg, Chatter tagChatter = null)
@@ -441,7 +523,7 @@ namespace SimpleBot
 #endif
             _tw.SendMessage(_twJC, msg);
         }
-
+        
         public static readonly ReadOnlyDictionary<BotCommandId, string[]> _builtinCommandsAliases =
           new(new Dictionary<BotCommandId, string[]>()
           {
@@ -507,6 +589,10 @@ namespace SimpleBot
               ["gp"] = (BotCommandId.SetGame, "p"),
               ["gc"] = (BotCommandId.SetGame, "c"),
               ["gt"] = (BotCommandId.SetGame, "t"),
+              ["grl"] = (BotCommandId.SetGame, "rl"),
+              ["rl"] = (BotCommandId.SetGame, "rl"),
+              ["sap"] = (BotCommandId.SetGame, "sap"),
+              ["gsap"] = (BotCommandId.SetGame, "sap"),
           }
           .ToDictionary(x =>
           {
@@ -583,6 +669,14 @@ namespace SimpleBot
             msg = msg.Trim();
             if (msg.Length == 0)
                 return;
+
+            // AutoMod
+            bool susUser = e.ChatMessage.IsFirstMessage || chatter.watchtime_ms < 60000; /* 1 minute */
+            if (susUser && isSussyMsg(msg))
+            {
+                _ = Ban(chatter.name, "spam bot | newcommer link").LogErr();
+                return;
+            }
 
             // general moderation
             if (msg.Contains("BANGER", StringComparison.InvariantCulture)) TwSendMsg("It's aaameee!! MARIO");
@@ -875,7 +969,7 @@ namespace SimpleBot
                 case BotCommandId.ShowBrb:
                     if (_isBrbEnabled || chatter.userLevel != UserLevel.Streamer) return;
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.ShowBrb);
-                    DoShowBrb();
+                    _ = Task.Run(DoShowBrb).LogErr();
                     return;
 
                 // COMMON
@@ -1245,35 +1339,74 @@ namespace SimpleBot
                     _saveCustomCommands_noLock();
                 }
                 var formatted = formatResponseText(cc.Response, e.ChatMessage, chatter, args, argsStr, cc, out string error);
-                TwSendMsg(formatted ?? ($"@{chatter.DisplayName} {error}"));
+                if (error != null)
+                    TwSendMsg($"@{chatter.DisplayName} {error}");
+                if (formatted != null) // could be null when the entire response was TTS $(say)
+                    TwSendMsg(formatted);
             }
         }
 
-        public void DoShowBrb()
+        static bool isSussyMsg(string msg)
         {
-            _isBrbEnabled = true;
-            MainForm.Get.BeginInvoke(() => MainForm.Get.Icon = Resources.brb);
+            // TODO dynamic persistent growing list of autoban phrases
+            //Ch̍eap Viewers
+            return false;
+        }
 
-            string brbFile = null;
-            if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
+        [DllImport("user32.dll")]
+        static extern bool RedrawWindow(IntPtr hWnd, IntPtr rect, IntPtr hrgn, int flags);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("user32.dll")]
+        static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, int wParam, IntPtr lParam);
+
+        private const uint WM_SETICON = 0x80u;
+        private const int ICON_SMALL = 0;
+        private const int ICON_BIG = 1;
+
+        public async Task DoShowBrb()
+        {
+            try
             {
-                brbFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\brb.txt");
-                File.WriteAllText(brbFile, "BRB");
-            }
-            _obs?.SetInputMute("Audio Input Capture", true);
-            
-            _ = Task.Run(async () =>
-            {
+                _obs?.SetInputMute("Audio Input Capture", true);
+                string brbFile = null;
+                if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
+                {
+                    brbFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\brb.txt");
+                    File.WriteAllText(brbFile, "BRB");
+                }
+
+                _isBrbEnabled = true;
+                MainForm.Get.BeginInvoke(() =>
+                {
+                    MainForm.Get.Icon = Resources.brb;
+                });
+
                 var p = Cursor.Position;
                 do { await Task.Delay(1000); } while (Cursor.Position == p);
-                
-                MainForm.Get.BeginInvoke(() => MainForm.Get.Icon = Resources.s_logo);
-                _isBrbEnabled = false;
 
+                _obs?.SetInputMute("Audio Input Capture", false);
                 if (brbFile != null)
                     File.WriteAllText(brbFile, "");
-                _obs?.SetInputMute("Audio Input Capture", false);
-            });
+
+                MainForm.Get.BeginInvoke(() =>
+                {
+                    MainForm.Get.Icon = Resources.s_logo;
+                });
+                _isBrbEnabled = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         #region Custom Commands
@@ -1609,21 +1742,21 @@ namespace SimpleBot
 
                     "targetorself_name" or "targetorself.name" => args.Count == 0 ? chatter.DisplayName : ChatterDataMgr.GetOrNull(args[0].CanonicalUsername())?.DisplayName ?? args[0].CleanUsername(),
                     "targetorself_id" or "targetorself.id" => args.Count == 0 ? chatter.uid : GetUserIdOrNull(args[0]),
-                    "targetorself_game" or "targetorself.game" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.GameName ?? "<not found>",
-                    "targetorself_title" or "targetorself.title" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.Title ?? "<not found>",
+                    "targetorself_game" or "targetorself.game" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.GameName ?? "<no game>",
+                    "targetorself_title" or "targetorself.title" => (args.Count == 0 ? getChatterInfo() : getTargetInfo())?.Title ?? "<no title>",
                     "targetorself_level" or "targetorself.level" => args.Count == 0 ? chatter.userLevel.ToString() : (ChatterDataMgr.GetOrNull(args[0].CanonicalUsername())?.userLevel ?? default).ToString(),
 
                     "username" or "user_name" or "user.name" or "name" or "user" => chatter.DisplayName,
                     "userid" or "user_id" or "user.id" => chatter.uid,
-                    "usergame" or "user_game" or "user.game" => getChatterInfo()?.GameName ?? "<not found>",
-                    "usertitle" or "user_title" or "user.title" => getChatterInfo()?.Title ?? "<not found>",
+                    "usergame" or "user_game" or "user.game" => getChatterInfo()?.GameName ?? "<no game>",
+                    "usertitle" or "user_title" or "user.title" => getChatterInfo()?.Title ?? "<no title>",
                     "userlevel" or "user_level" or "user.level" => chatter.userLevel.ToString(),
 
                     "target" or "targetname" or "target.name" => ChatterDataMgr.GetOrNull(args.FirstOrDefault()?.CanonicalUsername())?.DisplayName ?? args.FirstOrDefault()?.CleanUsername() ?? "",
                     "targetid" or "target_id" or "target.id" => GetUserIdOrNull(args.FirstOrDefault()) ?? "<not found>",
                     "targetlevel" or "target_level" or "target.level" => string.IsNullOrWhiteSpace(tmp = args.FirstOrDefault()?.CanonicalUsername()) ? "" : (ChatterDataMgr.GetOrNull(tmp)?.userLevel ?? default).ToString(),
-                    "targetgame" or "target_game" or "target.game" => getTargetInfo()?.GameName ?? "<not found>",
-                    "targettitle" or "target_title" or "target.title" => getTargetInfo()?.Title ?? "<not found>",
+                    "targetgame" or "target_game" or "target.game" => getTargetInfo()?.GameName ?? "<no game>",
+                    "targettitle" or "target_title" or "target.title" => getTargetInfo()?.Title ?? "<no title>",
 
                     "randomchatter" => ChatActivity.RandomChatter(),
                     "time" => DateTime.Now.ToShortTimeString(),
@@ -1646,6 +1779,20 @@ namespace SimpleBot
                 error = $"Missing {missingParticles[..^MISSING_PARTICLE_SEP.Length]}";
                 return null;
             }
+
+            // separate written/spoken parts - e.g: hi $(user) bla $(say) hello $(user)
+            int idxSay = formatted.IndexOf("$(say)");
+            if (idxSay != -1)
+            {
+                var speech = formatted[(idxSay + "$(say)".Length)..].Trim();
+                if (!string.IsNullOrWhiteSpace(speech))
+                    Speak(new(speech, VoiceGender.Male)); // TODO parameterize $(say)
+
+                formatted = formatted[0..idxSay].Trim();
+                if (string.IsNullOrWhiteSpace(formatted))
+                    formatted = null;
+            }
+
             error = null;
             return formatted;
         }

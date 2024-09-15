@@ -74,20 +74,23 @@ namespace SimpleBot
             webView.CoreWebView2.DOMContentLoaded += async (o, e) =>
             {
                 // inject the html source into google so that youtube likes as and plays embedded videos
-                _ = await webView.ExecuteScriptAsync(@"document.body.innerHTML = '<div id=player></div>';
-const scr = document.createElement('script');
-scr.innerHTML = `function onYouTubeIframeAPIReady() {
+                _ = await webView.ExecuteScriptAsync(@"
+const sanitizer = trustedTypes.createPolicy('foo', {createHTML:x=>x, createScriptURL:x=>x});
+document.body.innerHTML = sanitizer.createHTML('<div id=player></div>')
+document.documentElement.style.overflow = 'hidden'
+window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady
+function onYouTubeIframeAPIReady() {
   const player = new YT.Player('player', {
     height: '100%',
     width: '100%',
     playerVars: { 'autoplay': 1, 'controls': 1 },
     events: {
-      'onReady': () => { document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
+      'onReady': () => { debugger; setInterval(checkAds, 50); document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
       'onStateChange': e => { if (e.data === 0) skipMe(); },
-      'onError': e => { console.log('ytErr', e); if (e.data < 101) skipMe(); }
+      'onError': e => { console.log('ytErr', e); if (e.data !== 2 && e.data < 101) skipMe(); }
     }
   });
-}`
+}
 function pauseOrResume() {
   const p = document.ytPlayer;
   if (!p) return;
@@ -95,22 +98,57 @@ function pauseOrResume() {
   p[isPaused ? 'playVideo' : 'pauseVideo']();
   return +isPaused;
 }
+let beQuite = false
 function skipMe() {
+  if (beQuite) return
   window.chrome.webview.postMessage(document._loadedVideoId ?? '');
 }
+function waitMs(ms) { return new Promise(res => setTimeout(res, ms)); }
 function playNow(id, start, end) {
+  start = start ? +start : 0
+  beQuite = true
   document._loadedVideoId = id
-  document.ytPlayer?.loadVideoById(id, start, end)
+  ;(async () => {
+    document.ytPlayer?.loadVideoById(id, 1, 2)
+    await waitMs(50)
+    document.ytPlayer?.loadVideoById(id, 2, 3)
+    await waitMs(50)
+    beQuite = false
+    document.ytPlayer?.loadVideoById(id, start, end)
+  })();
 }
-document.body.append(scr);
+let currVolume = 0
+function doSetVolume(vol) {
+  vol = +vol
+  currVolume = vol
+  document.ytPlayer?.setVolume(vol)
+}
+function checkAds() {
+  const p = document.ytPlayer
+  if (!p) return
+  const skipAd = player.contentWindow.document.body.querySelector('.ytp-ad-skip-button-text')
+  const hasAds = skipAd || player.contentWindow.document.body.querySelector('.ytp-ad-player-overlay')
+  if (!hasAds) {
+    p.setVolume(currVolume)
+    return
+  }
+  p.setVolume(0)
+  skipAd?.click()
+}
+while (document.styleSheets.length) document.styleSheets[0].ownerNode.remove()
+document.body.style.margin = '0';
+document.body.style.width = '100vw';
+document.body.style.height = '100vh';
 document.body.style.overflow = 'hidden';
+document.body.style.backgroundColor = '#111';
 const tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
+tag.src = sanitizer.createScriptURL('https://www.youtube.com/iframe_api')
 document.body.append(tag);
 ");
             };
             // now we are in an https secured url, Muahahahahahahahhahahahqahahahadhahssdhakjsawdg
-            webView.Invoke(() => webView.CoreWebView2.Navigate("https://www.google.com"));
+            // specifically in youtube domain, to be able to read into the iframe bullshit, and look for elements (mini-ad-block)
+            webView.Invoke(() => webView.CoreWebView2.Navigate("https://www.youtube.com"));
             return Task.CompletedTask;
         }
 
@@ -152,7 +190,7 @@ document.body.append(tag);
 
         public Task<string> SetVolume(int volume)
         {
-            return webView?.Invoke(() => webView.ExecuteScriptAsync($"document.ytPlayer?.setVolume({volume})").LogErr());
+            return webView?.Invoke(() => webView.ExecuteScriptAsync($"doSetVolume({volume})").LogErr());
         }
 
         public Task<string> PlayVideo(string videoId, int startSeconds = 0, int endSeconds = 0)

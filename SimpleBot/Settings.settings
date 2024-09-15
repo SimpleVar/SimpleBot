@@ -6,7 +6,7 @@
       <Value Profile="(Default)">42</Value>
     </Setting>
     <Setting Name="ObsWebsocketUrl" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ws://10.0.0.2:4455</Value>
+      <Value Profile="(Default)">ws://10.0.0.3:4455</Value>
     </Setting>
     <Setting Name="ObsWebsocketPassword" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
@@ -70,6 +70,9 @@
     </Setting>
     <Setting Name="EnableMediaHotkeys" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="TTS_volume_0_to_100" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">20</Value>
     </Setting>
   </Settings>
 </SettingsFile>

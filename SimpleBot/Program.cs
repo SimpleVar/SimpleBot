@@ -80,7 +80,9 @@ namespace SimpleBot
                 ChatterDataMgr._save_noLock();
                 Bot.Log("[final words] application exit");
             };
+
             Application.Run(new MainForm());
         }
+
     }
 }
