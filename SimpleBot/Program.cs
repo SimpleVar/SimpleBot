@@ -1,4 +1,8 @@
-﻿using Microsoft.Web.WebView2.WinForms;
+﻿using Google.Apis.Auth.OAuth2;
+using Google.Apis.Sheets.v4;
+using Google.Apis.Sheets.v4.Data;
+using Microsoft.Web.WebView2.WinForms;
+using SimpleBot.v2;
 using System.Diagnostics;
 using System.Text;
 
@@ -9,6 +13,11 @@ namespace SimpleBot
         [STAThread]
         static void Main()
         {
+            //CommandCompiler._test_parseString();
+            var h = CommandCompiler.CreateHandler("${ meep } Hi $query $m $$ ", 0);
+            h(new() { name = "I'm a real person" }, "boop", ["a", "b", "c"], "a b c");
+            return;
+
             // Refetch data in playlist (SongRequest) -- remember that changes won't save in Debug mode
             if (false)
             {

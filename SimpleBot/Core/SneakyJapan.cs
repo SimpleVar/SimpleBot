@@ -150,6 +150,16 @@ namespace SimpleBot
       }
     }
 
+    public static void MinusOneExp(Chatter chatter)
+    {
+        if (chatter.SneakyJapanStats.Exp == 1)
+            return;
+        ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_MinusOneExp);
+        chatter.SneakyJapanStats.Exp--;
+        ChatterDataMgr.Update();
+        _bot.TwSendMsg($"{FullJapanName(chatter)} lost one exp point to the void");
+    }
+
     public static void Do_NewGamePlus_Unchecked(Chatter chatter, string confirmationStr)
     {
       lock (_lock)
@@ -168,6 +178,7 @@ namespace SimpleBot
         ChatActivity.IncCommandCounter(chatter, BotCommandId.SneakyJapan_Stats);
         chatter.SneakyJapanStats.Exp -= 10000;
         chatter.SneakyJapanStats.NewGamePlus++;
+        ChatterDataMgr.Update();
         _bot.TwSendMsg($"svBEST peepoJapan MercyWing1 {FullJapanName(chatter)} MercyWing2 Congratulations on achieving NewGame+ ({chatter.SneakyJapanStats.NewGamePlus})!! peepoJapan SeemsGood peepoJapan PartyHat Kreygasm");
       }
     }

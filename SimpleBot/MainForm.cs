@@ -1,8 +1,14 @@
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 using SimpleBot.Properties;
+using System.Diagnostics;
+using System.Windows.Controls;
+using System.Windows.Forms;
 using CharSet = System.Runtime.InteropServices.CharSet;
 using DllImportAttribute = System.Runtime.InteropServices.DllImportAttribute;
+
+// TODO
+// 2. liked songs
 
 namespace SimpleBot
 {
@@ -67,6 +73,9 @@ namespace SimpleBot
             _initialSize = Size;
             _loadedPosAndSize = true;
 
+            listChatters.DrawMode = DrawMode.OwnerDrawFixed;
+            listChatters.DrawItem += ListChatters_DrawItem;
+
             var ytWebView = new WebView2 { Dock = DockStyle.Fill };
             await ytWebView.EnsureCoreWebView2Async();
 
@@ -78,7 +87,6 @@ namespace SimpleBot
             await bot.Init(ytWebView).ThrowMainThread();
             Bot.Log("bot initialized");
 
-#if !DEBUG
             if (Settings.Default.EnableMediaHotkeys)
             {
                 HotkeyRegisteredHandle = this.Handle;
@@ -86,6 +94,32 @@ namespace SimpleBot
                 RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK);
                 RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE);
                 RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE);
+            }
+        }
+
+        private void ListChatters_DrawItem(object sender, DrawItemEventArgs e)
+        {
+#if DEBUG
+            try
+            {
+#endif
+                if (e.Index < 0) return;
+                e.DrawBackground();
+                bool selected = ((e.State & DrawItemState.Selected) == DrawItemState.Selected);
+                var chatter = (Chatter)listChatters.Items[e.Index];
+                var backcolor = selected ? SystemColors.MenuHighlight : Color.FromArgb(255, Color.FromArgb(chatter.groupColorRGB));
+                float oneOver255 = 0.003921568627451f;
+                var brightness = backcolor.R * oneOver255 * .2126f + backcolor.G * oneOver255 * .7152f + backcolor.B * oneOver255 * .0722f;
+                var forecolor = brightness > .5f ? Color.Black : Color.White;
+
+                e.Graphics.FillRectangle(new SolidBrush(backcolor), e.Bounds);
+                e.Graphics.DrawString(chatter.DisplayName, e.Font, new SolidBrush(forecolor), e.Bounds, StringFormat.GenericDefault);
+                e.DrawFocusRectangle();
+#if DEBUG
+            }
+            catch (Exception ex)
+            {
+                Debugger.Break();
             }
 #endif
         }
@@ -125,6 +159,8 @@ namespace SimpleBot
                                 return;
                             case VK_PAUSE:
                                 _ = Task.Run(bot.DoShowBrb);
+#if !DEBUG
+#endif
                                 return;
                         }
                     }
@@ -240,8 +276,18 @@ namespace SimpleBot
         {
             if (_freezeChattersList)
                 return;
-            var users = ChatActivity.UsersInChat();
-            Array.Sort(users);
+            RefreshUsersInChat();
+        }
+
+        void RefreshUsersInChat()
+        {
+            var users = ChatActivity.UsersInChat().Select(ChatterDataMgr.Get).ToArray();
+            Array.Sort(users, (a, b) =>
+            {
+                int cmp = (b.groupColorRGB - a.groupColorRGB);
+                if (cmp != 0) return cmp;
+                return a.name.CompareTo(b.name);
+            });
             this.Invoke(() =>
             {
                 labelChatters.Text = $"Chatters: ({users.Length})";
@@ -315,7 +361,11 @@ namespace SimpleBot
 
         private void listChatters_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Control && e.KeyCode == Keys.C)
+            if (e.KeyCode == Keys.Escape)
+            {
+                listChatters.ClearSelected();
+            }
+            else if (e.Control && e.KeyCode == Keys.C)
             {
                 Clipboard.SetText(string.Join("\r\n", listChatters.SelectedItems.Cast<object>()));
             }
@@ -374,6 +424,22 @@ namespace SimpleBot
             {
                 btnBanKnownBotsInChat.Enabled = true;
             }
+        }
+
+        private void toolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            if (listChatters.SelectedItems.Count == 0)
+                return;
+
+            colorDialog.Color = Color.FromArgb(255, Color.FromArgb(((Chatter)listChatters.SelectedItems[0]).groupColorRGB));
+            if (colorDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            var color = colorDialog.Color;
+            foreach (Chatter chatter in listChatters.SelectedItems)
+                chatter.groupColorRGB = color.ToArgb();
+            ChatterDataMgr.Update();
+            RefreshUsersInChat();
         }
 
         struct KnownBots

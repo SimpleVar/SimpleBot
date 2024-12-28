@@ -1,4 +1,8 @@
-﻿using Microsoft.Web.WebView2.WinForms;
+﻿using Google.Apis.Auth.OAuth2;
+using Google.Apis.Sheets.v4;
+using Google.Apis.Sheets.v4.Data;
+using Microsoft.Web.WebView2.WinForms;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Serialization;
@@ -40,6 +44,8 @@ namespace SimpleBot
                 var link = includeLink ? " https://youtu.be/" + ytVideoId : string.Empty;
                 return tit + dur + link;
             }
+
+            public string ToCompactJson() => $"[{(ytVideoId ?? "").ToJson()}, {(title ?? "").ToJson()}, {(author ?? "").ToJson()}, {(duration ?? "").ToJson()}, {(ogRequesterDisplayName ?? "").ToJson()}]";
         }
         enum ReqResult { OK, AlreadyExists, TooManyOngoingRequestsByUser, TooShort, TooLong, FailedToParseDuration };
         public class SRData
@@ -56,6 +62,9 @@ namespace SimpleBot
                 Queue ??= new();
                 return this;
             }
+
+            static ushort nextStamp = (ushort)DateTime.UtcNow.Ticks;
+            public string ToJsonData() => $"{{\"stamp\": {nextStamp++}, \"curr\": {CurrSong.ToCompactJson()}, \"queue\": [{string.Join(',', Queue.Select(x => x.ToCompactJson()))}]}}";
         }
 
         /// <summary>
@@ -138,6 +147,51 @@ namespace SimpleBot
         static readonly object _lock = new();
         public static Youtube _yt;
 
+        // online song list:
+        static readonly string _sheetId = "1XLZGNW9p1Xy_vPt_wDjNOKBk1zi4Qp5-gCW4OjdQDw4";
+        static SheetsService _sheets;
+        static Thread _threadSheetUpdates;
+        static string _pendingSheetUpdate;
+
+        static void UpdateSheet(string jsonData)
+        {
+            lock (_threadSheetUpdates)
+            {
+                _pendingSheetUpdate = jsonData;
+            }
+        }
+
+        static void _updateSheetJob()
+        {
+            while (true)
+            {
+                while (_pendingSheetUpdate == null)
+                    Thread.Sleep(250);
+
+                string jsonData = null;
+                lock (_threadSheetUpdates)
+                {
+                    jsonData = _pendingSheetUpdate;
+                    _pendingSheetUpdate = null;
+                }
+                if (jsonData == null)
+                    continue;
+
+                try
+                {
+                    // https://docs.google.com/spreadsheets/d/1XLZGNW9p1Xy_vPt_wDjNOKBk1zi4Qp5-gCW4OjdQDw4/gviz/tq?tqx=out:json&range=A1
+                    var req = _sheets.Spreadsheets.Values.Update(new ValueRange() { Values = [[jsonData]] }, _sheetId, "A1");
+                    req.IncludeValuesInResponse = false;
+                    req.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+                    var res = req.Execute();
+                }
+                catch (Exception ex)
+                {
+                    Bot.Log($"[SongRequest::{nameof(UpdateSheet)}] ERROR " + ex);
+                }
+            }
+        }
+
         static void _beValid_noLock()
         {
             SR_maxVolume = Math.Max(0, Math.Min(100, _SR_maxVolume));
@@ -182,6 +236,13 @@ namespace SimpleBot
         {
             Bot.Log("[init] _yt");
             _bot = bot;
+            _sheets = new SheetsService(new Google.Apis.Services.BaseClientService.Initializer
+            {
+                HttpClientInitializer = (await GoogleCredential.FromFileAsync(Settings.Default.GoogleCredentialsFile, CancellationToken.None).ThrowMainThread())
+                    .CreateScoped("https://www.googleapis.com/auth/spreadsheets")
+            });
+            _threadSheetUpdates = new Thread(_updateSheetJob) { IsBackground = true };
+            _threadSheetUpdates.Start();
             _yt = new Youtube();
             _yt.RegisterInitialized(async (o, e) =>
             {
@@ -232,7 +293,9 @@ namespace SimpleBot
         {
             _save_noLock();
             FireNeedUpdateUI_SongList_noLock();
-            // TODO save changes to github
+#if !DEBUG
+            UpdateSheet(_sr.ToJsonData());
+#endif
         }
 
         static void _saveToPlaylist_noLock(Req req)

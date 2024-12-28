@@ -25,19 +25,7 @@ namespace SimpleBot {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("42")]
-        public string GitToken {
-            get {
-                return ((string)(this["GitToken"]));
-            }
-            set {
-                this["GitToken"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("ws://10.0.0.3:4455")]
+        [global::System.Configuration.DefaultSettingValueAttribute("ws://10.0.0.6:4455")]
         public string ObsWebsocketUrl {
             get {
                 return ((string)(this["ObsWebsocketUrl"]));
@@ -308,6 +296,19 @@ namespace SimpleBot {
             }
             set {
                 this["TTS_volume_0_to_100"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\SimpleVar\\Desktop\\Stream_Base\\mybestsingleeverprojectforlife-fbb99258bb3" +
+            "6.json")]
+        public string GoogleCredentialsFile {
+            get {
+                return ((string)(this["GoogleCredentialsFile"]));
+            }
+            set {
+                this["GoogleCredentialsFile"] = value;
             }
         }
     }

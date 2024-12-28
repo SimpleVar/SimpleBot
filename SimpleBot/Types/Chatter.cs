@@ -6,6 +6,7 @@
     public UserLevel userLevel;
     public long watchtime_ms;
     public Dictionary<BotCommandId, int> cmd_counters;
+    public int groupColorRGB;
     
     private string displayName;
     private SneakyJapanStats sneakyJapanStats;

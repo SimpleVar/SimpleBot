@@ -2,11 +2,8 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="SimpleBot" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="GitToken" Type="System.String" Scope="User">
-      <Value Profile="(Default)">42</Value>
-    </Setting>
     <Setting Name="ObsWebsocketUrl" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ws://10.0.0.3:4455</Value>
+      <Value Profile="(Default)">ws://10.0.0.6:4455</Value>
     </Setting>
     <Setting Name="ObsWebsocketPassword" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
@@ -73,6 +70,9 @@
     </Setting>
     <Setting Name="TTS_volume_0_to_100" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">20</Value>
+    </Setting>
+    <Setting Name="GoogleCredentialsFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\SimpleVar\Desktop\Stream_Base\mybestsingleeverprojectforlife-fbb99258bb36.json</Value>
     </Setting>
   </Settings>
 </SettingsFile>

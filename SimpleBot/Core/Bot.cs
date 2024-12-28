@@ -37,7 +37,7 @@ namespace SimpleBot
         public readonly string USER_DATA_FOLDER = Settings.Default.UserDataFolder;
         // There is an implicit assumption that CMD_PREFIX begins with a non-alphanumeric char
 #if DEBUG
-    public readonly string CMD_PREFIX = "!" + Settings.Default.CommandsPrefix;
+        public readonly string CMD_PREFIX = "!" + Settings.Default.CommandsPrefix;
 #else
         public readonly string CMD_PREFIX = Settings.Default.CommandsPrefix;
 #endif
@@ -210,6 +210,7 @@ namespace SimpleBot
                         AnnouncementColors.Blue);
                 });
                 */
+                /*
                 LongRunningPeriodicTask.Start(0, true, 1700069, 100039, 0, async _ =>
                 {
                     if (!IsOnline) return;
@@ -217,6 +218,7 @@ namespace SimpleBot
                         return;
                     await _twApi_More.Announce(CHANNEL_ID, CHANNEL_ID, "𝒮𝓅𝓇𝑒𝒶𝒹 𝓉𝒽𝑒 𝓁𝑜𝓋𝑒 <3 consider donating to 𝗦𝘁. 𝗝𝘂𝗱𝗲 𝗖𝗵𝗶𝗹𝗱𝗿𝗲𝗻'𝘀 𝗥𝗲𝘀𝗲𝗮𝗿𝗰𝗵 𝗛𝗼𝘀𝗽𝗶𝘁𝗮𝗹", AnnouncementColors.Orange);
                 });
+                */
                 /*
                 Chatter[] shoutouts = (new[]
                 {
@@ -275,7 +277,7 @@ namespace SimpleBot
             }
 #endif
 
-            _tw.Connect();
+        _tw.Connect();
 
             #region Events Sub
 
@@ -485,7 +487,7 @@ namespace SimpleBot
             var success = false;
             try
             {
-                var uid = await _twApi.GetUserId(name.CanonicalUsername()).ConfigureAwait(true);
+                var uid = await _twApi.GetUserIdAsync(name.CanonicalUsername()).ConfigureAwait(true);
                 if (uid == null)
                 {
                     Log("[Ban] " + name + " does not exist");
@@ -547,7 +549,7 @@ namespace SimpleBot
               [BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems" },
               [BotCommandId.FollowAge] = new[] { "followage" },
               [BotCommandId.WatchTime] = new[] { "watchtime" },
-              [BotCommandId.SongRequest_Request] = new[] { "sr" },
+              [BotCommandId.SongRequest_Request] = new[] { "sr", "דר" },
               [BotCommandId.SongRequest_Volume] = new[] { "volume", "vol" },
               [BotCommandId.SongRequest_SetVolumeMax] = new[] { "setmaxvolume" },
               [BotCommandId.SongRequest_Next] = new[] { "skip", "skipsong", "nextsong" },
@@ -567,6 +569,7 @@ namespace SimpleBot
               [BotCommandId.SneakyJapan_Stats] = new[] { "japanstats" },
               [BotCommandId.SneakyJapan_NewGamePlus] = new[] { "japanplus" },
               [BotCommandId.SneakyJapan_Leaderboard] = new[] { "japanlead", "japanleaderboard" },
+              [BotCommandId.SneakyJapan_MinusOneExp] = new[] { "japanlose1exp", "lose1exp" },
               [BotCommandId.Celsius2Fahrenheit] = new[] { "c2f" },
               [BotCommandId.Fahrenheit2Celsius] = new[] { "f2c" },
               [BotCommandId.CoinFlip] = new[] { "coin", "coinflip" },
@@ -620,7 +623,7 @@ namespace SimpleBot
             var name = dirtyName?.CanonicalUsername();
             if (string.IsNullOrWhiteSpace(name))
                 return null;
-            return _twApi.GetUserId(name).GetAwaiter().GetResult();
+            return _twApi.GetUserIdAsync(name).GetAwaiter().GetResult();
         }
 
         private void twOnMessage(object sender, OnMessageReceivedArgs e)
@@ -681,6 +684,7 @@ namespace SimpleBot
             // general moderation
             if (msg.Contains("BANGER", StringComparison.InvariantCulture)) TwSendMsg("It's aaameee!! MARIO");
             else if (msg.Contains("wow", StringComparison.InvariantCultureIgnoreCase)) TwSendMsg("Mama mia");
+            else if (msg.Contains("mama mia", StringComparison.InvariantCultureIgnoreCase)) TwSendMsg("Wow");
 
             if (msg.Length == CMD_PREFIX.Length ||
                 char.IsWhiteSpace(msg[CMD_PREFIX.Length]) ||
@@ -1028,7 +1032,7 @@ namespace SimpleBot
                         else
                         {
                             var dur = DateTime.UtcNow.Subtract(DateTime.Parse(res[0].followed_at));
-                            TwSendMsg(tagUser + " is following for " + dur.Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
+                            TwSendMsg(tagUser + " is following for " + dur.Humanize(4, true, maxUnit: Humanizer.TimeUnit.Year, minUnit: Humanizer.TimeUnit.Minute));
                         }
                     }).LogErr();
                     return;
@@ -1046,7 +1050,7 @@ namespace SimpleBot
                                 return;
                             }
                         }
-                        TwSendMsg(target.DisplayName + " has a watchtime of " + TimeSpan.FromMilliseconds(target.watchtime_ms).Humanize(4, true, maxUnit: Humanizer.Localisation.TimeUnit.Year, minUnit: Humanizer.Localisation.TimeUnit.Minute));
+                        TwSendMsg(target.DisplayName + " has a watchtime of " + TimeSpan.FromMilliseconds(target.watchtime_ms).Humanize(4, true, maxUnit: Humanizer.TimeUnit.Year, minUnit: Humanizer.TimeUnit.Minute));
                         return;
                     }
                 case BotCommandId.GetRedeemCounter:
@@ -1186,6 +1190,9 @@ namespace SimpleBot
                     return;
                 case BotCommandId.SneakyJapan_Leaderboard:
                     SneakyJapan.Do_Leaderboard();
+                    return;
+                case BotCommandId.SneakyJapan_MinusOneExp:
+                    SneakyJapan.MinusOneExp(chatter);
                     return;
                 case BotCommandId.Celsius2Fahrenheit:
                     {
@@ -1346,10 +1353,15 @@ namespace SimpleBot
             }
         }
 
+        static readonly string[] _sussyBussies = ["cheapviewers", "bestviewers"];
         static bool isSussyMsg(string msg)
         {
-            // TODO dynamic persistent growing list of autoban phrases
-            //Ch̍eap Viewers
+            if (!msg.Contains('.'))
+                return false;
+            var canon = TextUtils.FoldToASCII(msg, new StringBuilder(msg.Length), char.IsLetter).ToString();
+            for (int i = 0; i < _sussyBussies.Length; i++)
+                if (canon.Contains(_sussyBussies[i], StringComparison.InvariantCultureIgnoreCase))
+                    return true;
             return false;
         }
 
@@ -1387,7 +1399,7 @@ namespace SimpleBot
                 _isBrbEnabled = true;
                 MainForm.Get.BeginInvoke(() =>
                 {
-                    MainForm.Get.Icon = Resources.brb;
+                    MainForm.Get.Icon = Properties.Resources.brb;
                 });
 
                 var p = Cursor.Position;
@@ -1399,7 +1411,7 @@ namespace SimpleBot
 
                 MainForm.Get.BeginInvoke(() =>
                 {
-                    MainForm.Get.Icon = Resources.s_logo;
+                    MainForm.Get.Icon = Properties.Resources.s_logo;
                 });
                 _isBrbEnabled = false;
             }

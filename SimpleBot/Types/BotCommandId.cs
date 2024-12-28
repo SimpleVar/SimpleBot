@@ -43,6 +43,7 @@
     SneakyJapan_Stats = 2001,
     SneakyJapan_NewGamePlus = 2002,
     SneakyJapan_Leaderboard = 2003,
+    SneakyJapan_MinusOneExp = 2004,
     Celsius2Fahrenheit = 2900,
     Fahrenheit2Celsius = 2901,
     CoinFlip = 3010,

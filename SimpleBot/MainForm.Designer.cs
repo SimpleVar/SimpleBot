@@ -28,8 +28,11 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             listChatters = new ListBox();
+            ctxChatters = new ContextMenuStrip(components);
+            toolStripMenuItem1 = new ToolStripMenuItem();
             labelChatters = new Label();
             btnUpdateChatters = new Button();
             lblTwConnected = new Label();
@@ -41,11 +44,14 @@
             srv = new SongRequestView();
             listRecentFollows = new ListBox();
             btnBanSelectedFollows = new Button();
+            colorDialog = new ColorDialog();
+            ctxChatters.SuspendLayout();
             SuspendLayout();
             // 
             // listChatters
             // 
             listChatters.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
+            listChatters.ContextMenuStrip = ctxChatters;
             listChatters.IntegralHeight = false;
             listChatters.ItemHeight = 15;
             listChatters.Location = new Point(0, 48);
@@ -55,6 +61,20 @@
             listChatters.TabIndex = 5;
             listChatters.SelectedIndexChanged += listChatters_SelectedIndexChanged;
             listChatters.KeyDown += listChatters_KeyDown;
+            // 
+            // ctxChatters
+            // 
+            ctxChatters.Items.AddRange(new ToolStripItem[] { toolStripMenuItem1 });
+            ctxChatters.Name = "ctxChatters";
+            ctxChatters.ShowImageMargin = false;
+            ctxChatters.Size = new Size(98, 26);
+            // 
+            // toolStripMenuItem1
+            // 
+            toolStripMenuItem1.Name = "toolStripMenuItem1";
+            toolStripMenuItem1.Size = new Size(97, 22);
+            toolStripMenuItem1.Text = "Set Color";
+            toolStripMenuItem1.Click += toolStripMenuItem1_Click;
             // 
             // labelChatters
             // 
@@ -160,6 +180,11 @@
             btnBanSelectedFollows.UseVisualStyleBackColor = true;
             btnBanSelectedFollows.Click += btnBanSelectedFollows_Click;
             // 
+            // colorDialog
+            // 
+            colorDialog.AnyColor = true;
+            colorDialog.SolidColorOnly = true;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -181,6 +206,7 @@
             Name = "MainForm";
             Text = "SimpleBot";
             Load += MainForm_Load;
+            ctxChatters.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -199,5 +225,8 @@
     private SongRequestView srv;
     private ListBox listRecentFollows;
     private Button btnBanSelectedFollows;
-  }
+        private ColorDialog colorDialog;
+        private ContextMenuStrip ctxChatters;
+        private ToolStripMenuItem toolStripMenuItem1;
+    }
 }
