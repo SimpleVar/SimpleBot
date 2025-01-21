@@ -44,6 +44,7 @@
     SneakyJapan_NewGamePlus = 2002,
     SneakyJapan_Leaderboard = 2003,
     SneakyJapan_MinusOneExp = 2004,
+    SneakyJapan_SetReqChatActivity = 2005,
     Celsius2Fahrenheit = 2900,
     Fahrenheit2Celsius = 2901,
     CoinFlip = 3010,

@@ -4,6 +4,9 @@ namespace SimpleBot
 {
     static class TextUtils
     {
+        public static string FoldToASCII(ReadOnlySpan<char> input, Predicate<char> filter = null)
+            => FoldToASCII(input, new StringBuilder(), filter).ToString();
+
         // altered https://github.com/apache/lucenenet/blob/master/src/Lucene.Net.Analysis.Common/Analysis/Miscellaneous/ASCIIFoldingFilter.cs
         public static StringBuilder FoldToASCII(ReadOnlySpan<char> input, StringBuilder output, Predicate<char> filter = null)
         {

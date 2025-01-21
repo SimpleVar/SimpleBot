@@ -121,7 +121,7 @@
             label2.AutoSize = true;
             label2.Location = new Point(3, 33);
             label2.Name = "label2";
-            label2.Size = new Size(132, 15);
+            label2.Size = new Size(131, 15);
             label2.TabIndex = 2;
             label2.Text = "Max duration (seconds)";
             // 
@@ -340,7 +340,6 @@
             dgvQueueAndPlaylist.Name = "dgvQueueAndPlaylist";
             dgvQueueAndPlaylist.ReadOnly = true;
             dgvQueueAndPlaylist.RowHeadersVisible = false;
-            dgvQueueAndPlaylist.RowTemplate.Height = 25;
             dgvQueueAndPlaylist.SelectionMode = DataGridViewSelectionMode.CellSelect;
             dgvQueueAndPlaylist.ShowCellToolTips = false;
             dgvQueueAndPlaylist.Size = new Size(300, 97);
@@ -466,7 +465,7 @@
             cbIsSearchRegex.AutoSize = true;
             cbIsSearchRegex.Location = new Point(182, 4);
             cbIsSearchRegex.Name = "cbIsSearchRegex";
-            cbIsSearchRegex.Size = new Size(58, 19);
+            cbIsSearchRegex.Size = new Size(57, 19);
             cbIsSearchRegex.TabIndex = 2;
             cbIsSearchRegex.Text = "Regex";
             cbIsSearchRegex.UseVisualStyleBackColor = true;

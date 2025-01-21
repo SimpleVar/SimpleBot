@@ -1,22 +1,26 @@
-﻿using Google.Apis.Auth.OAuth2;
-using Google.Apis.Sheets.v4;
-using Google.Apis.Sheets.v4.Data;
-using Microsoft.Web.WebView2.WinForms;
+﻿using Microsoft.Web.WebView2.WinForms;
+using OBSWebsocketDotNet;
 using SimpleBot.v2;
 using System.Diagnostics;
 using System.Text;
 
 namespace SimpleBot
 {
+
     internal static class Program
     {
         [STAThread]
         static void Main()
         {
+            /*
+            var bot = new BotV2();
+            Application.Run();
+
             //CommandCompiler._test_parseString();
             var h = CommandCompiler.CreateHandler("${ meep } Hi $query $m $$ ", 0);
             h(new() { name = "I'm a real person" }, "boop", ["a", "b", "c"], "a b c");
             return;
+            */
 
             // Refetch data in playlist (SongRequest) -- remember that changes won't save in Debug mode
             if (false)
@@ -26,7 +30,7 @@ namespace SimpleBot
                     var ytWebView = new WebView2 { Dock = DockStyle.Fill };
                     await ytWebView.EnsureCoreWebView2Async();
 
-                    Bot bot = new(); // load data
+                    Bot bot = new(null); // load data
                     await SongRequest.Init(bot, ytWebView);
                     await Task.Delay(2000);
                     await SongRequest._yt.PauseOrResume();
@@ -92,6 +96,5 @@ namespace SimpleBot
 
             Application.Run(new MainForm());
         }
-
     }
 }

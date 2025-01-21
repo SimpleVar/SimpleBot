@@ -34,6 +34,14 @@ namespace SimpleBot
 #endif
         }
 
+        public void DebugMsg(string msg)
+        {
+            Invoke(() =>
+            {
+                txtDbg.Text = msg + "\r\n" + txtDbg.Text;
+            });
+        }
+
         protected override void OnMove(EventArgs e)
         {
 #if !DEBUG
@@ -79,7 +87,7 @@ namespace SimpleBot
             var ytWebView = new WebView2 { Dock = DockStyle.Fill };
             await ytWebView.EnsureCoreWebView2Async();
 
-            bot = new Bot();
+            bot = new Bot(this);
             bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;
             bot.BadCredentials += Bot_BadCredentials;
             bot.Follow += Bot_Follow;
@@ -90,10 +98,13 @@ namespace SimpleBot
             if (Settings.Default.EnableMediaHotkeys)
             {
                 HotkeyRegisteredHandle = this.Handle;
-                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_NEXT_TRACK);
-                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK);
-                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE);
-                RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE);
+                bool ok =
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_NEXT_TRACK) &
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK) &
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE) &
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE);
+                if (!ok)
+                    Bot.Log("[ERR] Failed to register global hotkeys");
             }
         }
 
@@ -158,8 +169,8 @@ namespace SimpleBot
                                 _ = Task.Run(SongRequest.PlayPause);
                                 return;
                             case VK_PAUSE:
-                                _ = Task.Run(bot.DoShowBrb);
 #if !DEBUG
+                                _ = Task.Run(bot.DoShowBrb);
 #endif
                                 return;
                         }

@@ -7,6 +7,12 @@ namespace SimpleBot
 {
     static class Extensions
     {
+        public static void ReplaceWithLastAndPop<T>(this List<T> src, int index)
+        {
+            src[index] = src[^1];
+            src.RemoveAt(src.Count - 1);
+        }
+
         public static string ReduceWhitespace(this string s)
         {
             StringBuilder res = null;

@@ -4,6 +4,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
 using SimpleBot.Properties;
+using SimpleBot.v2;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -56,6 +57,7 @@ namespace SimpleBot
         public TwitchAPI _twApi;
         public TwitchApi_MoreEdges _twApi_More;
         public OBSWebsocket _obs;
+        public MainForm _mainForm;
 
         public bool IsOnline { get; private set; } = true;
         public string CHANNEL_ID { get; private set; }
@@ -67,7 +69,7 @@ namespace SimpleBot
         static string _logFilePath;
         bool _isBrbEnabled;
 
-        public Bot()
+        public Bot(MainForm mainForm)
         {
 #if !DEBUG
             _logFilePath = Application.StartupPath + "logs\\";
@@ -76,6 +78,7 @@ namespace SimpleBot
 #endif
 
             Log("[init] Bot ctor");
+            _mainForm = mainForm;
             _twJC = new JoinedChannel(CHANNEL);
 
             // Load persistent data
@@ -113,6 +116,7 @@ namespace SimpleBot
             {
                 Log("[init] _obs");
                 _obs = new OBSWebsocket();
+                v2.Bot._obs = _obs;
                 _obs.Connected += (o, e) =>
                 {
                     Log("[OBS] connected"); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
@@ -137,8 +141,7 @@ namespace SimpleBot
                 };
                 _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
                 //_obs.SetInputSettings("VS", new JObject { { "text", "LETS FUCKING GO" } });
-                // TODO test around obs disconnecting or not existing on init
-                // TODO? when obs process closes, stop being a bot and maybe close -- _obs.ExitStarted
+                // TODO test around obs disconnecting or not existing on init, or closing and bot remain opens (should see indiciation at least)
             }
 
             Log("[init] _tw");
@@ -197,6 +200,7 @@ namespace SimpleBot
             ChatActivity.Init(this);
             if (Settings.Default.enable_all_SimpleVar_systems)
             {
+                CoinPokerTables.Enabled = true;
                 SneakyJapan.Init(this);
                 LearnHiragana.Init(this);
                 /*
@@ -254,12 +258,17 @@ namespace SimpleBot
                 string IDE_PROC_NAME = "devenv";
                 string IDE_OBS_ITEM_NAME = "VS";
 #endif
+                // BUG: just check that obs browser source should is named "Browser"!
                 ForegroundWinUtil.ForgroundWindowChanged += (o, e) =>
                 {
+                    // ignore popped-out chat window
                     var TWITCH_CHAT_TITLE = CHANNEL + " - Chat - Twitch";
-                    var shouldShowVS = e.procName == IDE_PROC_NAME;
-                    if (!shouldShowVS && (e.procName != "brave" || e.title.StartsWith(TWITCH_CHAT_TITLE)))
+                    if (e.procName == "brave" && e.title.StartsWith(TWITCH_CHAT_TITLE))
                         return;
+                    // ignore any process besides browser and VS
+                    if (e.procName != "brave" && e.procName != IDE_PROC_NAME)
+                        return;
+                    var shouldShowVS = e.procName == IDE_PROC_NAME;
                     if (isVsVisible == shouldShowVS)
                         return;
                     isVsVisible = shouldShowVS;
@@ -277,7 +286,7 @@ namespace SimpleBot
             }
 #endif
 
-        _tw.Connect();
+            _tw.Connect();
 
             #region Events Sub
 
@@ -310,26 +319,25 @@ namespace SimpleBot
                     return;
                 Log("[twEventSub] starting to listen to events");
                 // subscribe to events https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
-                var evSubs = new[]
-          {
-          new TwEventSubReq(1, "channel.channel_points_custom_reward_redemption.add").Cond("broadcaster_user_id", CHANNEL_ID),
-          new TwEventSubReq(2, "channel.follow").Cond("broadcaster_user_id", CHANNEL_ID).Cond("moderator_user_id", CHANNEL_ID),
-          new TwEventSubReq(1, "channel.subscribe").Cond("broadcaster_user_id", CHANNEL_ID),
-          new TwEventSubReq(1, "channel.subscription.gift").Cond("broadcaster_user_id", CHANNEL_ID),
-          new TwEventSubReq(1, "channel.subscription.message").Cond("broadcaster_user_id", CHANNEL_ID),
-          new TwEventSubReq(1, "channel.cheer").Cond("broadcaster_user_id", CHANNEL_ID),
-          new TwEventSubReq(1, "channel.raid").Cond("to_broadcaster_user_id", CHANNEL_ID),
-          new TwEventSubReq(1, "channel.charity_campaign.donate").Cond("broadcaster_user_id", CHANNEL_ID),
-              };
+                var evSubs = new[] {
+                    new TwEventSubReq(1, "channel.channel_points_custom_reward_redemption.add").Cond("broadcaster_user_id", CHANNEL_ID),
+                    new TwEventSubReq(2, "channel.follow").Cond("broadcaster_user_id", CHANNEL_ID).Cond("moderator_user_id", CHANNEL_ID),
+                    new TwEventSubReq(1, "channel.subscribe").Cond("broadcaster_user_id", CHANNEL_ID),
+                    new TwEventSubReq(1, "channel.subscription.gift").Cond("broadcaster_user_id", CHANNEL_ID),
+                    new TwEventSubReq(1, "channel.subscription.message").Cond("broadcaster_user_id", CHANNEL_ID),
+                    new TwEventSubReq(1, "channel.cheer").Cond("broadcaster_user_id", CHANNEL_ID),
+                    new TwEventSubReq(1, "channel.raid").Cond("to_broadcaster_user_id", CHANNEL_ID),
+                    new TwEventSubReq(1, "channel.charity_campaign.donate").Cond("broadcaster_user_id", CHANNEL_ID),
+                };
                 foreach (var evSub in evSubs)
                 {
                     var res = await _twApi.Helix.EventSub.CreateEventSubSubscriptionAsync(
-                evSub.type,
-                evSub.version + "",
-                evSub.conditions,
-                EventSubTransportMethod.Websocket,
-                twEventSub.SessionId
-              ).ThrowMainThread().ConfigureAwait(true);
+                        evSub.type,
+                        evSub.version + "",
+                        evSub.conditions,
+                        EventSubTransportMethod.Websocket,
+                        twEventSub.SessionId
+                      ).ThrowMainThread().ConfigureAwait(true);
                     Debug.WriteLine("[twEventSub INIT] " + res.ToJson());
                 }
                 Log("[twEventSub] listening to all events successfuly");
@@ -354,6 +362,7 @@ namespace SimpleBot
                 {
                     case "FIRST":
                         TwSendMsg($"Nice. @{ev.UserName}");
+                        ObsSetFirst(ev.UserName);
                         break;
                     case "Japan":
                         TwSendMsg("Japan, baby!");
@@ -387,6 +396,7 @@ namespace SimpleBot
             {
                 var ev = e.Notification.Payload.Event;
                 Log(ev.IsAnonymous ? $"[cheer] ANON ANON {ev.Bits} x{ev.Message}" : $"[cheer] {ev.UserId} {ev.UserName} {ev.Bits} msg:{ev.Message}");
+                ObsSetLastCheer(ev.Bits, ev.UserName);
                 // TODO
             };
             twEventSub.ChannelRaid += (o, e) =>
@@ -570,6 +580,7 @@ namespace SimpleBot
               [BotCommandId.SneakyJapan_NewGamePlus] = new[] { "japanplus" },
               [BotCommandId.SneakyJapan_Leaderboard] = new[] { "japanlead", "japanleaderboard" },
               [BotCommandId.SneakyJapan_MinusOneExp] = new[] { "japanlose1exp", "lose1exp" },
+              [BotCommandId.SneakyJapan_SetReqChatActivity] = new[] { "japanactivity" },
               [BotCommandId.Celsius2Fahrenheit] = new[] { "c2f" },
               [BotCommandId.Fahrenheit2Celsius] = new[] { "f2c" },
               [BotCommandId.CoinFlip] = new[] { "coin", "coinflip" },
@@ -647,13 +658,16 @@ namespace SimpleBot
             if (!IsOnline && chatter.userLevel != UserLevel.Streamer) return;
 
             // TODO use nicknames and mgr for display names and stuff
-
             var msg = e.ChatMessage.Message;
-            // handle redeems that have input
-            if (e.ChatMessage.CustomRewardId == "536092ba-85bb-4df8-bd15-286410fe96c6") // Change stream title
+            if (e.ChatMessage.CustomRewardId != null)
             {
-                _ = SetGameOrTitle.SetTitle(this, chatter, msg).LogErr();
-                return;
+                //Log(chatter.DisplayName + " redeemed " + e.ChatMessage.CustomRewardId);
+                // handle redeems that have input
+                if (e.ChatMessage.CustomRewardId == "536092ba-85bb-4df8-bd15-286410fe96c6") // Change stream title
+                {
+                    _ = SetGameOrTitle.SetTitle(this, chatter, msg).LogErr();
+                    return;
+                }
             }
 
             // 7tv or bttv are adding "\U000e0000" to duplicate messages, so remove some junk
@@ -1194,6 +1208,17 @@ namespace SimpleBot
                 case BotCommandId.SneakyJapan_MinusOneExp:
                     SneakyJapan.MinusOneExp(chatter);
                     return;
+                case BotCommandId.SneakyJapan_SetReqChatActivity:
+                    if (chatter.userLevel != UserLevel.Streamer) return;
+                    {
+                        var v = int.TryParse(args.Count > 0 ? args[0] : "", out int x) ? x : 0;
+                        if (v < 1) v = 1;
+                        Settings.Default.SneakyJapan_RequiredChatActivity = v;
+                        Settings.Default.Save();
+                        SneakyJapan.reqChatActivity = v;
+                        TwSendMsg("SeemsGood", chatter);
+                    }
+                    return;
                 case BotCommandId.Celsius2Fahrenheit:
                     {
                         ChatActivity.IncCommandCounter(chatter, BotCommandId.Celsius2Fahrenheit);
@@ -1384,10 +1409,66 @@ namespace SimpleBot
         private const int ICON_SMALL = 0;
         private const int ICON_BIG = 1;
 
-        public async Task DoShowBrb()
+        public void ObsSetLastCheer(int bits, string displayName)
         {
+#if DEBUG
+            return;
+#endif
+            displayName ??= "Anonymous";
+            Log($"[info] setting 'last cheer': {displayName} :: {bits}");
             try
             {
+                if (_obs == null || !_obs.IsConnected)
+                    Log("[ERR] Could not set 'last cheer' obs label - obs is disconnected");
+                if (string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
+                {
+                    Log("[ERR] Could not set 'last cheer' obs label - empty user data folder");
+                    return;
+                }
+
+                File.WriteAllText(
+                    Path.Combine(USER_DATA_FOLDER, "obs_labels\\last_cheer.txt"),
+                    $"Cheer of the Week: TODO\r\nLast Cheer: {displayName} - {bits}");
+            }
+            catch (Exception ex)
+            {
+                Log("[ERR] " + ex);
+            }
+        }
+
+        public void ObsSetFirst(string displayName)
+        {
+#if DEBUG
+            return;
+#endif
+            Log("[info] setting 'first': " + displayName);
+            try
+            {
+                if (_obs == null || !_obs.IsConnected)
+                    Log("[ERR] Could not set 'first' obs label - obs is disconnected");
+                if (string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
+                {
+                    Log("[ERR] Could not set 'first' obs label - empty user data folder");
+                    return;
+                }
+
+                var firstFile = Path.Combine(USER_DATA_FOLDER, "obs_labels\\first.txt");
+                File.WriteAllText(firstFile, "First: " + displayName);
+            }
+            catch (Exception ex)
+            {
+                Log("[ERR] " + ex);
+            }
+        }
+
+        public async Task DoShowBrb()
+        {
+            Log("[info] DoShowBrb - start");
+            try
+            {
+                if (_obs == null || !_obs.IsConnected)
+                    Log("[ERR] Could not show BRB - obs is disconnected");
+
                 _obs?.SetInputMute("Audio Input Capture", true);
                 string brbFile = null;
                 if (!string.IsNullOrWhiteSpace(USER_DATA_FOLDER))
@@ -1404,6 +1485,7 @@ namespace SimpleBot
 
                 var p = Cursor.Position;
                 do { await Task.Delay(1000); } while (Cursor.Position == p);
+                Log("[info] DoShowBrb - end");
 
                 _obs?.SetInputMute("Audio Input Capture", false);
                 if (brbFile != null)
@@ -1417,7 +1499,8 @@ namespace SimpleBot
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                Log("[ERR] DoShowBrb :: " + ex);
+                Debugger.Break();
             }
         }
 
@@ -1770,6 +1853,7 @@ namespace SimpleBot
                     "targetgame" or "target_game" or "target.game" => getTargetInfo()?.GameName ?? "<no game>",
                     "targettitle" or "target_title" or "target.title" => getTargetInfo()?.Title ?? "<no title>",
 
+                    "randompercents" => Rand.R.Next(1, 101) + "%",
                     "randomchatter" => ChatActivity.RandomChatter(),
                     "time" => DateTime.Now.ToShortTimeString(),
                     "count" or "counter" => (customCmd?.TotalTimesUsed).ToString() ?? "",

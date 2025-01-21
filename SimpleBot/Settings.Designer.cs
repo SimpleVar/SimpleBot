@@ -25,7 +25,7 @@ namespace SimpleBot {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("ws://10.0.0.6:4455")]
+        [global::System.Configuration.DefaultSettingValueAttribute("ws://10.0.0.2:4455")]
         public string ObsWebsocketUrl {
             get {
                 return ((string)(this["ObsWebsocketUrl"]));
@@ -309,6 +309,18 @@ namespace SimpleBot {
             }
             set {
                 this["GoogleCredentialsFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("3")]
+        public int SneakyJapan_RequiredChatActivity {
+            get {
+                return ((int)(this["SneakyJapan_RequiredChatActivity"]));
+            }
+            set {
+                this["SneakyJapan_RequiredChatActivity"] = value;
             }
         }
     }

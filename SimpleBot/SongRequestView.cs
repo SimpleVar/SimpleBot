@@ -70,12 +70,21 @@ namespace SimpleBot
                 col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             }
 
+            string getTitle(DataGridViewRow row) => TextUtils.FoldToASCII((string)row.Cells[1].Value);
+            string getAuthor(DataGridViewRow row) => TextUtils.FoldToASCII((string)row.Cells[2].Value);
+            string getRequestedBy(DataGridViewRow row) => TextUtils.FoldToASCII((string)row.Cells[4].Value);
+
             if (rgx != null)
             {
                 for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
                 {
                     var row = dgvQueueAndPlaylist.Rows[i];
-                    row.Visible = rgx.IsMatch((string)row.Cells[1].Value) || (!string.IsNullOrEmpty((string)row.Cells[4].Value) && rgx.IsMatch((string)row.Cells[4].Value));
+                    row.Visible = new[]
+                    {
+                        getTitle(row),
+                        getAuthor(row),
+                        getRequestedBy(row)
+                    }.Any(x => !string.IsNullOrWhiteSpace(x) && rgx.IsMatch(x));
                 }
             }
             else
@@ -83,8 +92,12 @@ namespace SimpleBot
                 for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
                 {
                     var row = dgvQueueAndPlaylist.Rows[i];
-                    row.Visible = ((string)row.Cells[1].Value).Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase)
-                               || (!string.IsNullOrEmpty((string)row.Cells[4].Value) && ((string)row.Cells[4].Value).Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase));
+                    row.Visible = new[]
+                    {
+                        getTitle(row),
+                        getAuthor(row),
+                        getRequestedBy(row)
+                    }.Any(x => !string.IsNullOrWhiteSpace(x) && x.Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase));
                 }
             }
 

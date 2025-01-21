@@ -20,6 +20,7 @@ namespace SimpleBot
 
         public WebView2 webView;
         public event EventHandler<string> VideoEnded = delegate { };
+        public event EventHandler<(string vidId, string syncUTC)> VideoStarted = delegate { };
 
         private readonly object _webViewInitLock = new();
         public bool IsWebViewInitialized { get; private set; }
@@ -54,21 +55,25 @@ namespace SimpleBot
             webView = existingWebView;
             webView.WebMessageReceived += (o, e) =>
             {
-                switch (e.WebMessageAsJson)
+                var msg = e.WebMessageAsJson[1..^1]; // removes quotes from string value
+                if (msg == "loaded baby")
                 {
-                    case "\"loaded baby\"":
-                        if (!IsWebViewInitialized)
-                        {
-                            lock (_webViewInitLock)
-                            {
-                                IsWebViewInitialized = true;
-                                WebViewInitialized.Invoke(this, null);
-                            }
-                        }
-                        break;
-                    default:
-                        VideoEnded.Invoke(this, e.WebMessageAsJson[1..^1]); // removes quotes from string values
-                        break;
+                    if (IsWebViewInitialized)
+                        return;
+                    lock (_webViewInitLock)
+                    {
+                        IsWebViewInitialized = true;
+                        WebViewInitialized.Invoke(this, null);
+                    }
+                }
+                else if (msg.StartsWith("[sync] "))
+                {
+                    var parts = msg.Split(' '); // sync <vidId> <syncUTC>
+                    VideoStarted.Invoke(this, (parts[1], parts[2]));
+                }
+                else
+                {
+                    VideoEnded.Invoke(this, msg);
                 }
             };
             webView.CoreWebView2.DOMContentLoaded += async (o, e) =>
@@ -79,6 +84,7 @@ const sanitizer = trustedTypes.createPolicy('foo', {createHTML:x=>x, createScrip
 document.body.innerHTML = sanitizer.createHTML('<div id=player></div>')
 document.documentElement.style.overflow = 'hidden'
 window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady
+let syncId = undefined
 function onYouTubeIframeAPIReady() {
   const player = new YT.Player('player', {
     height: '100%',
@@ -86,7 +92,15 @@ function onYouTubeIframeAPIReady() {
     playerVars: { 'autoplay': 1, 'controls': 1 },
     events: {
       'onReady': () => { debugger; setInterval(checkAds, 50); document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
-      'onStateChange': e => { if (e.data === 0) skipMe(); },
+      'onStateChange': e => {
+        if (e.data === 0) skipMe();
+        if (e.data !== 1) return
+        const currId = e.target?.getVideoData()?.video_id
+        if (currId !== syncId) {
+          syncId = currId
+          window.chrome.webview.postMessage('[sync] ' + currId + ' ' + Date.now());
+        }
+      },
       'onError': e => { console.log('ytErr', e); if (e.data !== 2 && e.data < 101) skipMe(); }
     }
   });
@@ -109,10 +123,7 @@ function playNow(id, start, end) {
   beQuite = true
   document._loadedVideoId = id
   ;(async () => {
-    document.ytPlayer?.loadVideoById(id, 1, 2)
-    await waitMs(50)
-    document.ytPlayer?.loadVideoById(id, 2, 3)
-    await waitMs(50)
+    //document.ytPlayer?.loadVideoById(id, 1, 2); await waitMs(50); document.ytPlayer?.loadVideoById(id, 2, 3); await waitMs(50)
     beQuite = false
     document.ytPlayer?.loadVideoById(id, start, end)
   })();

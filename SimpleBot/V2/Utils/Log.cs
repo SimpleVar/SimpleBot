@@ -14,7 +14,7 @@ namespace SimpleBot.v2
             _logFilePath = Application.StartupPath + "logs_dbg\\";
 #endif
             Directory.CreateDirectory(_logFilePath);
-            _logFilePath += $"{DateTime.Now:s}.txt";
+            _logFilePath += $"{DateTime.Now:s}.txt".Replace(':', '_');
         }
 
         [System.Diagnostics.Conditional("DEBUG")]

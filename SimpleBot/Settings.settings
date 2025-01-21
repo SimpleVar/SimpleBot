@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="ObsWebsocketUrl" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ws://10.0.0.6:4455</Value>
+      <Value Profile="(Default)">ws://10.0.0.2:4455</Value>
     </Setting>
     <Setting Name="ObsWebsocketPassword" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
@@ -73,6 +73,9 @@
     </Setting>
     <Setting Name="GoogleCredentialsFile" Type="System.String" Scope="User">
       <Value Profile="(Default)">C:\Users\SimpleVar\Desktop\Stream_Base\mybestsingleeverprojectforlife-fbb99258bb36.json</Value>
+    </Setting>
+    <Setting Name="SneakyJapan_RequiredChatActivity" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">3</Value>
     </Setting>
   </Settings>
 </SettingsFile>

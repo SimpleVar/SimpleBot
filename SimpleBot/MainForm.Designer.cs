@@ -45,6 +45,7 @@
             listRecentFollows = new ListBox();
             btnBanSelectedFollows = new Button();
             colorDialog = new ColorDialog();
+            txtDbg = new TextBox();
             ctxChatters.SuspendLayout();
             SuspendLayout();
             // 
@@ -57,7 +58,7 @@
             listChatters.Location = new Point(0, 48);
             listChatters.Name = "listChatters";
             listChatters.SelectionMode = SelectionMode.MultiExtended;
-            listChatters.Size = new Size(196, 168);
+            listChatters.Size = new Size(196, 128);
             listChatters.TabIndex = 5;
             listChatters.SelectedIndexChanged += listChatters_SelectedIndexChanged;
             listChatters.KeyDown += listChatters_KeyDown;
@@ -101,7 +102,7 @@
             lblTwConnected.ForeColor = SystemColors.GrayText;
             lblTwConnected.Location = new Point(0, 8);
             lblTwConnected.Name = "lblTwConnected";
-            lblTwConnected.Size = new Size(113, 15);
+            lblTwConnected.Size = new Size(114, 15);
             lblTwConnected.TabIndex = 1;
             lblTwConnected.Text = "Twitch connecting...";
             // 
@@ -112,7 +113,7 @@
             // btnMassBan
             // 
             btnMassBan.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnMassBan.Location = new Point(-1, 239);
+            btnMassBan.Location = new Point(-1, 199);
             btnMassBan.Name = "btnMassBan";
             btnMassBan.Size = new Size(198, 40);
             btnMassBan.TabIndex = 7;
@@ -140,7 +141,7 @@
             // btnBanKnownBotsInChat
             // 
             btnBanKnownBotsInChat.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnBanKnownBotsInChat.Location = new Point(-1, 214);
+            btnBanKnownBotsInChat.Location = new Point(-1, 174);
             btnBanKnownBotsInChat.Name = "btnBanKnownBotsInChat";
             btnBanKnownBotsInChat.Size = new Size(198, 23);
             btnBanKnownBotsInChat.TabIndex = 6;
@@ -163,16 +164,17 @@
             listRecentFollows.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             listRecentFollows.FormattingEnabled = true;
             listRecentFollows.ItemHeight = 15;
-            listRecentFollows.Location = new Point(0, 302);
+            listRecentFollows.Location = new Point(0, 262);
+            listRecentFollows.Margin = new Padding(0);
             listRecentFollows.Name = "listRecentFollows";
             listRecentFollows.SelectionMode = SelectionMode.MultiExtended;
-            listRecentFollows.Size = new Size(196, 79);
+            listRecentFollows.Size = new Size(196, 34);
             listRecentFollows.TabIndex = 9;
             // 
             // btnBanSelectedFollows
             // 
             btnBanSelectedFollows.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnBanSelectedFollows.Location = new Point(-1, 281);
+            btnBanSelectedFollows.Location = new Point(-1, 241);
             btnBanSelectedFollows.Name = "btnBanSelectedFollows";
             btnBanSelectedFollows.Size = new Size(198, 23);
             btnBanSelectedFollows.TabIndex = 8;
@@ -185,11 +187,25 @@
             colorDialog.AnyColor = true;
             colorDialog.SolidColorOnly = true;
             // 
+            // txtDbg
+            // 
+            txtDbg.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            txtDbg.BorderStyle = BorderStyle.FixedSingle;
+            txtDbg.Location = new Point(0, 296);
+            txtDbg.Margin = new Padding(0);
+            txtDbg.MaxLength = 3276700;
+            txtDbg.Multiline = true;
+            txtDbg.Name = "txtDbg";
+            txtDbg.Size = new Size(196, 85);
+            txtDbg.TabIndex = 10;
+            txtDbg.WordWrap = false;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(534, 381);
+            Controls.Add(txtDbg);
             Controls.Add(srv);
             Controls.Add(listRecentFollows);
             Controls.Add(btnBanSelectedFollows);
@@ -228,5 +244,6 @@
         private ColorDialog colorDialog;
         private ContextMenuStrip ctxChatters;
         private ToolStripMenuItem toolStripMenuItem1;
+        private TextBox txtDbg;
     }
 }

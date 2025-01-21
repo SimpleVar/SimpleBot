@@ -16,7 +16,8 @@ namespace SimpleBot
     static long _currentRoundId;
     static bool _currentRoundOpen;
     static DateTime _currentRoundOpenTime;
-    static readonly List<Chatter> _currentPlayers = new();
+    static readonly List<Chatter> _currentPlayers = [];
+    public static int reqChatActivity = 3;
 
     public static void Init(Bot bot)
     {
@@ -26,13 +27,14 @@ namespace SimpleBot
 #if DEBUG
       return;
 #endif
+      reqChatActivity = Settings.Default.SneakyJapan_RequiredChatActivity;
       _currentRoundId = long.TryParse(Settings.Default.SneakyJapanRound, out var sjr) ? sjr : 1;
       _task = LongRunningPeriodicTask.Start(_currentRoundId, true, MS_AFTER_ROUND, MS_BEFORE_FIRST_ROUND, MS_BEFORE_FIRST_ROUND,
         async rid =>
       {
         if (!_bot.IsOnline) return MS_BEFORE_FIRST_ROUND;
         if (!ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND)).Any(x => x.name == "milesplayzchess" || x.name == "itsqueenliv") &&
-            ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: 3).Count < 3)
+            ChatActivity.GetActiveChatters(TimeSpan.FromMilliseconds(MS_AFTER_ROUND), maxChattersNeeded: reqChatActivity).Count < reqChatActivity)
         {
           Bot.Log("Sneaky Japan delayed due to inactive chat");
           return MS_ROUND_DURATION;

@@ -1,8 +1,7 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using OBSWebsocketDotNet;
+using System.Collections.Concurrent;
 using TwitchLib.Api;
 using TwitchLib.Api.Core;
-using TwitchLib.Api.Helix.Models.Channels.GetChannelInformation;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
@@ -10,51 +9,35 @@ using TwitchLib.Communication.Models;
 
 namespace SimpleBot.v2
 {
-    class BotV2
+    class Bot
     {
-        public static BotV2 ONE {  get; private set; }
+        public static Bot ONE {  get; private set; }
 
         public readonly string Channel = Settings.Default.Channel;
         public readonly string BotName = Settings.Default.TwitchBotUsername;
         public readonly string UserDataFolder = Settings.Default.UserDataFolder;
         public readonly string CmdPrefix = Settings.Default.CommandsPrefix;
 
-        // TODO
-        public class ChatterDataMgr
-        {
-            public Chatter GetOrNull(string canonicalName) => null;
-            public Chatter RandomChatter() => null;
-        }
-        public readonly ChatterDataMgr chatters;
-        public readonly TwitchAPI tw;
-        public readonly TwitchClient _tw;
+        public string UserPath(string dir) => Path.Combine(UserDataFolder, dir);
 
         public string ChannelId { get; private set; }
         public string BotId { get; private set; }
+        public bool IsStreaming { get; private set; } = true; // TODO
         public bool IsTwitchConnected { get; private set; }
-
         public event Action<bool> TwitchConnectionChange = delegate { };
 
+        public readonly TwitchAPI tw;
+        public readonly TwitchClient _tw;
+        public static OBSWebsocket _obs; // TODO
+        public readonly ChatActivity chatActivity;
+        public readonly Chatters chatters;
+        public readonly Commands commands;
+
         readonly JoinedChannel _twJC; // fake object with no data for quick TwSendMessage
-        readonly BlockingCollection<ChatMessage> _msgQueue = new();
+        readonly BlockingCollection<ChatMessage> _msgQueue = [];
         readonly Thread _msgProcessing;
 
-        public class CommandHandler
-        {
-            public delegate void Callback(Chatter chatter, string cmdName, List<string> args, string argsStr);
-            public const string OWNER_EVERYONE = null;
-            public const string OWNER_BUILTIN = "";
-           
-            public readonly string owner; // "username123" = can by managed only by username123 and streamer
-            public readonly Callback action;
-            public readonly string actionStr;
-            public readonly List<string> aliases;
-            public UserLevel minUserLevel;
-            public List<string> allowedUsernames;
-        }
-        readonly Dictionary<string, CommandHandler> _cmdHandlers; // alias1 -> X, alias2 -> X
-
-        public BotV2()
+        public Bot()
         {
             if (ONE != null) throw new ApplicationException();
             ONE = this;
@@ -105,6 +88,12 @@ namespace SimpleBot.v2
                         }
                     }
                 }) { IsBackground = true };
+
+                Directory.CreateDirectory(UserDataFolder);
+                chatActivity = new(this);
+                chatters = new(this);
+                commands = new();
+
                 _msgProcessing.Start();
             }
             catch (Exception ex)
@@ -127,13 +116,15 @@ namespace SimpleBot.v2
 
         private void twOnMessage(ChatMessage msg)
         {
+            Chatter chatter = chatActivity._OnMessage(msg);
+            return;
             // TODO
             string cmdName = "";
-            CommandHandler handler = null;
+            Commands handler = null;
 
             try
             {
-                handler.action(null, null, null, null);
+                //handler.action(null, null, null, null);
                 ;// ChatActivity.IncCommandCounter(null, 0);
             }
             catch (Exception ex)
@@ -141,5 +132,7 @@ namespace SimpleBot.v2
                 Log.Err($"Command '{cmdName}' threw an exception: " + ex);
             }
         }
+
+
     }
 }

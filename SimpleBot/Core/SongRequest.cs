@@ -19,7 +19,7 @@ namespace SimpleBot
 
             const string DASHES = "‑-‐‑‒–—―﹘﹣－"; // "‑\u002D\u2010\u2011\u2012\u2013\u2014\u2015\uFE58\uFE63\uFF0D"
 
-            public string FullTitle()
+            public readonly string FullTitle()
             {
                 bool inclAuthor = true;
                 if (!string.IsNullOrEmpty(author))
@@ -37,7 +37,7 @@ namespace SimpleBot
                 return inclAuthor ? title + " - " + author : title;
             }
 
-            public string ToLongString(bool includeLink = true, bool includeDuration = true)
+            public readonly string ToLongString(bool includeLink = true, bool includeDuration = true)
             {
                 var tit = FullTitle();
                 var dur = includeDuration ? " (" + duration + ")" : string.Empty;
@@ -45,7 +45,8 @@ namespace SimpleBot
                 return tit + dur + link;
             }
 
-            public string ToCompactJson() => $"[{(ytVideoId ?? "").ToJson()}, {(title ?? "").ToJson()}, {(author ?? "").ToJson()}, {(duration ?? "").ToJson()}, {(ogRequesterDisplayName ?? "").ToJson()}]";
+            public readonly string ToCompactJson() => $"[{(ytVideoId ?? "").ToJson()}, {(title ?? "").ToJson()}, {(author ?? "").ToJson()}, {(duration ?? "").ToJson()}, {(ogRequesterDisplayName ?? "").ToJson()}]";
+            public readonly string[] ToFields() => [ytVideoId ?? "", title ?? "", author ?? "", duration ?? "", ogRequesterDisplayName ?? ""];
         }
         enum ReqResult { OK, AlreadyExists, TooManyOngoingRequestsByUser, TooShort, TooLong, FailedToParseDuration };
         public class SRData
@@ -55,6 +56,7 @@ namespace SimpleBot
             public int CurrIndexToPlayInPlaylist;
             public Req PrevSong;
             public Req CurrSong;
+            public string SyncUTC; // The time in which the current song started playing
 
             public SRData BeValid()
             {
@@ -64,7 +66,7 @@ namespace SimpleBot
             }
 
             static ushort nextStamp = (ushort)DateTime.UtcNow.Ticks;
-            public string ToJsonData() => $"{{\"stamp\": {nextStamp++}, \"curr\": {CurrSong.ToCompactJson()}, \"queue\": [{string.Join(',', Queue.Select(x => x.ToCompactJson()))}]}}";
+            public string ToJsonData() => $"{{\"stamp\": {nextStamp++}, \"sync\": {SyncUTC}, \"curr\": {CurrSong.ToCompactJson()}, \"queue\": [{string.Join(',', Queue.Select(x => x.ToCompactJson()))}]}}";
         }
 
         /// <summary>
@@ -155,6 +157,9 @@ namespace SimpleBot
 
         static void UpdateSheet(string jsonData)
         {
+#if DEBUG
+            return;
+#endif
             lock (_threadSheetUpdates)
             {
                 _pendingSheetUpdate = jsonData;
@@ -163,6 +168,9 @@ namespace SimpleBot
 
         static void _updateSheetJob()
         {
+#if DEBUG
+            return;
+#endif
             while (true)
             {
                 while (_pendingSheetUpdate == null)
@@ -179,8 +187,8 @@ namespace SimpleBot
 
                 try
                 {
-                    // https://docs.google.com/spreadsheets/d/1XLZGNW9p1Xy_vPt_wDjNOKBk1zi4Qp5-gCW4OjdQDw4/gviz/tq?tqx=out:json&range=A1
-                    var req = _sheets.Spreadsheets.Values.Update(new ValueRange() { Values = [[jsonData]] }, _sheetId, "A1");
+                    // https://docs.google.com/spreadsheets/d/1XLZGNW9p1Xy_vPt_wDjNOKBk1zi4Qp5-gCW4OjdQDw4/gviz/tq?tqx=out:json&range=B1
+                    var req = _sheets.Spreadsheets.Values.Update(new ValueRange() { Values = [[jsonData]] }, _sheetId, "B1");
                     req.IncludeValuesInResponse = false;
                     req.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                     var res = req.Execute();
@@ -190,6 +198,41 @@ namespace SimpleBot
                     Bot.Log($"[SongRequest::{nameof(UpdateSheet)}] ERROR " + ex);
                 }
             }
+        }
+
+        static void _updateSheetAllSongs()
+        {
+#if DEBUG
+            return;
+#endif
+            string[][] values;
+            lock (_lock)
+            {
+                try
+                {
+                    values = _sr.Playlist.Select(x => x.ToFields()).ToArray();
+                }
+                catch (Exception ex)
+                {
+                    Bot.Log($"[SongRequest::{nameof(_updateSheetAllSongs)}] ERROR " + ex);
+                    return;
+                }
+            }
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    var clearResponse = _sheets.Spreadsheets.Values.Clear(new ClearValuesRequest(), _sheetId, "A4:E9999999").Execute();
+                    var req = _sheets.Spreadsheets.Values.Update(new ValueRange() { MajorDimension = "ROWS", Values = values }, _sheetId, "A4:E9999999");
+                    req.IncludeValuesInResponse = false;
+                    req.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+                    var res = req.Execute();
+                }
+                catch (Exception ex)
+                {
+                    Bot.Log($"[SongRequest::{nameof(_updateSheetAllSongs)}] ERROR " + ex);
+                }
+            });
         }
 
         static void _beValid_noLock()
@@ -241,6 +284,7 @@ namespace SimpleBot
                 HttpClientInitializer = (await GoogleCredential.FromFileAsync(Settings.Default.GoogleCredentialsFile, CancellationToken.None).ThrowMainThread())
                     .CreateScoped("https://www.googleapis.com/auth/spreadsheets")
             });
+            _updateSheetAllSongs();
             _threadSheetUpdates = new Thread(_updateSheetJob) { IsBackground = true };
             _threadSheetUpdates.Start();
             _yt = new Youtube();
@@ -249,6 +293,7 @@ namespace SimpleBot
                 try
                 {
                     _yt.VideoEnded += _yt_VideoEnded;
+                    _yt.VideoStarted += _yt_VideoStarted;
                     await _SetVolume(_SR_volume, true);
                     string videoId = _sr.CurrSong.ytVideoId;
                     if (videoId != null)
@@ -268,6 +313,21 @@ namespace SimpleBot
                 }
             });
             await _yt.Init(ytWebView);
+        }
+
+        private static void _yt_VideoStarted(object sender, (string vidId, string syncUTC) e)
+        {
+            if (e.vidId == _sr.CurrSong.ytVideoId)
+            {
+                lock (_lock)
+                {
+                    if (e.vidId == _sr.CurrSong.ytVideoId)
+                    {
+                        _sr.SyncUTC = e.syncUTC;
+                        UpdateSheet(_sr.ToJsonData());
+                    }
+                }
+            }
         }
 
         private static void _yt_VideoEnded(object sender, string videoId)
@@ -293,9 +353,7 @@ namespace SimpleBot
         {
             _save_noLock();
             FireNeedUpdateUI_SongList_noLock();
-#if !DEBUG
             UpdateSheet(_sr.ToJsonData());
-#endif
         }
 
         static void _saveToPlaylist_noLock(Req req)
@@ -590,6 +648,7 @@ namespace SimpleBot
                 _sr.Playlist.Sort((a, b) => a._shuffleRandVal - b._shuffleRandVal);
                 _onSongListChange_noLock();
             }
+            _updateSheetAllSongs();
         }
 
         public static void PlaylistBackOne()
@@ -610,6 +669,7 @@ namespace SimpleBot
                 _sr.PrevSong = _sr.CurrSong;
                 _sr.CurrIndexToPlayInPlaylist = _sr.CurrIndexToPlayInPlaylist > 0 ? _sr.CurrIndexToPlayInPlaylist - 1 : _sr.Playlist.Count - 1;
                 _sr.CurrSong = _sr.Playlist[_sr.CurrIndexToPlayInPlaylist];
+                _sr.SyncUTC = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
 
                 _onSongListChange_noLock();
                 videoId = _sr.CurrSong.ytVideoId;
@@ -650,6 +710,7 @@ namespace SimpleBot
                 }
                 else
                     _sr.CurrSong = new();
+                _sr.SyncUTC = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
 
                 _onSongListChange_noLock();
                 videoId = _sr.CurrSong.ytVideoId;
