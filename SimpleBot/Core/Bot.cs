@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
-using SimpleBot.Properties;
 using SimpleBot.v2;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
@@ -14,12 +13,10 @@ using System.Speech.Synthesis;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Windows.Interop;
 using TwitchLib.Api;
 using TwitchLib.Api.Core;
 using TwitchLib.Api.Core.Enums;
 using TwitchLib.Api.Helix.Models.Channels.GetChannelInformation;
-using TwitchLib.Api.Helix.Models.Chat;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -69,6 +66,8 @@ namespace SimpleBot
         static string _logFilePath;
         bool _isBrbEnabled;
 
+        public static Bot ONE;
+
         public Bot(MainForm mainForm)
         {
 #if !DEBUG
@@ -76,7 +75,7 @@ namespace SimpleBot
             Directory.CreateDirectory(_logFilePath);
             _logFilePath += $"{DateTime.Now:yyyy_MM_dd}.txt";
 #endif
-
+            ONE = this;
             Log("[init] Bot ctor");
             _mainForm = mainForm;
             _twJC = new JoinedChannel(CHANNEL);
@@ -111,6 +110,7 @@ namespace SimpleBot
             _tts.Volume = Math.Min(100, Settings.Default.TTS_volume_0_to_100 < 0 ? 20 : Settings.Default.TTS_volume_0_to_100);
             _tts.SpeakCompleted += _tts_SpeakCompleted;
             SpeechApiReflectionHelper.InjectOneCoreVoices(_tts);
+            //TODO var x2 = _tts.GetInstalledVoices();
 
             if (Settings.Default.obs_enabled)
             {
@@ -590,6 +590,7 @@ namespace SimpleBot
               [BotCommandId.Quote_Del] = new[] { "delquote", "deletequote", "delwisdom", "deletewisdom", "removequote", "removewisdom" },
               [BotCommandId.LearnHiragana] = new[] { "hiragana" },
               [BotCommandId.GetChessRatings] = new[] { "elo", "rating" },
+              [BotCommandId.SearchWordDefinition] = new[] { "define", "meaning" },
           });
         static readonly ReadOnlyDictionary<string, BotCommandId> _cmdStr2Cid =
           new(new Dictionary<string, BotCommandId>(_builtinCommandsAliases.SelectMany(x => x.Value.Select(alias => new KeyValuePair<string, BotCommandId>(alias, x.Key)))));
@@ -1250,9 +1251,8 @@ namespace SimpleBot
                         TwSendMsg(Quotes.GetQuote(wisIdx - 1));
                     else if (args.Count > 0)
                     {
-                        var query = argsStr;
-                        var q = Quotes.FindQuote(query);
-                        TwSendMsg(q ?? "No quote found with the search term: " + query);
+                        var q = Quotes.FindQuote(argsStr);
+                        TwSendMsg(q ?? "No quote found with the search term: " + argsStr);
                     }
                     else
                         TwSendMsg(Quotes.GetRandom());
@@ -1355,8 +1355,93 @@ namespace SimpleBot
                         }).LogErr();
                         return;
                     }
-            } // switch (built-in commands)
+                case BotCommandId.SearchWordDefinition:
+                    if (string.IsNullOrWhiteSpace(argsStr))
+                        return;
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.SearchWordDefinition);
+                    _ = Task.Run(async () =>
+                    {
+                        var query = HttpUtility.UrlPathEncode(argsStr);
+                        try
+                        {
+                            using var http = new HttpClient();
+                            JToken res = null;
+                            try
+                            {
+                                res = JToken.Parse(await http.GetStringAsync("https://api.dictionaryapi.dev/api/v2/entries/en/" + query));
+                            }
+                            catch (HttpRequestException ex)
+                            {
+                                if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                                {
+                                    TwSendMsg("No definitions found", chatter);
+                                    return;
+                                }
+                            }
 
+                            if (res.Type == JTokenType.Object)
+                            {
+                                var shortResponse = res?["title"]?.Value<string>();
+                                if (shortResponse != null)
+                                {
+                                    TwSendMsg(shortResponse, chatter);
+                                    return;
+                                }
+                            }
+
+                            var word = res?.First?["word"]?.Value<string>() ?? throw new Exception("Failed to get word definition");
+                            var phonetic = res?.First?["phonetic"]?.Value<string>();
+                            if (string.IsNullOrWhiteSpace(phonetic))
+                                phonetic = res?.First?["phonetics"]?.First?["text"]?.Value<string>();
+                            var response = word + (string.IsNullOrWhiteSpace(phonetic) ? ": " : " (" + phonetic + ") ");
+                            bool didFirstMeaning = false;
+                            if (res?.First?["meanings"] is JArray jmeanings)
+                            {
+                                var maxCount = jmeanings.Count;
+                                for (int i = 0; i < 3 && i < maxCount; i++)
+                                {
+                                    JToken meaning = jmeanings[i];
+                                    if (meaning == null)
+                                        break;
+                                    string def = "";
+                                    if (meaning?["definitions"] is JArray jdefs)
+                                    {
+                                        for (int j = 0; j < 3 && j < jdefs.Count; j++)
+                                        {
+                                            var _def = jdefs[j]?["definition"]?.Value<string>();
+                                            if (string.IsNullOrWhiteSpace(_def))
+                                                break;
+                                            if (def.Length + _def.Length > 150)
+                                                break;
+                                            if (def != "")
+                                                def += " | ";
+                                            def += _def;
+                                        }
+                                    }
+                                    if (string.IsNullOrWhiteSpace(def))
+                                        break;
+                                    var part = meaning?["partOfSpeech"];
+                                    part = part == null ? "" : part + ", ";
+
+                                    var meaningStr = (didFirstMeaning ? " | " : "") + part + def;
+                                    if (response.Length + meaningStr.Length >= 500)
+                                        break;
+                                    response += part + def;
+                                    didFirstMeaning = true;
+                                }
+                            }
+                            if (!didFirstMeaning)
+                                throw new ApplicationException("Failed to get word definition");
+                            TwSendMsg(response);
+                        }
+                        catch (Exception ex)
+                        {
+                            TwSendMsg("Error: " + ex.Message);
+                            throw;
+                        }
+                    }).LogErr();
+                    return;
+            } // switch (built-in commands)
             // custom commands
             {
                 CustomCommandData cc;
@@ -1821,7 +1906,7 @@ namespace SimpleBot
                 var rep = particle switch
                 {
                     "input" or "args" => argsStr,
-                    "query" or "querystring" => argsStr == null ? "" : HttpUtility.UrlEncode(argsStr),
+                    "query" or "querystring" => argsStr == null ? "" : HttpUtility.UrlPathEncode(argsStr),
                     "arg0" or "0" => args.Count > 0 ? args[0] : "",
                     "arg1" or "1" => args.Count > 1 ? args[1] : "",
                     "arg2" or "2" => args.Count > 2 ? args[2] : "",

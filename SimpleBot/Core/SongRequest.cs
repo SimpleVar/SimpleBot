@@ -355,17 +355,38 @@ namespace SimpleBot
             FireNeedUpdateUI_SongList_noLock();
             UpdateSheet(_sr.ToJsonData());
         }
-
-        static void _saveToPlaylist_noLock(Req req)
+        
+        /// <summary> returns number of requests user has in the playlist. -1 if song-to-add already existed in playlist. </summary>
+        static int _saveToPlaylist_noLock(Req req)
         {
+            int totalByUser = 0;
             var id = req.ytVideoId;
+            bool needAdd = true;
             for (int i = 0; i < _sr.Playlist.Count; i++)
+            {
                 if (_sr.Playlist[i].ytVideoId == id)
-                    return;
+                {
+                    var r = _sr.Playlist[i];
+                    if (!string.IsNullOrWhiteSpace(r.ogRequesterDisplayName))
+                        return -1; // already exists
+                    r.ogRequesterDisplayName = req.ogRequesterDisplayName;
+                    _sr.Playlist[i] = r;
+                    totalByUser++;
+                    needAdd = false;
+                }
+                else if (_sr.Playlist[i].ogRequesterDisplayName == req.ogRequesterDisplayName)
+                {
+                    totalByUser++;
+                }
+            }
 
-            _sr.CurrIndexToPlayInPlaylist++;
-            _sr.Playlist.Insert(_sr.CurrIndexToPlayInPlaylist, req);
+            if (needAdd)
+            {
+                _sr.CurrIndexToPlayInPlaylist++;
+                _sr.Playlist.Insert(_sr.CurrIndexToPlayInPlaylist, req);
+            }
             _onSongListChange_noLock();
+            return totalByUser + 1;
         }
 
         #region API
@@ -618,19 +639,21 @@ namespace SimpleBot
             RemoveSongFromPlaylist(id);
         }
 
-        public static void SaveCurrSongToPlaylist()
+        /// <summary> returns number of requests user has in the playlist. -1 if song-to-add already existed in playlist. </summary>
+        public static (int, Req) SaveCurrSongToPlaylist()
         {
             lock (_lock)
             {
-                _saveToPlaylist_noLock(_sr.CurrSong);
+                return (_saveToPlaylist_noLock(_sr.CurrSong), _sr.CurrSong);
             }
         }
 
-        public static void SavePrevSongToPlaylist()
+        /// <summary> returns number of requests user has in the playlist. -1 if song-to-add already existed in playlist. </summary>
+        public static (int, Req) SavePrevSongToPlaylist()
         {
             lock (_lock)
             {
-                _saveToPlaylist_noLock(_sr.PrevSong);
+                return (_saveToPlaylist_noLock(_sr.PrevSong), _sr.PrevSong);
             }
         }
 

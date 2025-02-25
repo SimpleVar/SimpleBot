@@ -54,6 +54,7 @@
     Quote_Del = 4020,
     LearnHiragana = 5010,
     GetChessRatings = 6010,
+    SearchWordDefinition = 7000,
     FIRST_CUSTOM_COMMAND = 100000, // currently unused
   }
 }

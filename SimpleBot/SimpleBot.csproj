@@ -9,6 +9,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
     <ApplicationIcon>Resources\s_logo.ico</ApplicationIcon>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,12 +1,9 @@
 ﻿using Microsoft.Web.WebView2.WinForms;
-using OBSWebsocketDotNet;
-using SimpleBot.v2;
 using System.Diagnostics;
 using System.Text;
 
 namespace SimpleBot
 {
-
     internal static class Program
     {
         [STAThread]

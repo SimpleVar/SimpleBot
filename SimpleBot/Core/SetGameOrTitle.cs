@@ -78,7 +78,7 @@ namespace SimpleBot
         return (id, name);
       }
 
-      var games = (await bot._twApi.Helix.Search.SearchCategoriesAsync(HttpUtility.UrlEncode(query)).ConfigureAwait(true)).Games;
+      var games = (await bot._twApi.Helix.Search.SearchCategoriesAsync(HttpUtility.UrlPathEncode(query)).ConfigureAwait(true)).Games;
       if (games.Length == 0)
       {
         bot.TwSendMsg("No games found for query: " + query, tagUser);

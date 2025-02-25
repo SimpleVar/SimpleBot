@@ -10,10 +10,35 @@ namespace SimpleBot.v2
             get => Monitor.Enabled;
             set => Monitor.Enabled = value;
         }
+        public static void ClearCache()
+        {
+            lock (PokerTables)
+            {
+                PokerTables.Clear();
+            }
+            Monitor.ClearCache();
+        }
+
+        const int W = 1500;
+        const int H = 1032;
 
         static CoinPokerTables()
         {
-            Monitor = new WindowMonitor(p => p.procName == @"C:\CoinPoker\Lobby.exe" && p.title != "CoinPoker" && !p.title.EndsWith(" Lobby"))
+            Monitor = new WindowMonitor(p =>
+            {
+                if (p.procName != @"C:\CoinPoker\game.exe")
+                    return false;
+                if (p.title.StartsWith("checking for updates", StringComparison.InvariantCultureIgnoreCase))
+                    return false;
+                if (p.title == "CoinPoker" || p.title == "CoinPoker - Lobby")
+                {
+                    _ = User32.SetWindowPos(p.hwnd, IntPtr.Zero, 0, 0, W, H, 4); // 4 = SWP_NOZORDER
+                    return false;
+                }
+                if (p.title.EndsWith(" Lobby", StringComparison.InvariantCultureIgnoreCase))
+                    return false;
+                return true;
+            })
             {
                 Enabled = false
             };
@@ -82,7 +107,7 @@ namespace SimpleBot.v2
             for (int i = 0; i < ObsTables.Length && i < PokerTables.Count; i++)
             {
                 string source;
-                try { source = PokerTables[i].title + ":Qt51512QWindowIcon:Lobby.exe"; }
+                try { source = PokerTables[i].title + ":Qt673QWindowIcon:game.exe"; }
                 catch { source = ""; }
                 ObsTables[i].SetWindowSource(source);
             }
@@ -90,8 +115,6 @@ namespace SimpleBot.v2
             {
                 ObsTables[i].SetWindowSource("");
             }
-            const int W = 1500;
-            const int H = 1032;
             switch (PokerTables.Count)
             {
                 case 0: return;
@@ -99,10 +122,10 @@ namespace SimpleBot.v2
                     _ = User32.SetWindowPos(PokerTables[0].hwnd, IntPtr.Zero, 0, 0, W - 59, H, 4); // 4 = SWP_NOZORDER
                     break;
                 case 2:
-                    const int OVERLAP_W = 100;
-                    const int OVERLAP_H = 69;
-                    _ = User32.SetWindowPos(PokerTables[0].hwnd, IntPtr.Zero, 0, 0, W / 2 + OVERLAP_W, H / 2 + OVERLAP_H, 4);
-                    _ = User32.SetWindowPos(PokerTables[1].hwnd, IntPtr.Zero, W / 2 - OVERLAP_W, H / 2 - OVERLAP_H, W / 2 + OVERLAP_W, H / 2 + OVERLAP_H, 4);
+                    const int SMALL_W = 784;
+                    const int SMALL_H = 561;
+                    _ = User32.SetWindowPos(PokerTables[0].hwnd, IntPtr.Zero, 0, 0, SMALL_W, SMALL_H, 4);
+                    _ = User32.SetWindowPos(PokerTables[1].hwnd, IntPtr.Zero, W - SMALL_W, H - SMALL_H, SMALL_W, SMALL_H, 4);
                     break;
                 default:
                     // click the built-in "Tile" button on a poker table

@@ -239,12 +239,18 @@ namespace SimpleBot
 
         private void btnSaveCurrToPlaylist_Click(object sender, EventArgs e)
         {
-            SongRequest.SaveCurrSongToPlaylist();
+            var (tot, req) = SongRequest.SaveCurrSongToPlaylist();
+            if (tot == -1 || req.ogRequesterDisplayName == Bot.ONE.CHANNEL)
+                return;
+            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs");
         }
 
         private void btnSavePrevToPlaylist_Click(object sender, EventArgs e)
         {
-            SongRequest.SavePrevSongToPlaylist();
+            var (tot, req) = SongRequest.SavePrevSongToPlaylist();
+            if (tot == -1 || req.ogRequesterDisplayName == Bot.ONE.CHANNEL)
+                return;
+            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs");
         }
 
         private void btnRemoveCurrFromPlaylist_Click(object sender, EventArgs e)

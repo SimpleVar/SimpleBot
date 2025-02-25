@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Web;
+using System.Windows.Media.Animation;
 using VideoLibrary;
 using VideoLibrary.Exceptions;
 
@@ -40,7 +41,6 @@ namespace SimpleBot
         readonly HttpClient _web;
         readonly Client<YouTubeVideo> _yt;
         readonly byte[] _buff = new byte[BUFF_SIZE];
-        readonly List<YtVideo> _results = new();
         private string _lastPlayedVideoId;
 
         public Youtube()
@@ -247,11 +247,17 @@ document.body.append(tag);
                 couldBeId = c == '-' || c == '_' || char.IsLetterOrDigit(c);
             }
 
+            {
+                var i = query.IndexOf('&');
+                if (i != -1)
+                    query = query[..i];
+            }
+
             YouTubeVideo video = null;
             string videoId = query;
             if (couldBeId)
                 video = tryGetVideo("https://youtube.com/watch?v=" + query);
-            else
+            if (video == null)
             {
                 videoId = GetIdFromUrl(query);
                 if (videoId != null)
@@ -275,7 +281,7 @@ document.body.append(tag);
                 return;
             }
 
-            using Stream s = await _web.GetStreamAsync("https://www.youtube.com/results?sp=EgIQAQ%253D%253D&search_query=" + HttpUtility.UrlEncode(query));
+            using Stream s = await _web.GetStreamAsync("https://www.youtube.com/results?sp=EgIQAQ%253D%253D&search_query=" + HttpUtility.UrlPathEncode(videoId ?? query));
             try
             {
                 parseSearchResults(s, results, maxResults);
@@ -289,16 +295,17 @@ document.body.append(tag);
 
         public async Task<YtVideo?> Search(string query)
         {
-            _results.Clear();
-            await Search(query, _results, 1);
-            return _results.Count == 0 ? null : _results[0];
+            List<YtVideo> res = [];
+            await Search(query, res, 1);
+            return res.Count == 0 ? null : res[0];
         }
 
         private YouTubeVideo tryGetVideo(string url)
         {
             try
             {
-                return _yt.GetVideo(url);
+                return null; // YT is broken atm
+                //return _yt.GetVideo(url);
             }
             catch (ArgumentException) { }
             catch (UnavailableStreamException) { }
@@ -406,20 +413,59 @@ document.body.append(tag);
 
         unsafe void parse_quoted(ref ParseState s)
         {
+            Span<byte> bytes = stackalloc byte[4];
             s.quotedBuffLen = 0;
             int c = 0;
             while (c != '"')
             {
                 switch (c = readByte(ref s))
                 {
-                    case '\\': _ = readByte(ref s); break; // The quoted buff will contain zero instead of escaped chars
+                    case '\\':
+                        switch (c = readByte(ref s))
+                        {
+                            case 'u':
+                            case 'U':
+                                for (int d = 0; d < 4; d++)
+                                {
+                                    if ((c = readByte(ref s)) == 0)
+                                        goto end;
+                                    bytes[d] = (byte)c;
+                                }
+                                if (!int.TryParse(bytes, System.Globalization.NumberStyles.HexNumber, null, out int utf32))
+                                    goto end;
+                                var ss = char.ConvertFromUtf32(utf32);
+                                for (int i = 0; i < ss.Length; i++)
+                                {
+                                    if (s.quotedBuffLen < ParseState.QUOTED_BUFF_SIZE)
+                                        s.quotedBuff[s.quotedBuffLen++] = (byte)ss[i];
+                                }
+                                c = ' ';
+                                continue;
+                            case 'n':
+                            case 'v':
+                            case 'h':
+                            case 'f':
+                            case 't':
+                                c = ' ';
+                                goto write;
+                            case 'r':
+                            case 'b':
+                                c = ' ';
+                                continue;
+                            default:
+                                goto write;
+                        }
+                        break;
                     case '"': break;
                     default:
+                    write:
                         if (s.quotedBuffLen < ParseState.QUOTED_BUFF_SIZE)
                             s.quotedBuff[s.quotedBuffLen++] = (byte)c;
+                        c = ' '; // we surely did not end the string, but may have written a literal "
                         break;
                 }
             }
+            end:
             s.quotedBuff[s.quotedBuffLen] = 0;
         }
 
@@ -604,7 +650,7 @@ document.body.append(tag);
             public int videoRendererDepth;
             public int maxResults;
 
-            public readonly bool IsQuotedEqualTo(string value)
+            public bool IsQuotedEqualTo(string value)
             {
                 if (value.Length > QUOTED_BUFF_SIZE)
                     throw new ApplicationException("We need a bigger quoted buff size for that operation");
@@ -621,7 +667,7 @@ document.body.append(tag);
                 quotedBuff[QUOTED_BUFF_SIZE] = 0; // safe-gaurd
                 fixed (byte* s = quotedBuff)
                 {
-                    return Encoding.Default.GetString(s, quotedBuffLen);
+                    return Encoding.UTF8.GetString(s, quotedBuffLen);
                 }
             }
         }

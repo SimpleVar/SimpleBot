@@ -1,6 +1,7 @@
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 using SimpleBot.Properties;
+using SimpleBot.v2;
 using System.Diagnostics;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -141,6 +142,7 @@ namespace SimpleBot
             IntPtr h = GetSystemMenu(Handle, false);
             AppendMenu(h, MF_SEPARATOR, 0xDEAD, string.Empty);
             AppendMenu(h, MF_STRING, 0, "Re&position");
+            AppendMenu(h, MF_STRING, 1, "Reset Poker &Tables");
         }
 
         protected override void WndProc(ref Message m)
@@ -152,6 +154,10 @@ namespace SimpleBot
                     {
                         Location = _initialLocation;
                         Size = _initialSize;
+                    }
+                    else if (m.WParam == 1)
+                    {
+                        CoinPokerTables.ClearCache();
                     }
                     break;
                 case WM_HOTKEY:

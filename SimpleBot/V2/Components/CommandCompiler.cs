@@ -67,7 +67,7 @@ namespace SimpleBot.v2
                     var name = inclDollarNames[i];
                     switch (name)
                     {
-                        case "query": vars.Add(name, HttpUtility.UrlEncode(argsStr) ?? ""); break;
+                        case "query": vars.Add(name, HttpUtility.UrlPathEncode(argsStr) ?? ""); break;
                         case "channel": vars.Add(name, Bot.ONE.Channel); break;
                         case "channel_id": vars.Add(name, Bot.ONE.ChannelId); break;
 

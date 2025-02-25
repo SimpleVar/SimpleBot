@@ -13,6 +13,8 @@
 
         public bool Enabled = true;
 
+        public void ClearCache() => _hwnds.Clear();
+
         public WindowMonitor(Predicate<WindowInfo> condition)
         {
             ArgumentNullException.ThrowIfNull(condition, nameof(condition));
