@@ -238,12 +238,12 @@
     private OpenFileDialog ofd;
     private CheckBox cbFreezeChattersList;
     private Button btnBanKnownBotsInChat;
-    private SongRequestView srv;
     private ListBox listRecentFollows;
     private Button btnBanSelectedFollows;
         private ColorDialog colorDialog;
         private ContextMenuStrip ctxChatters;
         private ToolStripMenuItem toolStripMenuItem1;
         private TextBox txtDbg;
+        public SongRequestView srv;
     }
 }

@@ -167,7 +167,7 @@ namespace SimpleBot
             labelVolume.Text = e.volume + "";
         }
 
-        private void btnShowYoutubeForm_Click(object sender, EventArgs e)
+        public void btnShowYoutubeForm_Click(object sender, EventArgs e)
         {
             SongRequest._yt?.ShowOrHide(this, isVisible =>
             {

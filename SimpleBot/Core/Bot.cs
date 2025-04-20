@@ -92,6 +92,7 @@ namespace SimpleBot
             ViewersQueue.Load(Path.Combine(USER_DATA_FOLDER, "data\\viewers_queue.txt"));
             Quotes.Load(Path.Combine(USER_DATA_FOLDER, "data\\quotes.txt"));
             SongRequest.Load(Path.Combine(USER_DATA_FOLDER, "data\\song_request.txt"));
+            Reminders.Load(Path.Combine(USER_DATA_FOLDER, "data\\alarms.txt"));
             LoadCustomCommands(Path.Combine(USER_DATA_FOLDER, "data\\custom_commands.txt"));
             Log("[init] loaded user data");
         }
@@ -203,6 +204,7 @@ namespace SimpleBot
                 CoinPokerTables.Enabled = true;
                 SneakyJapan.Init(this);
                 LearnHiragana.Init(this);
+                Reminders.Init();
                 /*
                 LongRunningPeriodicTask.Start(0, true, 1200123, 600000, 0, async _ =>
                 {
@@ -357,6 +359,7 @@ namespace SimpleBot
                 var ev = e.Notification.Payload.Event;
                 //_redeemCounts.AddOrUpdate(_rewardsKey(ev.UserId, ev.Reward.Id), 1, (k, v) => v + 1);
                 // handle redeems that have NO input
+                
                 Log("[Redeem] " + ev.ToJson());
                 switch (ev.Reward.Title)
                 {
@@ -553,13 +556,15 @@ namespace SimpleBot
               [BotCommandId.DelCustomCommand] = new[] { "delcmd", "delcommand", "delcom" },
               [BotCommandId.EditCustomCommand] = new[] { "editcmd", "editcommand", "editcom" },
               [BotCommandId.ShowCustomCommand] = new[] { "showcmd", "showcommand", "showcom" },
+              [BotCommandId.ToggleVideo] = new[] { "vid", "video" },
+              [BotCommandId.DeleteMyLastMessage] = new[] { "deleteme", "undo" },
               [BotCommandId.ShowBrb] = new[] { "brb" },
               [BotCommandId.SearchGame] = new[] { "searchgame" },
               [BotCommandId.GetCmdCounter] = new[] { "count" },
               [BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems" },
               [BotCommandId.FollowAge] = new[] { "followage" },
               [BotCommandId.WatchTime] = new[] { "watchtime" },
-              [BotCommandId.SongRequest_Request] = new[] { "sr", "דר" },
+              [BotCommandId.SongRequest_Request] = new[] { "sr", "songrequest", "דר" },
               [BotCommandId.SongRequest_Volume] = new[] { "volume", "vol" },
               [BotCommandId.SongRequest_SetVolumeMax] = new[] { "setmaxvolume" },
               [BotCommandId.SongRequest_Next] = new[] { "skip", "skipsong", "nextsong" },
@@ -567,6 +572,7 @@ namespace SimpleBot
               [BotCommandId.SongRequest_GetCurr] = new[] { "currsong", "currentsong", "songname", "cs", "song" },
               [BotCommandId.SongRequest_ShufflePlaylist] = new[] { "shuffle" },
               [BotCommandId.SongRequest_WrongSong] = new[] { "wrongsong", "oops" },
+              [BotCommandId.Reminders_Add] = new[] { "reminder", "timer", "alarm", "setreminder", "settimer", "setalarm" },
               [BotCommandId.Queue_Curr] = new[] { "curr", "current" },
               [BotCommandId.Queue_Next] = new[] { "next" },
               [BotCommandId.Queue_All] = new[] { "queue" },
@@ -581,6 +587,7 @@ namespace SimpleBot
               [BotCommandId.SneakyJapan_Leaderboard] = new[] { "japanlead", "japanleaderboard" },
               [BotCommandId.SneakyJapan_MinusOneExp] = new[] { "japanlose1exp", "lose1exp" },
               [BotCommandId.SneakyJapan_SetReqChatActivity] = new[] { "japanactivity" },
+              [BotCommandId.SneakyJapan_AddExp] = new[] { "japangive" },
               [BotCommandId.Celsius2Fahrenheit] = new[] { "c2f" },
               [BotCommandId.Fahrenheit2Celsius] = new[] { "f2c" },
               [BotCommandId.CoinFlip] = new[] { "coin", "coinflip" },
@@ -654,7 +661,7 @@ namespace SimpleBot
         {
             Chatter chatter = ChatActivity.OnMessage(e.ChatMessage);
             if (chatter == null) return; // ignored bot user
-
+            
             // ignore commands when offline
             if (!IsOnline && chatter.userLevel != UserLevel.Streamer) return;
 
@@ -985,6 +992,17 @@ namespace SimpleBot
                         TwSendMsg(cc == null ? $"command {customCmd} not found" : $"{CMD_PREFIX}{customCmd} :: {cc.Value.Response}");
                         return;
                     }
+                case BotCommandId.ToggleVideo:
+                    if (chatter.userLevel < UserLevel.VIP) return;
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.ToggleVideo);
+                    _mainForm.srv.btnShowYoutubeForm_Click(null, EventArgs.Empty);
+                    return;
+                case BotCommandId.DeleteMyLastMessage:
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.DeleteMyLastMessage);
+                    // pop and delete current (the !delete) and also last msg before that
+                    for (int i = 0; i < 2; i++)
+                        if (chatter.msgIds.TryPop(out string lastMsgId)) _twApi.Helix.Moderation.DeleteChatMessagesAsync(CHANNEL_ID, CHANNEL_ID, lastMsgId);
+                    return;
                 case BotCommandId.ShowBrb:
                     if (_isBrbEnabled || chatter.userLevel != UserLevel.Streamer) return;
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.ShowBrb);
@@ -1143,6 +1161,11 @@ namespace SimpleBot
                         SongRequest.SetVolume(volume, chatter);
                     }
                     return;
+                case BotCommandId.Reminders_Add:
+                    if (args.Count == 0)
+                        return;
+                    Reminders.Add(this, chatter, args[0], argsStr);
+                    return;
                 case BotCommandId.Queue_Curr:
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);
                     ViewersQueue.Curr(this, chatter);
@@ -1213,11 +1236,34 @@ namespace SimpleBot
                     if (chatter.userLevel != UserLevel.Streamer) return;
                     {
                         var v = int.TryParse(args.Count > 0 ? args[0] : "", out int x) ? x : 0;
-                        if (v < 1) v = 1;
                         Settings.Default.SneakyJapan_RequiredChatActivity = v;
                         Settings.Default.Save();
                         SneakyJapan.reqChatActivity = v;
                         TwSendMsg("SeemsGood", chatter);
+                    }
+                    return;
+                case BotCommandId.SneakyJapan_AddExp:
+                    if (chatter.userLevel != UserLevel.Streamer) return;
+                    if (args.Count == 0)
+                    {
+                        TwSendMsg("Missing target and exp amount", chatter);
+                        return;
+                    }
+                    if (args.Count < 2)
+                    {
+                        TwSendMsg("Missing exp amount", chatter);
+                        return;
+                    }
+                    {
+                        if (!int.TryParse(args[1], out int exp))
+                        {
+                            TwSendMsg("Invalid exp amount", chatter);
+                            return;
+                        }
+                        var target = ChatterDataMgr.Get(args[0].CanonicalUsername());
+                        target.sneakyJapanStats.Exp += exp;
+                        target.SetDirty();
+                        TwSendMsg("SeemsGood " + target.DisplayName + " has been granted " + exp + " exp SeemsGood", chatter);
                     }
                     return;
                 case BotCommandId.Celsius2Fahrenheit:

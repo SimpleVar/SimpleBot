@@ -491,6 +491,8 @@ namespace SimpleBot
             lock (_lock)
             {
                 songStr = _sr.CurrSong.ToLongString();
+                if (!string.IsNullOrWhiteSpace(_sr.CurrSong.ogRequesterDisplayName))
+                    songStr += " | Requested by " + _sr.CurrSong.ogRequesterDisplayName;
             }
             _bot.TwSendMsg("Current song is: " + songStr, chatter);
         }

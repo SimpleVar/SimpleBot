@@ -1,5 +1,4 @@
 using Microsoft.Web.WebView2.WinForms;
-using Newtonsoft.Json;
 using SimpleBot.Properties;
 using SimpleBot.v2;
 using System.Diagnostics;
@@ -411,7 +410,7 @@ namespace SimpleBot
                 btnBanKnownBotsInChat.Enabled = false;
                 var users = ChatActivity.UsersInChat().ToHashSet();
                 using var www = new HttpClient();
-                var knownBots = JsonConvert.DeserializeObject<KnownBots>(await www.GetStringAsync("https://api.twitchinsights.net/v1/bots/all"));
+                var knownBots = (await www.GetStringAsync("https://api.twitchinsights.net/v1/bots/all")).FromJson<KnownBots>();
                 var successCount = 0;
                 var botNameCanonical = bot.BOT_NAME.CanonicalUsername();
                 foreach (var knownBot in knownBots.bots)

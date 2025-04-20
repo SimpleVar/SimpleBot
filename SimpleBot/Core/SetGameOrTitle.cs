@@ -6,9 +6,10 @@ namespace SimpleBot
 {
   static class SetGameOrTitle
   {
-    enum KnownGame { Chess, Poker, Tetrio, GeoGuessr, Coding, JustChatting, BindingOfIsaac, RocketLeague, SuperAutoPets };
+    enum KnownGame { Chess, Poker, Tetrio, GeoGuessr, Coding, JustChatting, BindingOfIsaac, RocketLeague, SuperAutoPets, LoL };
     static KnownGame? TryGetKnownGame(string name) => name.ToLowerInvariant() switch
     {
+      "lol" => KnownGame.LoL,
       "sap" => KnownGame.SuperAutoPets,
       "binding" or "isaac" => KnownGame.BindingOfIsaac,
       "rl" or "grl" => KnownGame.RocketLeague,
@@ -64,6 +65,7 @@ namespace SimpleBot
         string id, name;
         switch (knownGame)
         {
+          case KnownGame.LoL: id = "21779"; name = "League of Legends"; break;
           case KnownGame.SuperAutoPets: id = "2114339342"; name = "Super Auto Pets"; break;
           case KnownGame.BindingOfIsaac: id = "436344698"; name = "The Binding of Isaac: Afterbirth+"; break;
           case KnownGame.RocketLeague: id = "30921"; name = "Rocket League"; break;
@@ -78,7 +80,7 @@ namespace SimpleBot
         return (id, name);
       }
 
-      var games = (await bot._twApi.Helix.Search.SearchCategoriesAsync(HttpUtility.UrlPathEncode(query)).ConfigureAwait(true)).Games;
+      var games = (await bot._twApi.Helix.Search.SearchCategoriesAsync(HttpUtility.UrlEncode(query)).ConfigureAwait(true)).Games;
       if (games.Length == 0)
       {
         bot.TwSendMsg("No games found for query: " + query, tagUser);

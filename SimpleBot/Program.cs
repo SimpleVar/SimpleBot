@@ -1,6 +1,8 @@
 ﻿using Microsoft.Web.WebView2.WinForms;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Windows.Input;
 
 namespace SimpleBot
 {
@@ -9,6 +11,19 @@ namespace SimpleBot
         [STAThread]
         static void Main()
         {
+            /*
+            // TODO replace my YT lib with this YT lib:
+            var youtube = new YoutubeClient();
+
+            // You can specify either the video URL or its ID
+            var videoUrl = "https://youtube.com/watch?v=u_yIGGhubZs";
+            var video = youtube.Videos.Streams.GetManifestAsync(videoUrl).Result.GetAudioOnlyStreams().GetWithHighestBitrate();
+
+            youtube.Videos.Streams.DownloadAsync(video, "bleep." + video.Container.Name).AsTask().Wait();
+            
+            return;
+            */
+
             /*
             var bot = new BotV2();
             Application.Run();

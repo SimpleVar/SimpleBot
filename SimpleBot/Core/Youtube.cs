@@ -1,12 +1,9 @@
-﻿using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
+﻿using Microsoft.Web.WebView2.WinForms;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Web;
-using System.Windows.Media.Animation;
-using VideoLibrary;
-using VideoLibrary.Exceptions;
+using YoutubeExplode;
 
 namespace SimpleBot
 {
@@ -39,7 +36,7 @@ namespace SimpleBot
         }
 
         readonly HttpClient _web;
-        readonly Client<YouTubeVideo> _yt;
+        readonly YoutubeClient _yt; // TODO update to use this lib
         readonly byte[] _buff = new byte[BUFF_SIZE];
         private string _lastPlayedVideoId;
 
@@ -47,7 +44,7 @@ namespace SimpleBot
         {
             var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
             _web = new HttpClient(handler);
-            _yt = Client.For(YouTube.Default);
+            _yt = new();
         }
 
         public Task Init(WebView2 existingWebView)
@@ -220,6 +217,9 @@ document.body.append(tag);
         {
             try
             {
+                var i = url.IndexOf("?si=");
+                if (i != -1)
+                    url = url[..i];
                 url = new StringBuilder(url)
                   .Replace("http://", "")
                   .Replace("https://", "")
@@ -253,7 +253,7 @@ document.body.append(tag);
                     query = query[..i];
             }
 
-            YouTubeVideo video = null;
+            object video = null;
             string videoId = query;
             if (couldBeId)
                 video = tryGetVideo("https://youtube.com/watch?v=" + query);
@@ -266,13 +266,12 @@ document.body.append(tag);
 
             if (video != null)
             {
-                var author = video.Info.Author;
                 var req = new YtVideo()
                 {
                     id = videoId,
-                    title = video.Title.ReduceWhitespace().Trim(),
-                    duration = TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToShortDurationString(),
-                    author = author.Trim()
+                    title = "",//video.Title.ReduceWhitespace().Trim(),
+                    duration = "0",//TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToShortDurationString(),
+                    author = ""// video.Info.Author.Trim()
                 };
                 // hack
                 if (req.author.EndsWith(" - topic", StringComparison.InvariantCultureIgnoreCase))
@@ -300,7 +299,7 @@ document.body.append(tag);
             return res.Count == 0 ? null : res[0];
         }
 
-        private YouTubeVideo tryGetVideo(string url)
+        private object tryGetVideo(string url)
         {
             try
             {
@@ -308,7 +307,6 @@ document.body.append(tag);
                 //return _yt.GetVideo(url);
             }
             catch (ArgumentException) { }
-            catch (UnavailableStreamException) { }
             catch (InvalidOperationException ex)
             {
                 // seems to happen when video is made private

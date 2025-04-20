@@ -43,7 +43,7 @@ namespace SimpleBot
       }
       catch { }
     }
-
+    
     public static void Load(string chattersDataPath)
     {
       Chatter[] data;

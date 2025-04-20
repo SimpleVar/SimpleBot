@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 
 namespace SimpleBot
 {
@@ -83,8 +83,9 @@ namespace SimpleBot
             };
         }
 
-        public static string ToJson(this object o) => JsonConvert.SerializeObject(o);
-        public static T FromJson<T>(this string json) => JsonConvert.DeserializeObject<T>(json);
+        static readonly JsonSerializerOptions JSON_OPTS = new() { IncludeFields = true };
+        public static string ToJson<T>(this T o) => JsonSerializer.Serialize(o, JSON_OPTS);
+        public static T FromJson<T>(this string json) => JsonSerializer.Deserialize<T>(json, JSON_OPTS);
 
         public static Task LogErr(this Task task,
           [CallerMemberName] string memberName = "",

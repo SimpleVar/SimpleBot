@@ -101,6 +101,7 @@ namespace SimpleBot
         chatter.uid = msg.UserId;
         ChatterDataMgr.Update();
       }
+      chatter.msgIds.Push(msg.Id);
       return chatter;
     }
 
