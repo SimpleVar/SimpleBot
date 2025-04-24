@@ -76,11 +76,29 @@ namespace SimpleBot.v2
         /// <param name="source">In the format of title:className:execName.exe</param>
         public void SetWindowSource(string windowSource)
         {
+#if DEBUG
+            return;
+#endif
             if (Bot._obs != null && Bot._obs.IsConnected)
             {
                 try
                 {
                     Bot._obs.SetInputSettings(ItemName, new JObject { ["window"] = windowSource });
+                }
+                catch { }
+            }
+        }
+
+        public void SetEnabled(bool enabled)
+        {
+#if DEBUG
+            return;
+#endif
+            if (Bot._obs != null && Bot._obs.IsConnected)
+            {
+                try
+                {
+                    Bot._obs.SetSceneItemEnabled(SceneName, ItemId, enabled);
                 }
                 catch { }
             }

@@ -1,9 +1,9 @@
 ﻿using Microsoft.Web.WebView2.WinForms;
+using SimpleBot.v2;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Web;
-using YoutubeExplode;
 
 namespace SimpleBot
 {
@@ -17,6 +17,8 @@ namespace SimpleBot
         const int BUFF_SIZE = 1024;
 
         public WebView2 webView;
+        
+        public event EventHandler<bool> PlayerFormVisibleChanged = delegate { };
         public event EventHandler<string> VideoEnded = delegate { };
         public event EventHandler<(string vidId, string syncUTC)> VideoStarted = delegate { };
 
@@ -36,7 +38,6 @@ namespace SimpleBot
         }
 
         readonly HttpClient _web;
-        readonly YoutubeClient _yt; // TODO update to use this lib
         readonly byte[] _buff = new byte[BUFF_SIZE];
         private string _lastPlayedVideoId;
 
@@ -44,7 +45,6 @@ namespace SimpleBot
         {
             var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
             _web = new HttpClient(handler);
-            _yt = new();
         }
 
         public Task Init(WebView2 existingWebView)
@@ -161,7 +161,10 @@ document.body.append(tag);
         }
 
         Form _ytViewForm;
-        public void ShowOrHide(IWin32Window parentWindow, Action<bool> onVisibilityChanged)
+        ObsItem obsVidPlayer = new("vid", "CODE");
+
+        // Sometimes WebView2 freezes, it seems to help turning off hardware-acceleration on Edge browser :)
+        public void ShowOrHide()
         {
             webView?.Invoke(() =>
             {
@@ -185,26 +188,32 @@ document.body.append(tag);
                         _ytViewForm.Hide();
                     }
                 };
-                    _ytViewForm.VisibleChanged += (o, e) => onVisibilityChanged(_ytViewForm.Visible);
+                    _ytViewForm.VisibleChanged += (o, e) => PlayerFormVisibleChanged?.Invoke(this, _ytViewForm.Visible);
                     _ytViewForm.Controls.Add(webView);
                 }
 
                 if (_ytViewForm.Visible)
+                {
                     _ytViewForm.Hide();
+                    obsVidPlayer.SetEnabled(false);
+                }
                 else
+                {
                     _ytViewForm.Show();
+                    obsVidPlayer.SetEnabled(true);
+                }
             });
         }
 
-        public Task<string> SetVolume(int volume)
+        public void SetVolume(int volume)
         {
-            return webView?.Invoke(() => webView.ExecuteScriptAsync($"doSetVolume({volume})").LogErr());
+            webView?.BeginInvoke(() => webView.ExecuteScriptAsync($"doSetVolume({volume})").LogErr());
         }
 
-        public Task<string> PlayVideo(string videoId, int startSeconds = 0, int endSeconds = 0)
+        public void PlayVideo(string videoId, int startSeconds = 0, int endSeconds = 0)
         {
             this._lastPlayedVideoId = videoId;
-            return webView?.Invoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})").LogErr());
+            webView?.BeginInvoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})").LogErr());
         }
 
         public async Task<bool> PauseOrResume()

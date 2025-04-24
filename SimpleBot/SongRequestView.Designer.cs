@@ -70,6 +70,8 @@
             cbIsSearchRegex = new CheckBox();
             label5 = new Label();
             panel1 = new Panel();
+            nudSongVolumeFactor = new NumericUpDown();
+            label7 = new Label();
             lblPlaylistLength = new Label();
             panelSettings = new Panel();
             panel4 = new Panel();
@@ -83,6 +85,7 @@
             ctx.SuspendLayout();
             panel5.SuspendLayout();
             panel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)nudSongVolumeFactor).BeginInit();
             panelSettings.SuspendLayout();
             panel4.SuspendLayout();
             SuspendLayout();
@@ -92,7 +95,7 @@
             btnShowYoutubeForm.Location = new Point(0, 0);
             btnShowYoutubeForm.Margin = new Padding(1, 0, 1, 0);
             btnShowYoutubeForm.Name = "btnShowYoutubeForm";
-            btnShowYoutubeForm.Size = new Size(50, 23);
+            btnShowYoutubeForm.Size = new Size(47, 20);
             btnShowYoutubeForm.TabIndex = 0;
             btnShowYoutubeForm.Text = "Player";
             btnShowYoutubeForm.UseVisualStyleBackColor = true;
@@ -101,112 +104,117 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(3, 4);
+            label1.Location = new Point(0, 4);
             label1.Name = "label1";
-            label1.Size = new Size(130, 15);
+            label1.Size = new Size(114, 13);
             label1.TabIndex = 0;
             label1.Text = "Min duration (seconds)";
             // 
             // nudMinSeconds
             // 
-            nudMinSeconds.Location = new Point(137, 2);
+            nudMinSeconds.Location = new Point(116, 2);
+            nudMinSeconds.Margin = new Padding(2);
             nudMinSeconds.Maximum = new decimal(new int[] { 180, 0, 0, 0 });
             nudMinSeconds.Name = "nudMinSeconds";
-            nudMinSeconds.Size = new Size(64, 23);
+            nudMinSeconds.Size = new Size(55, 21);
             nudMinSeconds.TabIndex = 1;
             nudMinSeconds.ValueChanged += nudMinSeconds_ValueChanged;
             // 
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(3, 33);
+            label2.Location = new Point(0, 27);
             label2.Name = "label2";
-            label2.Size = new Size(131, 15);
+            label2.Size = new Size(116, 13);
             label2.TabIndex = 2;
             label2.Text = "Max duration (seconds)";
             // 
             // nudMaxSeconds
             // 
-            nudMaxSeconds.Location = new Point(137, 31);
+            nudMaxSeconds.Location = new Point(116, 25);
+            nudMaxSeconds.Margin = new Padding(2);
             nudMaxSeconds.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
             nudMaxSeconds.Name = "nudMaxSeconds";
-            nudMaxSeconds.Size = new Size(64, 23);
+            nudMaxSeconds.Size = new Size(55, 21);
             nudMaxSeconds.TabIndex = 3;
             nudMaxSeconds.ValueChanged += nudMaxSeconds_ValueChanged;
             // 
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(3, 62);
+            label3.Location = new Point(0, 50);
             label3.Name = "label3";
-            label3.Size = new Size(120, 15);
+            label3.Size = new Size(109, 13);
             label3.TabIndex = 4;
             label3.Text = "Limit queues per user";
             // 
             // nudMaxPerUser
             // 
-            nudMaxPerUser.Location = new Point(137, 60);
+            nudMaxPerUser.Location = new Point(116, 48);
+            nudMaxPerUser.Margin = new Padding(2);
             nudMaxPerUser.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
             nudMaxPerUser.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             nudMaxPerUser.Name = "nudMaxPerUser";
-            nudMaxPerUser.Size = new Size(64, 23);
+            nudMaxPerUser.Size = new Size(55, 21);
             nudMaxPerUser.TabIndex = 5;
             nudMaxPerUser.Value = new decimal(new int[] { 1, 0, 0, 0 });
             nudMaxPerUser.ValueChanged += nudMaxPerUser_ValueChanged;
             // 
             // sliderVolume
             // 
-            sliderVolume.Location = new Point(52, 74);
+            sliderVolume.Location = new Point(41, 51);
             sliderVolume.Maximum = 100;
             sliderVolume.Name = "sliderVolume";
-            sliderVolume.Size = new Size(175, 45);
-            sliderVolume.SmallChange = 2;
+            sliderVolume.Size = new Size(119, 45);
             sliderVolume.TabIndex = 1;
             sliderVolume.TickFrequency = 10;
+            sliderVolume.TickStyle = TickStyle.None;
             sliderVolume.Scroll += sliderVolume_Scroll;
+            sliderVolume.KeyDown += sliderVolume_KeyDown;
             // 
             // label6
             // 
             label6.AutoSize = true;
-            label6.Location = new Point(3, 76);
+            label6.Location = new Point(0, 55);
             label6.Name = "label6";
-            label6.Size = new Size(47, 15);
+            label6.Size = new Size(43, 13);
             label6.TabIndex = 0;
             label6.Text = "Volume";
             // 
             // labelVolume
             // 
             labelVolume.AutoSize = true;
-            labelVolume.Location = new Point(215, 76);
+            labelVolume.Location = new Point(153, 55);
             labelVolume.Name = "labelVolume";
-            labelVolume.Size = new Size(25, 15);
+            labelVolume.Size = new Size(25, 13);
             labelVolume.TabIndex = 2;
             labelVolume.Text = "100";
             // 
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(3, 91);
+            label4.Location = new Point(0, 73);
             label4.Name = "label4";
-            label4.Size = new Size(117, 15);
+            label4.Size = new Size(103, 13);
             label4.TabIndex = 6;
             label4.Text = "Limit volume (0-100)";
             // 
             // nudMaxVolume
             // 
-            nudMaxVolume.Location = new Point(137, 89);
+            nudMaxVolume.Location = new Point(116, 71);
+            nudMaxVolume.Margin = new Padding(2);
             nudMaxVolume.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             nudMaxVolume.Name = "nudMaxVolume";
-            nudMaxVolume.Size = new Size(64, 23);
+            nudMaxVolume.Size = new Size(55, 21);
             nudMaxVolume.TabIndex = 7;
             nudMaxVolume.Value = new decimal(new int[] { 1, 0, 0, 0 });
             nudMaxVolume.ValueChanged += nudMaxVolume_ValueChanged;
             // 
             // btnImportPlaylist
             // 
-            btnImportPlaylist.Location = new Point(207, 0);
+            btnImportPlaylist.Location = new Point(177, 0);
             btnImportPlaylist.Name = "btnImportPlaylist";
-            btnImportPlaylist.Size = new Size(59, 42);
+            btnImportPlaylist.Size = new Size(51, 36);
             btnImportPlaylist.TabIndex = 8;
             btnImportPlaylist.Text = "Import Playlist";
             btnImportPlaylist.UseVisualStyleBackColor = true;
@@ -214,9 +222,9 @@
             // 
             // btnExportPlaylist
             // 
-            btnExportPlaylist.Location = new Point(207, 42);
+            btnExportPlaylist.Location = new Point(177, 36);
             btnExportPlaylist.Name = "btnExportPlaylist";
-            btnExportPlaylist.Size = new Size(59, 42);
+            btnExportPlaylist.Size = new Size(51, 36);
             btnExportPlaylist.TabIndex = 9;
             btnExportPlaylist.Text = "Export Playlist";
             btnExportPlaylist.UseVisualStyleBackColor = true;
@@ -232,10 +240,10 @@
             // 
             // btnSkip
             // 
-            btnSkip.Location = new Point(52, 0);
+            btnSkip.Location = new Point(47, 0);
             btnSkip.Margin = new Padding(1, 0, 1, 0);
             btnSkip.Name = "btnSkip";
-            btnSkip.Size = new Size(36, 23);
+            btnSkip.Size = new Size(33, 20);
             btnSkip.TabIndex = 1;
             btnSkip.Text = "▶▶";
             btnSkip.TextAlign = ContentAlignment.MiddleRight;
@@ -245,18 +253,19 @@
             // lblCurrSong
             // 
             lblCurrSong.AutoSize = true;
-            lblCurrSong.Location = new Point(3, 16);
+            lblCurrSong.Font = new Font("Calibri", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            lblCurrSong.Location = new Point(0, 2);
             lblCurrSong.Name = "lblCurrSong";
-            lblCurrSong.Size = new Size(37, 30);
+            lblCurrSong.Size = new Size(36, 28);
             lblCurrSong.TabIndex = 8;
             lblCurrSong.Text = "Song:\r\n ";
             lblCurrSong.UseMnemonic = false;
             // 
             // btnPrev
             // 
-            btnPrev.Location = new Point(163, 49);
+            btnPrev.Location = new Point(134, 31);
             btnPrev.Name = "btnPrev";
-            btnPrev.Size = new Size(36, 23);
+            btnPrev.Size = new Size(20, 20);
             btnPrev.TabIndex = 13;
             btnPrev.Text = "◁◁";
             btnPrev.UseVisualStyleBackColor = true;
@@ -264,9 +273,9 @@
             // 
             // btnSaveCurrToPlaylist
             // 
-            btnSaveCurrToPlaylist.Location = new Point(56, 49);
+            btnSaveCurrToPlaylist.Location = new Point(48, 31);
             btnSaveCurrToPlaylist.Name = "btnSaveCurrToPlaylist";
-            btnSaveCurrToPlaylist.Size = new Size(24, 23);
+            btnSaveCurrToPlaylist.Size = new Size(20, 20);
             btnSaveCurrToPlaylist.TabIndex = 10;
             btnSaveCurrToPlaylist.Text = "+";
             btnSaveCurrToPlaylist.TextAlign = ContentAlignment.MiddleRight;
@@ -275,9 +284,9 @@
             // 
             // btnSavePrevToPlaylist
             // 
-            btnSavePrevToPlaylist.Location = new Point(110, 49);
+            btnSavePrevToPlaylist.Location = new Point(90, 31);
             btnSavePrevToPlaylist.Name = "btnSavePrevToPlaylist";
-            btnSavePrevToPlaylist.Size = new Size(50, 23);
+            btnSavePrevToPlaylist.Size = new Size(43, 20);
             btnSavePrevToPlaylist.TabIndex = 12;
             btnSavePrevToPlaylist.Text = "+ prev";
             btnSavePrevToPlaylist.TextAlign = ContentAlignment.MiddleRight;
@@ -286,10 +295,10 @@
             // 
             // btnTogglePlayPause
             // 
-            btnTogglePlayPause.Location = new Point(90, 0);
+            btnTogglePlayPause.Location = new Point(80, 0);
             btnTogglePlayPause.Margin = new Padding(1, 0, 1, 0);
             btnTogglePlayPause.Name = "btnTogglePlayPause";
-            btnTogglePlayPause.Size = new Size(30, 23);
+            btnTogglePlayPause.Size = new Size(25, 20);
             btnTogglePlayPause.TabIndex = 2;
             btnTogglePlayPause.Text = "❚❚";
             btnTogglePlayPause.UseVisualStyleBackColor = true;
@@ -299,26 +308,27 @@
             // 
             lblQueueSize.AutoSize = true;
             lblQueueSize.ForeColor = SystemColors.GrayText;
-            lblQueueSize.Location = new Point(3, 1);
+            lblQueueSize.Location = new Point(195, 35);
             lblQueueSize.Name = "lblQueueSize";
-            lblQueueSize.Size = new Size(62, 15);
+            lblQueueSize.Size = new Size(56, 13);
             lblQueueSize.TabIndex = 7;
             lblQueueSize.Text = "0 in queue";
+            lblQueueSize.Visible = false;
             // 
             // label72
             // 
             label72.AutoSize = true;
-            label72.Location = new Point(3, 53);
+            label72.Location = new Point(0, 35);
             label72.Name = "label72";
-            label72.Size = new Size(47, 15);
+            label72.Size = new Size(45, 13);
             label72.TabIndex = 9;
             label72.Text = "Playlist:";
             // 
             // btnRemoveCurrFromPlaylist
             // 
-            btnRemoveCurrFromPlaylist.Location = new Point(83, 49);
+            btnRemoveCurrFromPlaylist.Location = new Point(69, 31);
             btnRemoveCurrFromPlaylist.Name = "btnRemoveCurrFromPlaylist";
-            btnRemoveCurrFromPlaylist.Size = new Size(24, 23);
+            btnRemoveCurrFromPlaylist.Size = new Size(20, 20);
             btnRemoveCurrFromPlaylist.TabIndex = 11;
             btnRemoveCurrFromPlaylist.Text = "-";
             btnRemoveCurrFromPlaylist.UseVisualStyleBackColor = true;
@@ -336,13 +346,13 @@
             dgvQueueAndPlaylist.ClipboardCopyMode = DataGridViewClipboardCopyMode.EnableWithoutHeaderText;
             dgvQueueAndPlaylist.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dgvQueueAndPlaylist.Columns.AddRange(new DataGridViewColumn[] { Index, Title, Author, Duration, RequestedBy, VideoId });
-            dgvQueueAndPlaylist.Location = new Point(-1, 25);
+            dgvQueueAndPlaylist.Location = new Point(-1, 20);
             dgvQueueAndPlaylist.Name = "dgvQueueAndPlaylist";
             dgvQueueAndPlaylist.ReadOnly = true;
             dgvQueueAndPlaylist.RowHeadersVisible = false;
             dgvQueueAndPlaylist.SelectionMode = DataGridViewSelectionMode.CellSelect;
             dgvQueueAndPlaylist.ShowCellToolTips = false;
-            dgvQueueAndPlaylist.Size = new Size(300, 97);
+            dgvQueueAndPlaylist.Size = new Size(257, 106);
             dgvQueueAndPlaylist.StandardTab = true;
             dgvQueueAndPlaylist.TabIndex = 3;
             dgvQueueAndPlaylist.CellContentDoubleClick += dgvQueueAndPlaylist_CellContentDoubleClick;
@@ -358,7 +368,7 @@
             Index.ReadOnly = true;
             Index.Resizable = DataGridViewTriState.False;
             Index.SortMode = DataGridViewColumnSortMode.NotSortable;
-            Index.Width = 20;
+            Index.Width = 18;
             // 
             // Title
             // 
@@ -387,7 +397,7 @@
             Duration.ReadOnly = true;
             Duration.Resizable = DataGridViewTriState.False;
             Duration.TrackVisitedState = false;
-            Duration.Width = 50;
+            Duration.Width = 45;
             // 
             // RequestedBy
             // 
@@ -447,25 +457,25 @@
             panel5.Controls.Add(cbIsSearchRegex);
             panel5.Controls.Add(label5);
             panel5.Dock = DockStyle.Fill;
-            panel5.Location = new Point(0, 242);
+            panel5.Location = new Point(0, 190);
             panel5.Name = "panel5";
-            panel5.Size = new Size(298, 121);
+            panel5.Size = new Size(255, 125);
             panel5.TabIndex = 1;
             // 
             // txtSearch
             // 
             txtSearch.BorderStyle = BorderStyle.FixedSingle;
-            txtSearch.Location = new Point(54, 3);
+            txtSearch.Location = new Point(41, 0);
             txtSearch.Name = "txtSearch";
-            txtSearch.Size = new Size(122, 23);
+            txtSearch.Size = new Size(119, 21);
             txtSearch.TabIndex = 1;
             // 
             // cbIsSearchRegex
             // 
             cbIsSearchRegex.AutoSize = true;
-            cbIsSearchRegex.Location = new Point(182, 4);
+            cbIsSearchRegex.Location = new Point(163, 3);
             cbIsSearchRegex.Name = "cbIsSearchRegex";
-            cbIsSearchRegex.Size = new Size(57, 19);
+            cbIsSearchRegex.Size = new Size(54, 17);
             cbIsSearchRegex.TabIndex = 2;
             cbIsSearchRegex.Text = "Regex";
             cbIsSearchRegex.UseVisualStyleBackColor = true;
@@ -474,15 +484,18 @@
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new Point(3, 5);
+            label5.Location = new Point(0, 4);
             label5.Name = "label5";
-            label5.Size = new Size(45, 15);
+            label5.Size = new Size(42, 13);
             label5.TabIndex = 0;
             label5.Text = "Search:";
             // 
             // panel1
             // 
             panel1.Controls.Add(labelVolume);
+            panel1.Controls.Add(nudSongVolumeFactor);
+            panel1.Controls.Add(label7);
+            panel1.Controls.Add(sliderVolume);
             panel1.Controls.Add(lblPlaylistLength);
             panel1.Controls.Add(label72);
             panel1.Controls.Add(lblCurrSong);
@@ -492,21 +505,44 @@
             panel1.Controls.Add(btnPrev);
             panel1.Controls.Add(btnSavePrevToPlaylist);
             panel1.Controls.Add(btnSaveCurrToPlaylist);
-            panel1.Controls.Add(sliderVolume);
             panel1.Dock = DockStyle.Top;
-            panel1.Location = new Point(0, 138);
+            panel1.Location = new Point(0, 114);
             panel1.Margin = new Padding(0);
             panel1.Name = "panel1";
-            panel1.Size = new Size(298, 104);
+            panel1.Size = new Size(255, 76);
             panel1.TabIndex = 0;
+            // 
+            // nudSongVolumeFactor
+            // 
+            nudSongVolumeFactor.DecimalPlaces = 1;
+            nudSongVolumeFactor.Increment = new decimal(new int[] { 1, 0, 0, 65536 });
+            nudSongVolumeFactor.Location = new Point(184, 53);
+            nudSongVolumeFactor.Margin = new Padding(2);
+            nudSongVolumeFactor.Maximum = new decimal(new int[] { 5, 0, 0, 0 });
+            nudSongVolumeFactor.Minimum = new decimal(new int[] { 1, 0, 0, 65536 });
+            nudSongVolumeFactor.Name = "nudSongVolumeFactor";
+            nudSongVolumeFactor.Size = new Size(38, 21);
+            nudSongVolumeFactor.TabIndex = 10;
+            nudSongVolumeFactor.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            nudSongVolumeFactor.ValueChanged += nudSongVolumeFactor_ValueChanged;
+            // 
+            // label7
+            // 
+            label7.AutoSize = true;
+            label7.ForeColor = SystemColors.GrayText;
+            label7.Location = new Point(174, 55);
+            label7.Name = "label7";
+            label7.Size = new Size(12, 13);
+            label7.TabIndex = 15;
+            label7.Text = "x";
             // 
             // lblPlaylistLength
             // 
             lblPlaylistLength.AutoSize = true;
             lblPlaylistLength.ForeColor = SystemColors.GrayText;
-            lblPlaylistLength.Location = new Point(202, 53);
+            lblPlaylistLength.Location = new Point(153, 35);
             lblPlaylistLength.Name = "lblPlaylistLength";
-            lblPlaylistLength.Size = new Size(38, 15);
+            lblPlaylistLength.Size = new Size(36, 13);
             lblPlaylistLength.TabIndex = 14;
             lblPlaylistLength.Text = "size: 0";
             // 
@@ -527,9 +563,8 @@
             panelSettings.Dock = DockStyle.Top;
             panelSettings.Location = new Point(0, 0);
             panelSettings.Margin = new Padding(0);
-            panelSettings.MinimumSize = new Size(328, 115);
             panelSettings.Name = "panelSettings";
-            panelSettings.Size = new Size(328, 115);
+            panelSettings.Size = new Size(255, 94);
             panelSettings.TabIndex = 2;
             panelSettings.Visible = false;
             // 
@@ -542,18 +577,18 @@
             panel4.Controls.Add(btnShowYoutubeForm);
             panel4.Controls.Add(btnSkip);
             panel4.Dock = DockStyle.Top;
-            panel4.Location = new Point(0, 115);
+            panel4.Location = new Point(0, 94);
             panel4.Margin = new Padding(0);
             panel4.Name = "panel4";
-            panel4.Size = new Size(298, 23);
+            panel4.Size = new Size(255, 20);
             panel4.TabIndex = 3;
             // 
             // btnShowHideSettings
             // 
-            btnShowHideSettings.Location = new Point(122, 0);
+            btnShowHideSettings.Location = new Point(105, 0);
             btnShowHideSettings.Margin = new Padding(1, 0, 1, 0);
             btnShowHideSettings.Name = "btnShowHideSettings";
-            btnShowHideSettings.Size = new Size(105, 23);
+            btnShowHideSettings.Size = new Size(90, 20);
             btnShowHideSettings.TabIndex = 3;
             btnShowHideSettings.Text = "Show Settings";
             btnShowHideSettings.UseVisualStyleBackColor = true;
@@ -561,7 +596,7 @@
             // 
             // SongRequestView
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleDimensions = new SizeF(6F, 13F);
             AutoScaleMode = AutoScaleMode.Font;
             BorderStyle = BorderStyle.FixedSingle;
             Controls.Add(panel5);
@@ -569,9 +604,10 @@
             Controls.Add(panel4);
             Controls.Add(panelSettings);
             DoubleBuffered = true;
-            MinimumSize = new Size(300, 310);
+            Font = new Font("Calibri", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            MinimumSize = new Size(257, 269);
             Name = "SongRequestView";
-            Size = new Size(298, 363);
+            Size = new Size(255, 315);
             Load += SongRequestView_Load;
             ((System.ComponentModel.ISupportInitialize)nudMinSeconds).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).EndInit();
@@ -584,6 +620,7 @@
             panel5.PerformLayout();
             panel1.ResumeLayout(false);
             panel1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)nudSongVolumeFactor).EndInit();
             panelSettings.ResumeLayout(false);
             panelSettings.PerformLayout();
             panel4.ResumeLayout(false);
@@ -638,5 +675,7 @@
         private DataGridViewLinkColumn Duration;
         private DataGridViewTextBoxColumn RequestedBy;
         private DataGridViewTextBoxColumn VideoId;
+        private NumericUpDown nudSongVolumeFactor;
+        private Label label7;
     }
 }

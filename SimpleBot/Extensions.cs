@@ -7,6 +7,15 @@ namespace SimpleBot
 {
     static class Extensions
     {
+        public static Color LerpColor(Color c1, Color c2, float p)
+        {
+            float r = c1.R * (1.0f - p) + c2.R * p;
+            float g = c1.G * (1.0f - p) + c2.G * p;
+            float b = c1.B * (1.0f - p) + c2.B * p;
+            float a = c1.A * (1.0f - p) + c2.A * p;
+            return Color.FromArgb(a < 255 ? (int)a : 255, r < 255 ? (int)r : 255, g < 255 ? (int)g : 255, b < 255 ? (int)b : 255);
+        }
+
         public static void ReplaceWithLastAndPop<T>(this List<T> src, int index)
         {
             src[index] = src[^1];

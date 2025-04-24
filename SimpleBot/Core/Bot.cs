@@ -1,6 +1,5 @@
 ﻿using Humanizer;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
 using SimpleBot.v2;
@@ -98,7 +97,7 @@ namespace SimpleBot
         }
 
         bool _init = false;
-        public async Task Init(WebView2 ytWebView)
+        public async Task Init(Microsoft.Web.WebView2.WinForms.WebView2 webView)
         {
             if (_init)
                 throw new ApplicationException("Init should be called exactly once");
@@ -197,7 +196,7 @@ namespace SimpleBot
 
             // Init custom thingies
             Log("[init] various systems");
-            await SongRequest.Init(this, ytWebView);
+            await SongRequest.Init(this, webView);
             ChatActivity.Init(this);
             if (Settings.Default.enable_all_SimpleVar_systems)
             {
@@ -1123,9 +1122,9 @@ namespace SimpleBot
                     if (chatter.userLevel != UserLevel.Streamer) return;
                     if (args.Count == 0) return;
                     if (!int.TryParse(args.FirstOrDefault(), out int maxVol)) return;
-                    _ = Task.Run(async () =>
+                    _ = Task.Run(() =>
                     {
-                        maxVol = await SongRequest._SetMaxVolume(maxVol);
+                        maxVol = SongRequest._SetMaxVolume(maxVol);
                         TwSendMsg("Max volume set to " + maxVol, chatter);
                     }).LogErr();
                     return;

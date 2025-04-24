@@ -1,11 +1,7 @@
-using Microsoft.Web.WebView2.WinForms;
 using SimpleBot.Properties;
 using SimpleBot.v2;
 using System.Diagnostics;
-using System.Windows.Controls;
-using System.Windows.Forms;
-using CharSet = System.Runtime.InteropServices.CharSet;
-using DllImportAttribute = System.Runtime.InteropServices.DllImportAttribute;
+using System.Runtime.InteropServices;
 
 // TODO
 // 2. liked songs
@@ -84,17 +80,18 @@ namespace SimpleBot
             listChatters.DrawMode = DrawMode.OwnerDrawFixed;
             listChatters.DrawItem += ListChatters_DrawItem;
 
-            var ytWebView = new WebView2 { Dock = DockStyle.Fill };
-            await ytWebView.EnsureCoreWebView2Async();
-
+            var webView = new Microsoft.Web.WebView2.WinForms.WebView2 { Dock = DockStyle.Fill };
+            await webView.EnsureCoreWebView2Async(); 
+            
             bot = new Bot(this);
             bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;
             bot.BadCredentials += Bot_BadCredentials;
             bot.Follow += Bot_Follow;
             ChatActivity.UpdatedUsersInChat += ((EventHandler)Bot_UpdatedUsersInChat).Debounce(10000);
-            await bot.Init(ytWebView).ThrowMainThread();
+            await bot.Init(webView).ThrowMainThread();
             Bot.Log("bot initialized");
 
+#if !DEBUG
             if (Settings.Default.EnableMediaHotkeys)
             {
                 HotkeyRegisteredHandle = this.Handle;
@@ -106,6 +103,7 @@ namespace SimpleBot
                 if (!ok)
                     Bot.Log("[ERR] Failed to register global hotkeys");
             }
+#endif
         }
 
         private void ListChatters_DrawItem(object sender, DrawItemEventArgs e)
@@ -273,7 +271,7 @@ namespace SimpleBot
         {
             await Task.Delay(100);
             var isConnected = bot._tw.IsConnected;
-            this.Invoke(() =>
+            this.BeginInvoke(() =>
             {
                 if (isConnected)
                 {
@@ -304,7 +302,7 @@ namespace SimpleBot
                 if (cmp != 0) return cmp;
                 return a.name.CompareTo(b.name);
             });
-            this.Invoke(() =>
+            this.BeginInvoke(() =>
             {
                 labelChatters.Text = $"Chatters: ({users.Length})";
                 listChatters.Items.Clear();

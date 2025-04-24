@@ -1,8 +1,6 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
-using Microsoft.Web.WebView2.WinForms;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Serialization;
@@ -14,10 +12,15 @@ namespace SimpleBot
         public struct Req
         {
             public string ogRequesterDisplayName, ytVideoId, title, author, duration;
+            public float volFactor;
             [JsonIgnore]
             public int _shuffleRandVal; // used in tandom with Array.Sort
 
             const string DASHES = "‑-‐‑‒–—―﹘﹣－"; // "‑\u002D\u2010\u2011\u2012\u2013\u2014\u2015\uFE58\uFE63\uFF0D"
+
+            public const float MIN_VOL_FACTOR = .1f;
+            public const float MAX_VOL_FACTOR = 5f;
+            public readonly float GetEffectiveVolumeFactor() => volFactor <= 0 ? 1 : Math.Clamp(volFactor, MIN_VOL_FACTOR, MAX_VOL_FACTOR);
 
             public readonly string FullTitle()
             {
@@ -147,7 +150,7 @@ namespace SimpleBot
         static Bot _bot;
         static SRData _sr = new SRData().BeValid();
         static readonly object _lock = new();
-        public static Youtube _yt;
+        public static Youtube _yt = new();
 
         // online song list:
         static readonly string _sheetId = "1XLZGNW9p1Xy_vPt_wDjNOKBk1zi4Qp5-gCW4OjdQDw4";
@@ -275,7 +278,7 @@ namespace SimpleBot
             catch { }
         }
 
-        public static async Task Init(Bot bot, WebView2 ytWebView)
+        public static async Task Init(Bot bot, Microsoft.Web.WebView2.WinForms.WebView2 webView)
         {
             Bot.Log("[init] _yt");
             _bot = bot;
@@ -287,14 +290,13 @@ namespace SimpleBot
             _updateSheetAllSongs();
             _threadSheetUpdates = new Thread(_updateSheetJob) { IsBackground = true };
             _threadSheetUpdates.Start();
-            _yt = new Youtube();
-            _yt.RegisterInitialized(async (o, e) =>
+            _yt.RegisterInitialized((object sender, EventArgs e) =>
             {
+                _yt.VideoEnded += _yt_VideoEnded;
+                _yt.VideoStarted += _yt_VideoStarted;
                 try
                 {
-                    _yt.VideoEnded += _yt_VideoEnded;
-                    _yt.VideoStarted += _yt_VideoStarted;
-                    await _SetVolume(_SR_volume, true);
+                    _SetVolume(_SR_volume, true);
                     string videoId = _sr.CurrSong.ytVideoId;
                     if (videoId != null)
                     {
@@ -312,7 +314,7 @@ namespace SimpleBot
                     Bot.Log(ex.ToString());
                 }
             });
-            await _yt.Init(ytWebView);
+            await _yt.Init(webView);
         }
 
         private static void _yt_VideoStarted(object sender, (string vidId, string syncUTC) e)
@@ -523,56 +525,81 @@ namespace SimpleBot
 
         public static void SetVolume(int volume, Chatter chatter)
         {
-            _ = Task.Run(async () =>
+            _ = Task.Run(() =>
             {
-                volume = await _SetVolume(volume);
+                volume = _SetVolume(volume);
                 _bot.TwSendMsg("SeemsGood Volume set to " + volume, chatter);
             }).LogErr();
         }
 
-        public static async Task<int> _SetVolume(int volume, bool forceUpdate = false)
+        public static int _SetVolume(int volume, bool forceUpdate = false)
         {
             volume = Math.Max(VOL_MIN, Math.Min(VOL_MAX, volume));
             int ogVol = _SR_volume;
             if (ogVol == volume && !forceUpdate)
                 return volume;
             int vol, maxVol;
+            float volFactor;
             lock (_lock)
             {
                 SR_volume = volume;
                 _beValid_noLock();
                 //_save_noLock(); // avoid this save, its useless. The volume will be saved when a song changes
-                (vol, maxVol) = (_SR_volume, _SR_maxVolume);
+                (vol, maxVol, volFactor) = (_SR_volume, _SR_maxVolume, _sr.CurrSong.GetEffectiveVolumeFactor());
             }
             if (vol != ogVol || forceUpdate)
             {
-                _ = await _yt.SetVolume(vol);
+                _SetEffectiveVolume(vol, maxVol, volFactor);
                 NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
             }
             return vol;
         }
 
-        public static async Task<int> _SetMaxVolume(int maxVolume)
+        public static void _SetSongVolumeFactor(float factor)
+        {
+            int vol, maxVol;
+            float volFactor;
+            lock (_lock)
+            {
+                if (_sr.CurrSong.volFactor == factor)
+                    return;
+                if (_sr.CurrSong.ytVideoId == _sr.Playlist[_sr.CurrIndexToPlayInPlaylist].ytVideoId)
+                {
+                    var c = _sr.Playlist[_sr.CurrIndexToPlayInPlaylist];
+                    c.volFactor = factor;
+                    _sr.Playlist[_sr.CurrIndexToPlayInPlaylist] = c;
+                }
+                _sr.CurrSong.volFactor = factor;
+                (vol, maxVol, volFactor) = (_SR_volume, _SR_maxVolume, _sr.CurrSong.GetEffectiveVolumeFactor());
+            }
+            _SetEffectiveVolume(vol, maxVol, volFactor);
+            NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
+        }
+
+        public static int _SetMaxVolume(int maxVolume)
         {
             maxVolume = Math.Max(VOL_MIN, Math.Min(VOL_MAX, maxVolume));
             if (_SR_maxVolume == maxVolume)
                 return maxVolume;
             int ogVol = _SR_volume;
             int vol, maxVol;
+            float volFactor;
             lock (_lock)
             {
                 SR_maxVolume = maxVolume;
                 _beValid_noLock();
                 _save_noLock();
-                (vol, maxVol) = (_SR_volume, _SR_maxVolume);
+                (vol, maxVol, volFactor) = (_SR_volume, _SR_maxVolume, _sr.CurrSong.GetEffectiveVolumeFactor());
             }
             if (vol != ogVol)
             {
-                _ = await _yt.SetVolume(vol);
+                _SetEffectiveVolume(vol, maxVol, volFactor);
+                NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
             }
-            NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
             return maxVol;
         }
+
+        static void _SetEffectiveVolume(int vol, int maxVol, float volFactor) => _yt.SetVolume(Math.Min(maxVol, Math.Max((int)(vol * (volFactor <= 0 ? 1 : volFactor)), Math.Min(1, vol))));
 
         public static void MoveToTop(HashSet<string> videoIds)
         {
@@ -712,7 +739,7 @@ namespace SimpleBot
 
         static void _playVid(string videoId)
         {
-            _ = Task.Run(async () => await _yt.PlayVideo(videoId)).LogErr();
+            _ = Task.Run(() => _yt.PlayVideo(videoId)).LogErr();
             NeedUpdateUI_Paused?.Invoke(null, false);
         }
 
@@ -845,9 +872,6 @@ namespace SimpleBot
         /// <returns></returns>
         public static async Task<string> _RequestSong(string query, Chatter requestedBy)
         {
-            if (!_yt.IsWebViewInitialized)
-                return "SongRequest is not initialized";
-
             if (await _yt.Search(query) is not Youtube.YtVideo video)
                 return "No video found for: " + query;
 

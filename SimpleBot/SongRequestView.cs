@@ -13,6 +13,9 @@ namespace SimpleBot
             InitializeComponent();
             btnTogglePlayPause.Text = PAUSE_TEXT;
 
+            nudSongVolumeFactor.Minimum = (decimal)SongRequest.Req.MIN_VOL_FACTOR;
+            nudSongVolumeFactor.Maximum = (decimal)SongRequest.Req.MAX_VOL_FACTOR;
+
             SongRequest.NeedUpdateUI_Volume += SongRequest_NeedUpdateUI_Volume;
             SongRequest.NeedUpdateUI_SongList += SongRequest_NeedUpdateUI_SongList;
             SongRequest.NeedUpdateUI_Paused += (o, paused) => BeginInvoke(() => btnTogglePlayPause.Text = paused ? PLAY_TEXT : PAUSE_TEXT);
@@ -124,6 +127,8 @@ namespace SimpleBot
             // event comes from different thread
             BeginInvoke(() =>
             {
+                nudSongVolumeFactor.Value = (decimal)e.CurrSong.GetEffectiveVolumeFactor();
+
                 bool isCurrFromPlaylist = e.CurrSong.ytVideoId == e.Playlist[e.CurrIndexToPlayInPlaylist].ytVideoId;
                 lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\n{(isCurrFromPlaylist ? "" : "*")}Requested by: {e.CurrSong.ogRequesterDisplayName}";
                 lblQueueSize.Text = e.Queue.Count + " in queue";
@@ -167,12 +172,17 @@ namespace SimpleBot
             labelVolume.Text = e.volume + "";
         }
 
+        bool _subscribedToVideoVisible;
         public void btnShowYoutubeForm_Click(object sender, EventArgs e)
         {
-            SongRequest._yt?.ShowOrHide(this, isVisible =>
+            if (SongRequest._yt == null)
+                return;
+            if (!_subscribedToVideoVisible)
             {
-                btnShowYoutubeForm.ForeColor = isVisible ? Color.ForestGreen : SystemColors.ControlText;
-            });
+                SongRequest._yt.PlayerFormVisibleChanged += (o, isVisible) => Invoke(() => btnShowYoutubeForm.ForeColor = isVisible ? Color.ForestGreen : SystemColors.ControlText);
+                _subscribedToVideoVisible = true;
+            }
+            SongRequest._yt.ShowOrHide();
         }
 
         private void nudMinSeconds_ValueChanged(object sender, EventArgs e)
@@ -192,14 +202,37 @@ namespace SimpleBot
 
         private void nudMaxVolume_ValueChanged(object sender, EventArgs e)
         {
-            Task.Run(async () => await SongRequest._SetMaxVolume((int)nudMaxVolume.Value)).LogErr();
+            _ = Task.Run(() => SongRequest._SetMaxVolume((int)nudMaxVolume.Value)).LogErr();
+        }
+
+        static readonly Color COLOR_SONG_VOL_FACTOR_NEUTRAL = SystemColors.Window;
+        static readonly Color COLOR_SONG_VOL_FACTOR_COLD = Color.FromArgb(255, 132, 168, 255);
+        static readonly Color COLOR_SONG_VOL_FACTOR_HOT = Color.FromArgb(255, 255, 168, 56);
+        private void nudSongVolumeFactor_ValueChanged(object sender, EventArgs e)
+        {
+            float p = (float)nudSongVolumeFactor.Value;
+            if (p < 1)
+            {
+                nudSongVolumeFactor.BackColor = Extensions.LerpColor(
+                    COLOR_SONG_VOL_FACTOR_COLD,
+                    COLOR_SONG_VOL_FACTOR_NEUTRAL,
+                    p);
+            }
+            else
+            {
+                nudSongVolumeFactor.BackColor = Extensions.LerpColor(
+                    COLOR_SONG_VOL_FACTOR_HOT,
+                    COLOR_SONG_VOL_FACTOR_NEUTRAL,
+                    1 - (p - 1) / (SongRequest.Req.MAX_VOL_FACTOR - 1));
+            }
+            _ = Task.Run(() => SongRequest._SetSongVolumeFactor(p)).LogErr();
         }
 
         private void sliderVolume_Scroll(object sender, EventArgs e)
         {
             int vol = sliderVolume.Value;
             labelVolume.Text = vol + "";
-            Task.Run(async () => await SongRequest._SetVolume(vol)).LogErr();
+            _ = Task.Run(() => SongRequest._SetVolume(vol)).LogErr();
         }
 
         private void btnImportPlaylist_Click(object sender, EventArgs e)
@@ -258,9 +291,9 @@ namespace SimpleBot
             SongRequest.RemoveCurrSongFromPlaylist();
         }
 
-        private async void btnTogglePlayPause_Click(object sender, EventArgs e)
+        private void btnTogglePlayPause_Click(object sender, EventArgs e)
         {
-            await SongRequest.PlayPause();
+            Task.Run(SongRequest.PlayPause);
         }
 
         private void btnShowHideSettings_Click(object sender, EventArgs e)
@@ -366,6 +399,29 @@ namespace SimpleBot
                 ids.Add(videoId);
             });
             return ids;
+        }
+
+        private void sliderVolume_KeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.PageUp:
+                case Keys.PageDown:
+                case Keys.Home:
+                case Keys.End:
+                    e.SuppressKeyPress = e.Handled = true;
+                    break;
+                case Keys.Up:
+                    sliderVolume.Value = Math.Min(sliderVolume.Value + sliderVolume.SmallChange, sliderVolume.Maximum);
+                    e.SuppressKeyPress = e.Handled = true;
+                    sliderVolume_Scroll(sliderVolume, EventArgs.Empty);
+                    break;
+                case Keys.Down:
+                    sliderVolume.Value = Math.Max(sliderVolume.Value - sliderVolume.SmallChange, sliderVolume.Minimum);
+                    e.SuppressKeyPress = e.Handled = true;
+                    sliderVolume_Scroll(sliderVolume, EventArgs.Empty);
+                    break;
+            }
         }
     }
 }

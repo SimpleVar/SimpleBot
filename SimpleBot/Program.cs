@@ -1,8 +1,5 @@
-﻿using Microsoft.Web.WebView2.WinForms;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics;
 using System.Text;
-using System.Windows.Input;
 
 namespace SimpleBot
 {
@@ -11,19 +8,6 @@ namespace SimpleBot
         [STAThread]
         static void Main()
         {
-            /*
-            // TODO replace my YT lib with this YT lib:
-            var youtube = new YoutubeClient();
-
-            // You can specify either the video URL or its ID
-            var videoUrl = "https://youtube.com/watch?v=u_yIGGhubZs";
-            var video = youtube.Videos.Streams.GetManifestAsync(videoUrl).Result.GetAudioOnlyStreams().GetWithHighestBitrate();
-
-            youtube.Videos.Streams.DownloadAsync(video, "bleep." + video.Container.Name).AsTask().Wait();
-            
-            return;
-            */
-
             /*
             var bot = new BotV2();
             Application.Run();
@@ -39,13 +23,10 @@ namespace SimpleBot
             {
                 Task.Run(async () =>
                 {
-                    var ytWebView = new WebView2 { Dock = DockStyle.Fill };
-                    await ytWebView.EnsureCoreWebView2Async();
-
                     Bot bot = new(null); // load data
-                    await SongRequest.Init(bot, ytWebView);
+                    await SongRequest.Init(bot, null);
                     await Task.Delay(2000);
-                    await SongRequest._yt.PauseOrResume();
+                    _ = SongRequest._yt.PauseOrResume();
 
                     MessageBox.Show("It has begun");
 

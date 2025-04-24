@@ -153,6 +153,7 @@
             // 
             srv.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             srv.BorderStyle = BorderStyle.FixedSingle;
+            srv.Font = new Font("Calibri", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
             srv.Location = new Point(195, 0);
             srv.MinimumSize = new Size(300, 310);
             srv.Name = "srv";
