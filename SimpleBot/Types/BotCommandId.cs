@@ -33,6 +33,7 @@
     SongRequest_GetCurr = 1205,
     SongRequest_ShufflePlaylist = 1208,
     SongRequest_WrongSong = 1209,
+    SongRequest_MySongs = 1210,
     Reminders_Add = 1300,
     Queue_Curr = 1500,
     Queue_Next = 1501,

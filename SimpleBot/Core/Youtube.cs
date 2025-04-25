@@ -166,6 +166,7 @@ document.body.append(tag);
         // Sometimes WebView2 freezes, it seems to help turning off hardware-acceleration on Edge browser :)
         public void ShowOrHide()
         {
+            // TODO persistent size and position like the main form
             webView?.Invoke(() =>
             {
                 if (_ytViewForm == null)
@@ -181,13 +182,13 @@ document.body.append(tag);
                         Text = "SimpleBot - Youtube view"
                     };
                     _ytViewForm.FormClosing += (o, e) =>
-              {
-                    if (e.CloseReason == CloseReason.UserClosing)
                     {
-                        e.Cancel = true;
-                        _ytViewForm.Hide();
-                    }
-                };
+                        if (e.CloseReason == CloseReason.UserClosing)
+                        {
+                            e.Cancel = true;
+                            _ytViewForm.Hide();
+                        }
+                    };
                     _ytViewForm.VisibleChanged += (o, e) => PlayerFormVisibleChanged?.Invoke(this, _ytViewForm.Visible);
                     _ytViewForm.Controls.Add(webView);
                 }

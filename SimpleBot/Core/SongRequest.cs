@@ -381,7 +381,6 @@ namespace SimpleBot
                     totalByUser++;
                 }
             }
-
             if (needAdd)
             {
                 _sr.CurrIndexToPlayInPlaylist++;
@@ -853,6 +852,20 @@ namespace SimpleBot
             }
             if (removedReq is Req r)
                 _bot.TwSendMsg($"Removed #{removedIndex + 1} {r.FullTitle()}", chatter);
+        }
+
+        public static void GetPlaylistedSongsByUser(Chatter chatter, string userDisplayName)
+        {
+            bool isSelf = userDisplayName == null;
+            userDisplayName ??= chatter.DisplayName;
+            int totalByUser = 0;
+            lock (_lock)
+            {
+                for (int i = 0; i < _sr.Playlist.Count; i++)
+                    if (string.Equals(_sr.Playlist[i].ogRequesterDisplayName, userDisplayName, StringComparison.InvariantCultureIgnoreCase))
+                        totalByUser++;
+            }
+            Bot.ONE.TwSendMsg((isSelf ? "You have contributed " : userDisplayName + " has contributed ") + (totalByUser == 0 ? "no" : totalByUser) + " songs to the playlist" + (totalByUser == 0 ? "" : " blobDance"));
         }
 
         public static void RequestSong(string query, Chatter chatter)

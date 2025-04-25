@@ -571,6 +571,7 @@ namespace SimpleBot
               [BotCommandId.SongRequest_GetCurr] = new[] { "currsong", "currentsong", "songname", "cs", "song" },
               [BotCommandId.SongRequest_ShufflePlaylist] = new[] { "shuffle" },
               [BotCommandId.SongRequest_WrongSong] = new[] { "wrongsong", "oops" },
+              [BotCommandId.SongRequest_MySongs] = new[] { "mysongs" },
               [BotCommandId.Reminders_Add] = new[] { "reminder", "timer", "alarm", "setreminder", "settimer", "setalarm" },
               [BotCommandId.Queue_Curr] = new[] { "curr", "current" },
               [BotCommandId.Queue_Next] = new[] { "next" },
@@ -1149,6 +1150,10 @@ namespace SimpleBot
                 case BotCommandId.SongRequest_WrongSong:
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_WrongSong);
                     SongRequest.WrongSong(chatter);
+                    return;
+                case BotCommandId.SongRequest_MySongs:
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_MySongs);
+                    _ = Task.Run(() => SongRequest.GetPlaylistedSongsByUser(chatter, args.FirstOrDefault()?.CleanUsername())).LogErr();
                     return;
                 case BotCommandId.SongRequest_Volume:
                     if (chatter.userLevel < UserLevel.Moderator) return;
