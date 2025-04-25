@@ -166,18 +166,17 @@ document.body.append(tag);
         // Sometimes WebView2 freezes, it seems to help turning off hardware-acceleration on Edge browser :)
         public void ShowOrHide()
         {
-            // TODO persistent size and position like the main form
             webView?.Invoke(() =>
             {
                 if (_ytViewForm == null)
                 {
                     _ytViewForm = new Form
                     {
-                        ClientSize = new Size(640, 390),
+                        ClientSize = new Size(420, 69),
                         ShowIcon = false,
 #if false // dont set these properties if you want OBS to be able to capture the video player
-            FormBorderStyle = FormBorderStyle.SizableToolWindow,
-            ShowInTaskbar = false,
+                        FormBorderStyle = FormBorderStyle.SizableToolWindow,
+                        ShowInTaskbar = false,
 #endif
                         Text = "SimpleBot - Youtube view"
                     };
@@ -189,7 +188,18 @@ document.body.append(tag);
                             _ytViewForm.Hide();
                         }
                     };
-                    _ytViewForm.VisibleChanged += (o, e) => PlayerFormVisibleChanged?.Invoke(this, _ytViewForm.Visible);
+                    _ytViewForm.VisibleChanged += (o, e) =>
+                    {
+                        if (_ytViewForm.Visible)
+                        {
+                            var mainPos = MainForm.Get.Location;
+                            var w = Math.Min(420, Screen.PrimaryScreen.WorkingArea.Width - mainPos.X);
+                            var h = (int)(w * .5625f); // 16:9
+                            _ytViewForm.Location = new Point(mainPos.X + 1, mainPos.Y + 242);
+                            _ytViewForm.ClientSize = new Size(w, h);
+                        }
+                        PlayerFormVisibleChanged?.Invoke(this, _ytViewForm.Visible);
+                    };
                     _ytViewForm.Controls.Add(webView);
                 }
 

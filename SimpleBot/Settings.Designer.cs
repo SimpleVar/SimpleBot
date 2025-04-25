@@ -323,29 +323,5 @@ namespace SimpleBot {
                 this["SneakyJapan_RequiredChatActivity"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0, 0")]
-        public global::System.Drawing.Point LastVideoViewPosition {
-            get {
-                return ((global::System.Drawing.Point)(this["LastVideoViewPosition"]));
-            }
-            set {
-                this["LastVideoViewPosition"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0, 0")]
-        public global::System.Drawing.Size LastVideoViewSize {
-            get {
-                return ((global::System.Drawing.Size)(this["LastVideoViewSize"]));
-            }
-            set {
-                this["LastVideoViewSize"] = value;
-            }
-        }
     }
 }
