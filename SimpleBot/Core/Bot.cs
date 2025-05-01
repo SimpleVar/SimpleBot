@@ -522,7 +522,8 @@ namespace SimpleBot
                 Log("[Ban] ERROR: " + ex);
                 Debug.WriteLine(ex);
             }
-            Log($"[Ban] {(success ? "Banned" : "Failed to ban")} {name}");
+            int deletedReminders = Reminders.DeleteAllByUser(name.CanonicalUsername());
+            Log($"[Ban] {(success ? "Banned" : "Failed to ban")} {name}" + (deletedReminders == 0 ? "" : $" (and deleted {deletedReminders} reminders they had)"));
             return success;
         }
 
@@ -573,6 +574,7 @@ namespace SimpleBot
               [BotCommandId.SongRequest_WrongSong] = new[] { "wrongsong", "oops" },
               [BotCommandId.SongRequest_MySongs] = new[] { "mysongs" },
               [BotCommandId.Reminders_Add] = new[] { "reminder", "timer", "alarm", "setreminder", "settimer", "setalarm" },
+              [BotCommandId.Reminders_Show] = new[] { "reminders", "timers", "alarms", "showreminder", "showtimer", "showalarm", "myreminder", "mytimer", "myalarm", "showreminders", "showtimers", "showalarms", "myreminders", "mytimers", "myalarms" },
               [BotCommandId.Queue_Curr] = new[] { "curr", "current" },
               [BotCommandId.Queue_Next] = new[] { "next" },
               [BotCommandId.Queue_All] = new[] { "queue" },
@@ -1168,7 +1170,11 @@ namespace SimpleBot
                 case BotCommandId.Reminders_Add:
                     if (args.Count == 0)
                         return;
-                    Reminders.Add(this, chatter, args[0], argsStr);
+                    _ = Task.Run(() => Reminders.Add(this, chatter, args[0], argsStr)).LogErr();
+                    return;
+                case BotCommandId.Reminders_Show:
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.Reminders_Show);
+                    _ = Task.Run(() => Reminders.Show(this, chatter)).LogErr();
                     return;
                 case BotCommandId.Queue_Curr:
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.Queue_Curr);

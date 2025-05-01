@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using AxWMPLib;
+using Humanizer;
+using System.Diagnostics;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Timer = System.Threading.Timer;
@@ -67,7 +69,7 @@ namespace SimpleBot
                         deadAlarms.Add(a);
                         continue;
                     }
-                    a.timer = new Timer(_OnAlarmDeadline, a, dur, Timeout.InfiniteTimeSpan);
+                    _InitAlarmTimer(a, dur);
                 }
             }
             _ = Task.Run(async () =>
@@ -81,6 +83,56 @@ namespace SimpleBot
                     _save_noLock();
                 }
             });
+        }
+
+        public static int DeleteAllByUser(string canonicalName)
+        {
+            int count = 0;
+            lock (_lock)
+            {
+                for (int i = _alarms.Count - 1; i >= 0; i--)
+                {
+                    var a = _alarms[i];
+                    if (string.Equals(canonicalName, a.DisplayName, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        _alarms.RemoveAt(i);
+                        if (a.timer != null)
+                        {
+                            try
+                            {
+                                a.timer.Dispose();
+                            }
+                            catch { }
+                        }
+                        count++;
+                    }
+                }
+                if (count > 0)
+                    _save_noLock();
+            }
+            return count;
+        }
+
+        public static void Show(Bot bot, Chatter chatter)
+        {
+            string dispName = chatter.displayName;
+            string userAlarms = "";
+            lock (_lock)
+            {
+                for (int i = 0; i < _alarms.Count; i++)
+                {
+                    var a = _alarms[i];
+                    if (a.DisplayName == dispName)
+                    {
+                        if (userAlarms != "")
+                            userAlarms += " | ";
+                        userAlarms += (string.IsNullOrWhiteSpace(a.Title) ? "untitled timer" : a.Title) + " (in " + (a.utc - DateTime.UtcNow).Humanize(precision: 3, minUnit: TimeUnit.Second) + ")";
+                    }
+                }
+            }
+            if (userAlarms == "")
+                userAlarms = "You have no timers running";
+            bot.TwSendMsg(userAlarms, chatter);
         }
 
         public static void Add(Bot bot, Chatter chatter, string timeArg, string argsStr)
@@ -99,15 +151,29 @@ namespace SimpleBot
                 _save_noLock();
             }
             bot.TwSendMsg("Alarm set SeemsGood", chatter);
-            alarm.timer = new Timer(_OnAlarmDeadline, alarm, dur, Timeout.InfiniteTimeSpan);
+            _InitAlarmTimer(alarm, dur);
+        }
+
+        static void _InitAlarmTimer(UserAlarm alarm, TimeSpan dur)
+        {
+            if (dur.TotalDays > 2)
+                return;
+            alarm.timer = new Timer(_OnAlarmDeadline, alarm, dur, Timeout.InfiniteTimeSpan /* not repeating */);
         }
 
         static void _OnAlarmDeadline(object state) => OnAlarmDeadline(state as UserAlarm, true);
         static void OnAlarmDeadline(UserAlarm alarm, bool save)
         {
+            if (alarm == null)
+            {
+                Bot.Log("[ERR] at " + nameof(OnAlarmDeadline) + " alarm object is null");
+                Bot.ONE.TwSendMsg("[ERR] alarm object is null D:");
+                return;
+            }
             Bot.ONE.TwSendMsg("@" + alarm.DisplayName + " 🔔 Time is up 🔔 " + alarm.Title);
             lock (_lock)
             {
+                alarm.timer?.Dispose();
                 _alarms.Remove(alarm);
                 if (save)
                     _save_noLock();
