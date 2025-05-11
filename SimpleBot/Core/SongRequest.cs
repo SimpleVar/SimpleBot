@@ -186,6 +186,7 @@ namespace SimpleBot
 #if DEBUG
             return;
 #endif
+            if (_sheets == null) return;
             while (true)
             {
                 while (_pendingSheetUpdate == null)
@@ -220,6 +221,7 @@ namespace SimpleBot
 #if DEBUG
             return;
 #endif
+            if (_sheets == null) return;
             string[][] values;
             lock (_lock)
             {
@@ -297,14 +299,17 @@ namespace SimpleBot
         {
             Bot.Log("[init] _yt");
             _bot = bot;
-            _sheets = new SheetsService(new Google.Apis.Services.BaseClientService.Initializer
+            if (!string.IsNullOrWhiteSpace(Settings.Default.GoogleCredentialsFile))
             {
-                HttpClientInitializer = (await GoogleCredential.FromFileAsync(Settings.Default.GoogleCredentialsFile, CancellationToken.None).ThrowMainThread())
-                    .CreateScoped("https://www.googleapis.com/auth/spreadsheets")
-            });
-            _updateSheetAllSongs();
-            _threadSheetUpdates = new Thread(_updateSheetJob) { IsBackground = true };
-            _threadSheetUpdates.Start();
+                _sheets = new SheetsService(new Google.Apis.Services.BaseClientService.Initializer
+                {
+                    HttpClientInitializer = (await GoogleCredential.FromFileAsync(Settings.Default.GoogleCredentialsFile, CancellationToken.None).ThrowMainThread())
+                        .CreateScoped("https://www.googleapis.com/auth/spreadsheets")
+                });
+                _updateSheetAllSongs();
+                _threadSheetUpdates = new Thread(_updateSheetJob) { IsBackground = true };
+                _threadSheetUpdates.Start();
+            }
             _yt.RegisterInitialized((object sender, EventArgs e) =>
             {
                 _yt.VideoEnded += _yt_VideoEnded;
