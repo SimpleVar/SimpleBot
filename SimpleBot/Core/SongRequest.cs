@@ -68,6 +68,21 @@ namespace SimpleBot
                 return this;
             }
 
+            public TimeSpan CalculateQueueDuration()
+            {
+                TimeSpan totalDuration = TimeSpan.Zero;
+
+                foreach (var song in Queue)
+                {
+                    if (TimeSpan.TryParse("0:" + song.duration, CultureInfo.InvariantCulture, out var songDuration))
+                    {
+                        totalDuration += songDuration;
+                    }
+                }
+
+                return totalDuration;
+            }
+
             static ushort nextStamp = (ushort)DateTime.UtcNow.Ticks;
             public string ToJsonData() => $"{{\"stamp\": {nextStamp++}, \"sync\": {SyncUTC}, \"curr\": {CurrSong.ToCompactJson()}, \"queue\": [{string.Join(',', Queue.Select(x => x.ToCompactJson()))}]}}";
         }
@@ -896,11 +911,21 @@ namespace SimpleBot
                 duration = video.duration,
                 ogRequesterDisplayName = requestedBy?.DisplayName ?? _bot.CHANNEL
             };
+            string currentQueueDuration;
+            lock(_lock)
+            {
+                TimeSpan queueDuration = _sr.CalculateQueueDuration();
+                if (queueDuration.TotalHours >= 1)
+                    currentQueueDuration = $"{queueDuration.TotalHours}:{queueDuration.Minutes:D2}:{queueDuration.Seconds:D2}";
+                else
+                    currentQueueDuration = $"{queueDuration.TotalMinutes}:{queueDuration.Seconds:D2}";
+            }
+
             var res = _addToQueue(req, ignoreLimits: string.Equals(req.ogRequesterDisplayName, _bot.CHANNEL, StringComparison.InvariantCultureIgnoreCase));
 
             return res switch
             {
-                ReqResult.OK => $"Added #{_sr.Queue.Count} {req.ToLongString()}",
+                ReqResult.OK => $"Added #{_sr.Queue.Count} {req.ToLongString()} (Playing in: {currentQueueDuration})",
                 ReqResult.AlreadyExists => $"\"{video.title}\" is already in the queue",
                 ReqResult.TooManyOngoingRequestsByUser => "You have enough requests already in the queue",
                 ReqResult.TooShort => "The video is too short D:",
