@@ -704,6 +704,18 @@ namespace SimpleBot
                 _ = Ban(chatter.name, "spam bot | newcommer link").LogErr();
                 return;
             }
+            if (e.ChatMessage.IsFirstMessage)
+            {
+                _ = Task.Run(async () =>
+                {
+                    var res = await _twApi.Helix.Users.GetUsersAsync([e.ChatMessage.UserId]);
+                    if (res == null || res.Users.Length == 0)
+                        TwSendMsg("simple354Glorp Welcome " + chatter.DisplayName + " WAVE");
+                    else if ((DateTime.UtcNow - res.Users[0].CreatedAt).TotalDays > 7)
+                        TwSendMsg("simple354Pika Welcome " + chatter.DisplayName + " WAVE");
+                    // freshly created accounts will not be greeted
+                }).LogErr();
+            }
 
             // general moderation
             if (msg.Contains("BANGER", StringComparison.InvariantCulture)) TwSendMsg("It's aaameee!! MARIO");

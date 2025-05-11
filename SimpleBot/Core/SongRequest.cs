@@ -13,8 +13,17 @@ namespace SimpleBot
         {
             public string ogRequesterDisplayName, ytVideoId, title, author, duration;
             public float volFactor;
+
+            public static readonly TimeSpan FAILED_TO_PARSE_DEFAULT_DURATION = TimeSpan.Zero;
+            [JsonIgnore]
+            private TimeSpan _durationTime = TimeSpan.MinValue;
+            [JsonIgnore]
+            public TimeSpan durationTime => _durationTime != TimeSpan.MinValue ? _durationTime : (TimeSpan.TryParse("0:" + duration, CultureInfo.InvariantCulture, out _durationTime) ? _durationTime : (_durationTime = FAILED_TO_PARSE_DEFAULT_DURATION));
+
             [JsonIgnore]
             public int _shuffleRandVal; // used in tandom with Array.Sort
+
+            public Req() {}
 
             const string DASHES = "‑-‐‑‒–—―﹘﹣－"; // "‑\u002D\u2010\u2011\u2012\u2013\u2014\u2015\uFE58\uFE63\uFF0D"
 
@@ -59,7 +68,10 @@ namespace SimpleBot
             public int CurrIndexToPlayInPlaylist;
             public Req PrevSong;
             public Req CurrSong;
-            public string SyncUTC; // The time in which the current song started playing
+            [JsonIgnore]
+            public DateTimeOffset SyncUTC;
+            [JsonIgnore]
+            public TimeSpan QueueDuration;
 
             public SRData BeValid()
             {
@@ -69,7 +81,7 @@ namespace SimpleBot
             }
 
             static ushort nextStamp = (ushort)DateTime.UtcNow.Ticks;
-            public string ToJsonData() => $"{{\"stamp\": {nextStamp++}, \"sync\": {SyncUTC}, \"curr\": {CurrSong.ToCompactJson()}, \"queue\": [{string.Join(',', Queue.Select(x => x.ToCompactJson()))}]}}";
+            public string ToJsonData() => $"{{\"stamp\": {nextStamp++}, \"sync\": {SyncUTC.ToUnixTimeMilliseconds()}, \"curr\": {CurrSong.ToCompactJson()}, \"queue\": [{string.Join(',', Queue.Select(x => x.ToCompactJson()))}]}}";
         }
 
         /// <summary>
@@ -148,7 +160,7 @@ namespace SimpleBot
 
         static string _filePath;
         static Bot _bot;
-        static SRData _sr = new SRData().BeValid();
+        static SRData _sr = new SRData() { QueueDuration = TimeSpan.Zero }.BeValid();
         static readonly object _lock = new();
         public static Youtube _yt = new();
 
@@ -254,6 +266,9 @@ namespace SimpleBot
             {
                 var json = File.ReadAllText(_filePath);
                 SRData sr = json.FromJson<SRData>();
+                sr.QueueDuration = TimeSpan.Zero;
+                for (int i = 0; i < sr.Queue.Count; i++)
+                    sr.QueueDuration += sr.Queue[i].durationTime;
                 lock (_lock)
                 {
                     _sr = sr;
@@ -325,7 +340,14 @@ namespace SimpleBot
                 {
                     if (e.vidId == _sr.CurrSong.ytVideoId)
                     {
-                        _sr.SyncUTC = e.syncUTC;
+                        try
+                        {
+                            _sr.SyncUTC = DateTimeOffset.FromUnixTimeMilliseconds(long.Parse(e.syncUTC));
+                        }
+                        catch
+                        {
+                            return;
+                        }
                         UpdateSheet(_sr.ToJsonData());
                     }
                 }
@@ -342,6 +364,7 @@ namespace SimpleBot
         {
             SRData copy = new()
             {
+                QueueDuration = _sr.QueueDuration,
                 Queue = new(_sr.Queue),
                 Playlist = new(_sr.Playlist),
                 CurrIndexToPlayInPlaylist = _sr.CurrIndexToPlayInPlaylist,
@@ -720,7 +743,7 @@ namespace SimpleBot
                 _sr.PrevSong = _sr.CurrSong;
                 _sr.CurrIndexToPlayInPlaylist = _sr.CurrIndexToPlayInPlaylist > 0 ? _sr.CurrIndexToPlayInPlaylist - 1 : _sr.Playlist.Count - 1;
                 _sr.CurrSong = _sr.Playlist[_sr.CurrIndexToPlayInPlaylist];
-                _sr.SyncUTC = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                _sr.SyncUTC = DateTimeOffset.UtcNow;
 
                 _onSongListChange_noLock();
                 videoId = _sr.CurrSong.ytVideoId;
@@ -752,6 +775,7 @@ namespace SimpleBot
                 {
                     _sr.CurrSong = _sr.Queue[0];
                     _sr.Queue.RemoveAt(0);
+                    _sr.QueueDuration -= _sr.CurrSong.durationTime;
                 }
                 else if (_sr.Playlist.Count > 0)
                 {
@@ -761,7 +785,7 @@ namespace SimpleBot
                 }
                 else
                     _sr.CurrSong = new();
-                _sr.SyncUTC = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                _sr.SyncUTC = DateTimeOffset.UtcNow;
 
                 _onSongListChange_noLock();
                 videoId = _sr.CurrSong.ytVideoId;
@@ -791,12 +815,14 @@ namespace SimpleBot
             MessageBox.Show("Added " + importCount + " new songs to the playlist");
         }
 
-        static ReqResult _addToQueue(Req r, bool ignoreLimits)
+        static ReqResult _addToQueue(Req r, bool ignoreLimits, out TimeSpan durationToWait)
         {
+            durationToWait = TimeSpan.Zero;
             int maxReqsByUser = int.MaxValue;
             if (!ignoreLimits)
             {
-                if (!TimeSpan.TryParse("0:" + r.duration, CultureInfo.InvariantCulture, out TimeSpan dur))
+                var dur = r.durationTime;
+                if (dur == Req.FAILED_TO_PARSE_DEFAULT_DURATION)
                     return ReqResult.FailedToParseDuration;
                 if (dur.TotalSeconds < _SR_minDuration_inSeconds)
                     return ReqResult.TooShort;
@@ -826,7 +852,11 @@ namespace SimpleBot
                     }
                 }
 
+                durationToWait = _sr.QueueDuration + _sr.CurrSong.durationTime;
+                if (_sr.SyncUTC != default)
+                    durationToWait -= DateTimeOffset.UtcNow - _sr.SyncUTC;
                 _sr.Queue.Add(r);
+                _sr.QueueDuration += r.durationTime;
                 _onSongListChange_noLock();
             }
             return ReqResult.OK;
@@ -842,16 +872,18 @@ namespace SimpleBot
                 {
                     if (string.Equals(_sr.Queue[i].ogRequesterDisplayName, chatter.DisplayName, StringComparison.InvariantCultureIgnoreCase))
                     {
+                        var r = _sr.Queue[i];
+                        removedReq = r;
                         removedIndex = i;
-                        removedReq = _sr.Queue[i];
                         _sr.Queue.RemoveAt(i);
+                        _sr.QueueDuration -= r.durationTime;
                         _onSongListChange_noLock();
                         break;
                     }
                 }
             }
-            if (removedReq is Req r)
-                _bot.TwSendMsg($"Removed #{removedIndex + 1} {r.FullTitle()}", chatter);
+            if (removedReq is Req rr)
+                _bot.TwSendMsg($"Removed #{removedIndex + 1} {rr.FullTitle()}", chatter);
         }
 
         public static void GetPlaylistedSongsByUser(Chatter chatter, string userDisplayName)
@@ -896,11 +928,13 @@ namespace SimpleBot
                 duration = video.duration,
                 ogRequesterDisplayName = requestedBy?.DisplayName ?? _bot.CHANNEL
             };
-            var res = _addToQueue(req, ignoreLimits: string.Equals(req.ogRequesterDisplayName, _bot.CHANNEL, StringComparison.InvariantCultureIgnoreCase));
+            var res = _addToQueue(req, ignoreLimits: string.Equals(req.ogRequesterDisplayName, _bot.CHANNEL, StringComparison.InvariantCultureIgnoreCase), out TimeSpan timeToWait);
 
+            bool showHours = timeToWait.TotalHours >= 1;
+            string timeToWaitStr = (showHours ? (int)timeToWait.TotalHours + ":" : "") + (showHours ? timeToWait.Minutes.ToString().PadLeft(2, '0') : timeToWait.Minutes) + ':' + timeToWait.Seconds.ToString().PadLeft(2, '0');
             return res switch
             {
-                ReqResult.OK => $"Added #{_sr.Queue.Count} {req.ToLongString()}",
+                ReqResult.OK => $"Added #{_sr.Queue.Count} {req.ToLongString()} (Playing in: {timeToWaitStr})",
                 ReqResult.AlreadyExists => $"\"{video.title}\" is already in the queue",
                 ReqResult.TooManyOngoingRequestsByUser => "You have enough requests already in the queue",
                 ReqResult.TooShort => "The video is too short D:",
