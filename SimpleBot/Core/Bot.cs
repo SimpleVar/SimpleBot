@@ -710,9 +710,9 @@ namespace SimpleBot
                 {
                     var res = await _twApi.Helix.Users.GetUsersAsync([e.ChatMessage.UserId]);
                     if (res == null || res.Users.Length == 0)
-                        TwSendMsg("simple354Glorp Welcome " + chatter.DisplayName + " WAVE");
+                        TwSendMsg("Welcome " + chatter.DisplayName + " WAVE D:");
                     else if ((DateTime.UtcNow - res.Users[0].CreatedAt).TotalDays > 7)
-                        TwSendMsg("simple354Pika Welcome " + chatter.DisplayName + " WAVE");
+                        TwSendMsg("Welcome " + chatter.DisplayName + " WAVE");
                     // freshly created accounts will not be greeted
                 }).LogErr();
             }

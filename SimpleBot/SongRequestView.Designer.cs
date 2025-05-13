@@ -62,6 +62,7 @@
             RequestedBy = new DataGridViewTextBoxColumn();
             VideoId = new DataGridViewTextBoxColumn();
             ctx = new ContextMenuStrip(components);
+            ctxMenuItem_addToQueue = new ToolStripMenuItem();
             ctxMenuItem_moveToTop = new ToolStripMenuItem();
             ctxMenuItem_delete = new ToolStripMenuItem();
             ctxMenuItem_lblSelectedAmount = new ToolStripMenuItem();
@@ -418,10 +419,17 @@
             // 
             // ctx
             // 
-            ctx.Items.AddRange(new ToolStripItem[] { ctxMenuItem_moveToTop, ctxMenuItem_delete, ctxMenuItem_lblSelectedAmount });
+            ctx.Items.AddRange(new ToolStripItem[] { ctxMenuItem_addToQueue, ctxMenuItem_moveToTop, ctxMenuItem_delete, ctxMenuItem_lblSelectedAmount });
             ctx.Name = "ctx";
             ctx.ShowImageMargin = false;
-            ctx.Size = new Size(139, 70);
+            ctx.Size = new Size(156, 114);
+            // 
+            // ctxMenuItem_addToQueue
+            // 
+            ctxMenuItem_addToQueue.Name = "ctxMenuItem_addToQueue";
+            ctxMenuItem_addToQueue.Size = new Size(155, 22);
+            ctxMenuItem_addToQueue.Text = "Add to Queue";
+            ctxMenuItem_addToQueue.Click += ctxMenuItem_addToQueue_Click;
             // 
             // ctxMenuItem_moveToTop
             // 
@@ -429,7 +437,6 @@
             ctxMenuItem_moveToTop.Size = new Size(138, 22);
             ctxMenuItem_moveToTop.Tag = "";
             ctxMenuItem_moveToTop.Text = "Move to Top";
-            ctxMenuItem_moveToTop.TextAlign = ContentAlignment.MiddleLeft;
             ctxMenuItem_moveToTop.Click += ctxMenuItem_moveToTop_Click;
             // 
             // ctxMenuItem_delete
@@ -438,7 +445,6 @@
             ctxMenuItem_delete.Size = new Size(138, 22);
             ctxMenuItem_delete.Tag = "";
             ctxMenuItem_delete.Text = "Remove";
-            ctxMenuItem_delete.TextAlign = ContentAlignment.MiddleLeft;
             ctxMenuItem_delete.Click += ctxMenuItem_delete_Click;
             // 
             // ctxMenuItem_lblSelectedAmount
@@ -448,7 +454,6 @@
             ctxMenuItem_lblSelectedAmount.Size = new Size(138, 22);
             ctxMenuItem_lblSelectedAmount.Tag = "";
             ctxMenuItem_lblSelectedAmount.Text = "(1 song selected)";
-            ctxMenuItem_lblSelectedAmount.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // panel5
             // 
@@ -677,5 +682,6 @@
         private DataGridViewTextBoxColumn VideoId;
         private NumericUpDown nudSongVolumeFactor;
         private Label label7;
+        private ToolStripMenuItem ctxMenuItem_addToQueue;
     }
 }

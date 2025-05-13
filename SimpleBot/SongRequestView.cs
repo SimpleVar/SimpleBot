@@ -306,6 +306,13 @@ namespace SimpleBot
             dgvQueueAndPlaylist.ClearSelection();
         }
 
+
+        private void ctxMenuItem_addToQueue_Click(object sender, EventArgs e)
+        {
+            var ids = GetSelectedVideoIds();
+            SongRequest.AddToQueue(ids);
+        }
+
         private void ctxMenuItem_moveToTop_Click(object sender, EventArgs e)
         {
             var ids = GetSelectedVideoIds();

@@ -628,6 +628,19 @@ namespace SimpleBot
 
         static void _SetEffectiveVolume(int vol, int maxVol, float volFactor) => _yt.SetVolume(Math.Min(maxVol, Math.Max((int)(vol * (volFactor <= 0 ? 1 : volFactor)), Math.Min(1, vol))));
 
+        public static void AddToQueue(HashSet<string> videoIds)
+        {
+            lock (_lock)
+            {
+                var N = _sr.Playlist.Count;
+                for (int i = 0; i < N; i++)
+                {
+                    if (videoIds.Contains(_sr.Playlist[i].ytVideoId))
+                        _addToQueue(_sr.Playlist[i], true, out _);
+                }
+            }
+        }
+
         public static void MoveToTop(HashSet<string> videoIds)
         {
             _removeManySongsFromPlaylist(videoIds, true);
@@ -859,7 +872,10 @@ namespace SimpleBot
 
                 durationToWait = _sr.QueueDuration + _sr.CurrSong.durationTime;
                 if (_sr.SyncUTC != default)
-                    durationToWait -= DateTimeOffset.UtcNow - _sr.SyncUTC;
+                {
+                    var playedDur = DateTimeOffset.UtcNow - _sr.SyncUTC;
+                    durationToWait -= playedDur > _sr.CurrSong.durationTime ? _sr.CurrSong.durationTime : playedDur;
+                }
                 _sr.Queue.Add(r);
                 _sr.QueueDuration += r.durationTime;
                 _onSongListChange_noLock();
