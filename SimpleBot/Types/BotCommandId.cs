@@ -17,6 +17,7 @@
     DelCustomCommand = 301,
     EditCustomCommand = 302,
     ShowCustomCommand = 303,
+    Trip = 400, // to edit shader with pleasure look for project named FileWatchAndDoStuff
     ToggleVideo = 500,
     DeleteMyLastMessage = 600,
     ShowBrb = 750,

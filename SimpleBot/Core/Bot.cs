@@ -556,6 +556,7 @@ namespace SimpleBot
               [BotCommandId.DelCustomCommand] = new[] { "delcmd", "delcommand", "delcom" },
               [BotCommandId.EditCustomCommand] = new[] { "editcmd", "editcommand", "editcom" },
               [BotCommandId.ShowCustomCommand] = new[] { "showcmd", "showcommand", "showcom" },
+              [BotCommandId.Trip] = new[] { "trip" },
               [BotCommandId.ToggleVideo] = new[] { "vid", "video" },
               [BotCommandId.DeleteMyLastMessage] = new[] { "deleteme", "undo" },
               [BotCommandId.ShowBrb] = new[] { "brb" },
@@ -617,6 +618,10 @@ namespace SimpleBot
               ["rl"] = (BotCommandId.SetGame, "rl"),
               ["sap"] = (BotCommandId.SetGame, "sap"),
               ["gsap"] = (BotCommandId.SetGame, "sap"),
+              ["tripoff"] = (BotCommandId.Trip, "0"),
+              ["trip1"] = (BotCommandId.Trip, "1"),
+              ["trip2"] = (BotCommandId.Trip, "2"),
+              ["trip3"] = (BotCommandId.Trip, "3"),
           }
           .ToDictionary(x =>
           {
@@ -659,6 +664,7 @@ namespace SimpleBot
             }
         }
 
+        int _nextTripId = 0;
         private void _twOnMessage(object sender, OnMessageReceivedArgs e)
         {
             Chatter chatter = ChatActivity.OnMessage(e.ChatMessage);
@@ -1006,6 +1012,32 @@ namespace SimpleBot
                         TwSendMsg(cc == null ? $"command {customCmd} not found" : $"{CMD_PREFIX}{customCmd} :: {cc.Value.Response}");
                         return;
                     }
+                case BotCommandId.Trip:
+                    if (_obs == null || !_obs.IsConnected) return;
+                    if (chatter.userLevel < UserLevel.VIP) return;
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.Trip);
+                    int tripLevel = Math.Max(0, int.TryParse(args.FirstOrDefault(), out int _xx) ? _xx : 2);
+                    int tripId = ++_nextTripId;
+                    try
+                    {
+                        _obs.SetSourceFilterSettings("cam", "shader", JObject.Parse($"{{\"trip_level\": {tripLevel}}}"), true);
+                        if (tripLevel != 0)
+                        {
+                            Task.Run(async () =>
+                            {
+                                await Task.Delay(TimeSpan.FromMinutes(1));
+                                if (_nextTripId != tripId)
+                                    return;
+                                try
+                                {
+                                    _obs.SetSourceFilterSettings("cam", "shader", JObject.Parse($"{{\"trip_level\": 0}}"), true);
+                                }
+                                catch { }
+                            });
+                        }
+                    }
+                    catch { }
+                    return;
                 case BotCommandId.ToggleVideo:
                     if (chatter.userLevel < UserLevel.VIP) return;
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.ToggleVideo);
