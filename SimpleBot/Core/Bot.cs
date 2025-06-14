@@ -756,8 +756,7 @@ namespace SimpleBot
             switch (cid)
             {
                 case BotCommandId.ListCommands:
-                    TwSendMsg("builtin commands: " + _allBuiltinCommands, chatter);
-                    TwSendMsg("editable commands: " + GetAllCustomCommands(), chatter);
+                    SendFormattedCommandsList(chatter);
                     return;
                 // MOD
                 case BotCommandId.AddIgnoredBot:
@@ -923,6 +922,17 @@ namespace SimpleBot
                                 }
                                 j++; // =
                                 // TODO -cd cool down
+                            }
+                            else if (arg.Length >= 2 && arg[j] is 'c' or 'C' && arg[j + 1] is 'a' or 'A' && arg[j + 2] is 't' or 'T')
+                            {
+                                j += 3;
+                                if (j + 1 >= arg.Length || arg[j] != '=')
+                                {
+                                    TwSendMsg("-cat expects a value without spaces, e.g: -cat=fun", chatter);
+                                    return;
+                                }
+                                j++; // =
+                                cmdData.Category = arg[j..].Trim();
                             }
                             else
                             {
@@ -1699,6 +1709,7 @@ namespace SimpleBot
             public string Response;
             public int TotalTimesUsed;
             public UserLevel ReqLevel;
+            public string Category; // Optional category for grouping
             //public int CooldownSecs; // TODO
         }
         private string GetAllCustomCommands()
@@ -1706,6 +1717,22 @@ namespace SimpleBot
             lock (_customCommandsLock)
             {
                 return string.Join(' ', _customCommands.Select(x => x.Key));
+            }
+        }
+        // Helper: Get custom commands grouped by category
+        private Dictionary<string, List<string>> GetCustomCommandsByCategory()
+        {
+            lock (_customCommandsLock)
+            {
+                var dict = new Dictionary<string, List<string>>(StringComparer.InvariantCultureIgnoreCase);
+                foreach (var kv in _customCommands)
+                {
+                    var cat = string.IsNullOrWhiteSpace(kv.Value.Category) ? "Uncategorized" : kv.Value.Category.Trim();
+                    if (!dict.TryGetValue(cat, out var list))
+                        dict[cat] = list = new List<string>();
+                    list.Add(kv.Key);
+                }
+                return dict;
             }
         }
         private void LoadCustomCommands(string filePath)
@@ -1717,7 +1744,18 @@ namespace SimpleBot
             {
                 try
                 {
-                    _customCommands = File.ReadAllText(_customCommandsFile).FromJson<Dictionary<string, CustomCommandData>>();
+                    // Backward compatible: if Category missing, default to null
+                    var loaded = File.ReadAllText(_customCommandsFile).FromJson<Dictionary<string, CustomCommandData>>();
+                    foreach (var k in loaded.Keys.ToList())
+                    {
+                        if (loaded[k].Category == null)
+                        {
+                            var cc = loaded[k];
+                            cc.Category = null;
+                            loaded[k] = cc;
+                        }
+                    }
+                    _customCommands = loaded;
                 }
                 catch { } // TODO most empty catches all around should at least log the error probably
             }
@@ -2076,6 +2114,79 @@ namespace SimpleBot
 
             error = null;
             return formatted;
+        }
+
+        private void SendFormattedCommandsList(Chatter chatter)
+        {
+            // Categorize only explicitly listed commands
+            var categories = new List<(string Name, List<string> Commands)> {
+                ("Moderation", new List<string>{"ignore", "unignore", "slowmode", "slowmodeoff"}),
+                ("Stream Info", new List<string>{"title", "game", "searchgame"}),
+                ("Polls", new List<string>{"poll", "endpoll", "delpoll"}),
+                ("Custom Cmds Mgmt", new List<string>{"addcmd", "delcmd", "editcmd", "showcmd"}),
+                ("Song Requests", new List<string>{"sr", "volume", "setmaxvolume", "skip", "prevsong", "currsong", "shuffle", "wrongsong", "mysongs"}),
+                ("Reminders", new List<string>{"reminder", "reminders"}),
+                ("Queue", new List<string>{"curr", "next", "queue", "clear", "join", "leave", "close", "open"}),
+                ("Japan", new List<string>{"japan", "japanstats", "japanplus", "japanlead", "japanlose1exp", "japanactivity", "japangive"}),
+                ("Fun/Utility", new List<string>{"c2f", "f2c", "coin", "roll", "quote", "addquote", "delquote", "hiragana", "elo", "define", "deleteme", "brb", "count", "redeems", "followage", "watchtime"}),
+                ("Uncategorized", new List<string>()) // Always present, but only displayed if not empty
+            };
+            var aliasToPrimary = _builtinCommandsAliases.SelectMany(x => x.Value.Select(alias => (alias, x.Value[0]))).ToDictionary(x => x.alias, x => x.Item2);
+            foreach (var cat in categories)
+                cat.Commands.RemoveAll(cmd => !aliasToPrimary.ContainsKey(cmd));
+            var categorized = new HashSet<string>(categories.Where(c => c.Name != "Uncategorized").SelectMany(c => c.Commands));
+            var allPrimaries = new HashSet<string>(_builtinCommandsAliases.Where(x => x.Key != BotCommandId.ListCommands).Select(x => x.Value[0]));
+            var uncategorized = allPrimaries.Except(categorized).OrderBy(x => x).ToList();
+            var uncategorizedCat = categories.First(c => c.Name == "Uncategorized");
+            uncategorizedCat.Commands.Clear();
+            uncategorizedCat.Commands.AddRange(uncategorized);
+            var msgBlocks = new List<string>();
+            foreach (var cat in categories)
+            {
+                if (cat.Name == "Uncategorized" && cat.Commands.Count == 0) continue;
+                if (cat.Commands.Count == 0) continue;
+                var cmds = cat.Commands.Distinct().OrderBy(x => x).ToList();
+                var header = $"{cat.Name}: ";
+                var joined = string.Join(" • ", cmds);
+                msgBlocks.Add(header + joined);
+            }
+            // Group custom commands by category
+            var customByCat = GetCustomCommandsByCategory();
+            foreach (var kv in customByCat.OrderBy(x => x.Key))
+            {
+                var header = kv.Key == "Uncategorized" ? "Custom commands: " : $"Custom commands ({kv.Key}): ";
+                var joined = string.Join(" • ", kv.Value.OrderBy(x => x));
+                msgBlocks.Add(header + joined);
+            }
+            const int maxLen = 450; // Twitch safe limit
+            foreach (var block in msgBlocks)
+            {
+                if (block.Length <= maxLen)
+                {
+                    TwSendMsg(block, chatter);
+                }
+                else
+                {
+                    var parts = block.Split('•');
+                    var curr = "";
+                    foreach (var part in parts)
+                    {
+                        var next = (curr.Length == 0 ? "" : curr + " • ") + part.Trim();
+                        if (next.Length > maxLen)
+                        {
+                            if (!string.IsNullOrWhiteSpace(curr))
+                                TwSendMsg(curr, chatter);
+                            curr = part.Trim();
+                        }
+                        else
+                        {
+                            curr = next;
+                        }
+                    }
+                    if (!string.IsNullOrWhiteSpace(curr))
+                        TwSendMsg(curr, chatter);
+                }
+            }
         }
 
     }
