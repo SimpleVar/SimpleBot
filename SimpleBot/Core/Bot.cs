@@ -562,7 +562,7 @@ namespace SimpleBot
               [BotCommandId.ShowBrb] = new[] { "brb" },
               [BotCommandId.SearchGame] = new[] { "searchgame" },
               [BotCommandId.GetCmdCounter] = new[] { "count" },
-              [BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems" },
+              //[BotCommandId.GetRedeemCounter] = new[] { "redeems", "countredeem", "countredeems" },
               [BotCommandId.FollowAge] = new[] { "followage" },
               [BotCommandId.WatchTime] = new[] { "watchtime" },
               [BotCommandId.SongRequest_Request] = new[] { "sr", "songrequest", "דר" },
@@ -576,14 +576,14 @@ namespace SimpleBot
               [BotCommandId.SongRequest_MySongs] = new[] { "mysongs" },
               [BotCommandId.Reminders_Add] = new[] { "reminder", "timer", "alarm", "setreminder", "settimer", "setalarm" },
               [BotCommandId.Reminders_Show] = new[] { "reminders", "timers", "alarms", "showreminder", "showtimer", "showalarm", "myreminder", "mytimer", "myalarm", "showreminders", "showtimers", "showalarms", "myreminders", "mytimers", "myalarms" },
-              [BotCommandId.Queue_Curr] = new[] { "curr", "current" },
-              [BotCommandId.Queue_Next] = new[] { "next" },
-              [BotCommandId.Queue_All] = new[] { "queue" },
-              [BotCommandId.Queue_Clear] = new[] { "clear" },
-              [BotCommandId.Queue_Join] = new[] { "join" },
-              [BotCommandId.Queue_Leave] = new[] { "leave" },
-              [BotCommandId.Queue_Close] = new[] { "close", "closequeue" },
-              [BotCommandId.Queue_Open] = new[] { "open", "openqueue" },
+              //[BotCommandId.Queue_Curr] = new[] { "curr", "current" },
+              //[BotCommandId.Queue_Next] = new[] { "next" },
+              //[BotCommandId.Queue_All] = new[] { "queue" },
+              //[BotCommandId.Queue_Clear] = new[] { "clear" },
+              //[BotCommandId.Queue_Join] = new[] { "join" },
+              //[BotCommandId.Queue_Leave] = new[] { "leave" },
+              //[BotCommandId.Queue_Close] = new[] { "close", "closequeue" },
+              //[BotCommandId.Queue_Open] = new[] { "open", "openqueue" },
               [BotCommandId.SneakyJapan] = new[] { "japan" },
               [BotCommandId.SneakyJapan_Stats] = new[] { "japanstats" },
               [BotCommandId.SneakyJapan_NewGamePlus] = new[] { "japanplus" },
@@ -756,8 +756,9 @@ namespace SimpleBot
             switch (cid)
             {
                 case BotCommandId.ListCommands:
-                    TwSendMsg("builtin commands: " + _allBuiltinCommands, chatter);
-                    TwSendMsg("editable commands: " + GetAllCustomCommands(), chatter);
+                    TwSendMsg("𝔖𝔬𝔫𝔤 ℜ𝔢𝔮𝔲𝔢𝔰𝔱𝔰 - sr wrongsong lastsong currsong mysongs MetalHORNS911 Pikasuss MetalHORNS911 Pikasuss 𝔍𝔞𝔭𝔞𝔫 𝔐𝔦𝔫𝔦𝔤𝔞𝔪𝔢 - japan japanstats japanlead japanplus lose1exp peepoJapan");
+                    TwSendMsg("More commands: followage watchtime settimer mytimers wisdom elo define coin roll undo trip count");
+                    TwSendMsg("Editable commands: " + GetAllCustomCommands(4) + " (and many more...)");
                     return;
                 // MOD
                 case BotCommandId.AddIgnoredBot:
@@ -1701,11 +1702,11 @@ namespace SimpleBot
             public UserLevel ReqLevel;
             //public int CooldownSecs; // TODO
         }
-        private string GetAllCustomCommands()
+        private string GetAllCustomCommands(int limit = 0)
         {
             lock (_customCommandsLock)
             {
-                return string.Join(' ', _customCommands.Select(x => x.Key));
+                return string.Join(' ', _customCommands.Select(x => x.Key).Take(limit == 0 ? int.MaxValue : limit));
             }
         }
         private void LoadCustomCommands(string filePath)
