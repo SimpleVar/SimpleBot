@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Web;
+using Windows.Data.Html;
 
 namespace SimpleBot
 {
@@ -273,7 +274,7 @@ document.body.append(tag);
                     query = query[..i];
             }
 
-            object video = null;
+            YtVideo? video = null;
             string videoId = query;
             if (couldBeId)
                 video = tryGetVideo("https://youtube.com/watch?v=" + query);
@@ -284,14 +285,14 @@ document.body.append(tag);
                     video = tryGetVideo("https://youtube.com/watch?v=" + videoId);
             }
 
-            if (video != null)
+            if (video is YtVideo v)
             {
                 var req = new YtVideo()
                 {
                     id = videoId,
-                    title = "",//video.Title.ReduceWhitespace().Trim(),
-                    duration = "0",//TimeSpan.FromSeconds(video.Info.LengthSeconds ?? 0).ToShortDurationString(),
-                    author = ""// video.Info.Author.Trim()
+                    title = v.title,
+                    duration = v.duration,
+                    author = v.author
                 };
                 // hack
                 if (req.author.EndsWith(" - topic", StringComparison.InvariantCultureIgnoreCase))
@@ -319,18 +320,57 @@ document.body.append(tag);
             return res.Count == 0 ? null : res[0];
         }
 
-        private object tryGetVideo(string url)
+        static string ExtractMetaPropFromHtml(ref ReadOnlySpan<char> html, string prop)
+        {
+            string search = $"<meta itemprop=\"{prop}\" content=\"";
+            var i = html.IndexOf(search);
+            if (i == -1)
+                return "";
+            html = html[(i + search.Length)..];
+            try
+            {
+                var val = html[..html.IndexOf('>')];
+                while (char.IsWhiteSpace(val[^1])) val = val[0..^1];
+                if (val[^1] == '/') val = val[0..^1];
+                while (char.IsWhiteSpace(val[^1])) val = val[0..^1];
+                if (val[^1] == '"') val = val[0..^1];
+                return val.ToString().Trim();
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        public YtVideo? tryGetVideo(string url)
         {
             try
             {
-                return null; // YT is broken atm
-                //return _yt.GetVideo(url);
-            }
-            catch (ArgumentException) { }
-            catch (InvalidOperationException ex)
-            {
-                // seems to happen when video is made private
-                Debugger.Break();
+                ReadOnlySpan<char> html = _web.GetStringAsync(url).Result.AsSpan();
+                int i = html.IndexOf("<link itemprop=\"url\"");
+                if (i == -1)
+                    return null;
+                html = html[i..];
+                if (html.Length > 10000)
+                    html = html[..10000];
+                var title = HttpUtility.HtmlDecode(ExtractMetaPropFromHtml(ref html, "name"));
+                var duration = ExtractMetaPropFromHtml(ref html, "duration");
+                var author = HttpUtility.HtmlDecode(ExtractMetaPropFromHtml(ref html, "name"));
+
+                if (duration.StartsWith("PT"))
+                {
+                    var parts = duration[2..].Split('M', 2);
+                    if (parts.Length >= 2)
+                    {
+                        string minutes = parts[0].TrimEnd('S').PadLeft(2, '0');
+                        string seconds = parts[1].TrimEnd('S').PadLeft(2, '0');
+                        duration = minutes + ':' + seconds;
+                        if (int.TryParse(minutes, out int mins) && int.TryParse(seconds, out int secs))
+                            duration = TimeSpan.FromSeconds(secs + mins * 60).ToShortDurationString();
+                    }
+                }
+
+                return new() { title = title, duration = duration, author = author };
             }
             catch (Exception ex)
             {
@@ -404,7 +444,7 @@ document.body.append(tag);
         }
 
         // ; TOP-LEVEL
-        void parseSearchResults(Stream stream, List<YtVideo> results, int maxResults)
+        public void parseSearchResults(Stream stream, List<YtVideo> results, int maxResults)
         {
             ParseState s = new()
             {
