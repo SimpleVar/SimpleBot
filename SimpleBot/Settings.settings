@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="ObsWebsocketUrl" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ws://10.0.0.3:4455</Value>
+      <Value Profile="(Default)">ws://10.0.0.1:4455</Value>
     </Setting>
     <Setting Name="ObsWebsocketPassword" Type="System.String" Scope="User">
       <Value Profile="(Default)" />

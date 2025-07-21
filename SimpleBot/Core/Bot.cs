@@ -96,6 +96,7 @@ namespace SimpleBot
             Log("[init] loaded user data");
         }
 
+        bool _obsNotifyNextConnection = false;
         bool _init = false;
         public async Task Init(Microsoft.Web.WebView2.WinForms.WebView2 webView)
         {
@@ -121,6 +122,11 @@ namespace SimpleBot
                 {
                     Log("[OBS] connected"); UpdatedOBSConnected?.Invoke(this, EventArgs.Empty);
                     IsOnline = _obs.GetStreamStatus().IsActive;
+                    if (_obsNotifyNextConnection)
+                    {
+                        _obsNotifyNextConnection = false;
+                        TwSendMsg("/me OBS connected");
+                    }
                 };
                 _obs.Disconnected += (o, e) =>
                 {
@@ -139,7 +145,14 @@ namespace SimpleBot
                             break;
                     }
                 };
-                _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
+                try
+                {
+                    _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
+                }
+                catch (Exception ex)
+                {
+                    Log("[OBS] connection failed: " + ex);
+                }
                 //_obs.SetInputSettings("VS", new JObject { { "text", "LETS FUCKING GO" } });
                 // TODO test around obs disconnecting or not existing on init, or closing and bot remain opens (should see indiciation at least)
             }
@@ -543,6 +556,7 @@ namespace SimpleBot
           new(new Dictionary<BotCommandId, string[]>()
           {
               [BotCommandId.ListCommands] = new[] { "commands" },
+              [BotCommandId.SetObsWebsocketUrl] = new[] { "setobs" },
               [BotCommandId.AddIgnoredBot] = new[] { "ignore", "addignore" },
               [BotCommandId.RemoveIgnoredBot] = new[] { "unignore", "remignore" },
               [BotCommandId.SlowModeOff] = new[] { "slowmodeoff" },
@@ -759,6 +773,26 @@ namespace SimpleBot
                     TwSendMsg("𝔖𝔬𝔫𝔤 ℜ𝔢𝔮𝔲𝔢𝔰𝔱𝔰 - sr wrongsong lastsong currsong mysongs MetalHORNS911 Pikasuss MetalHORNS911 Pikasuss 𝔍𝔞𝔭𝔞𝔫 𝔐𝔦𝔫𝔦𝔤𝔞𝔪𝔢 - japan japanstats japanlead japanplus lose1exp peepoJapan");
                     TwSendMsg("More commands: followage watchtime settimer mytimers wisdom elo define coin roll undo trip count");
                     TwSendMsg("Editable commands: " + GetAllCustomCommands(4) + " (and many more...)");
+                    return;
+                case BotCommandId.SetObsWebsocketUrl:
+                    if (chatter.userLevel != UserLevel.Streamer) return;
+                    if (args.Count > 0)
+                    {
+                        Settings.Default.ObsWebsocketUrl = "ws://" + argsStr.Trim();
+                        Settings.Default.Save();
+                    }
+                    _obsNotifyNextConnection = true;
+                    try
+                    {
+                        _obs.Disconnect();
+                        _obs.ConnectAsync(Settings.Default.ObsWebsocketUrl, Settings.Default.ObsWebsocketPassword);
+                        TwSendMsg("/me OBS resetting...");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("[OBS] reset failed: " + ex);
+                        TwSendMsg("/me OBS reset failed");
+                    }
                     return;
                 // MOD
                 case BotCommandId.AddIgnoredBot:

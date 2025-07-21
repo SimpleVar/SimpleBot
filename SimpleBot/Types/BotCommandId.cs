@@ -4,6 +4,7 @@
   enum BotCommandId : long
   {
     ListCommands = 50,
+    SetObsWebsocketUrl = 80,
     AddIgnoredBot = 100,
     RemoveIgnoredBot = 110,
     SlowMode = 120,
