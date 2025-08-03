@@ -26,6 +26,7 @@ using TwitchLib.EventSub.Websockets.Extensions;
 
 namespace SimpleBot
 {
+    // TODO full screen video command
     // TODO when we have chat overlay - FLAG badge (credit EveSingularity)
     class Bot
     {

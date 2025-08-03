@@ -96,10 +96,14 @@ namespace SimpleBot
             {
                 HotkeyRegisteredHandle = this.Handle;
                 bool ok =
-                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_NEXT_TRACK) &
-                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK) &
-                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE) &
-                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE);
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_NEXT_TRACK) & // next track
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PREV_TRACK) & // prev track
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_MEDIA_PLAY_PAUSE) & // pause music
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, MOD_ALT, VK_F2) & // bot volume down
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, MOD_ALT, VK_F3) & // bot volume up
+                    RegisterHotKey(HotkeyRegisteredHandle, 1, MOD_CONTROL | MOD_ALT, VK_F2) & // bot volume down
+                    RegisterHotKey(HotkeyRegisteredHandle, 1, MOD_CONTROL | MOD_ALT, VK_F3) & // bot volume up
+                    RegisterHotKey(HotkeyRegisteredHandle, 0, 0, VK_PAUSE); // activate BRB mode
                 if (!ok)
                     Bot.Log("[ERR] Failed to register global hotkeys");
             }
@@ -158,8 +162,10 @@ namespace SimpleBot
                     }
                     break;
                 case WM_HOTKEY:
-                    if (m.WParam.ToInt32() == 0)
+                    int hotkeyID = m.WParam.ToInt32();
+                    if (hotkeyID == 0 || hotkeyID == 1)
                     {
+                        int mods = m.LParam.ToInt32() & 0xFFFF;
                         switch (m.LParam >> 16)
                         {
                             case VK_MEDIA_NEXT_TRACK:
@@ -170,6 +176,18 @@ namespace SimpleBot
                                 return;
                             case VK_MEDIA_PLAY_PAUSE:
                                 _ = Task.Run(SongRequest.PlayPause);
+                                return;
+                            case VK_F2:
+                                if (mods == MOD_ALT)
+                                    _ = Task.Run(SongRequest._VolumeDown);
+                                else if (mods == (MOD_ALT | MOD_CONTROL))
+                                    _ = Task.Run(SongRequest._SongVolumeFactorDown);
+                                return;
+                            case VK_F3:
+                                if (mods == MOD_ALT)
+                                    _ = Task.Run(SongRequest._VolumeUp);
+                                else if (mods == (MOD_ALT | MOD_CONTROL))
+                                    _ = Task.Run(SongRequest._SongVolumeFactorUp);
                                 return;
                             case VK_PAUSE:
 #if !DEBUG
@@ -194,7 +212,15 @@ namespace SimpleBot
         const int VK_MEDIA_NEXT_TRACK = 0xB0;
         const int VK_MEDIA_PREV_TRACK = 0xB1;
         const int VK_MEDIA_PLAY_PAUSE = 0xB3;
+        const int VK_F1 = 0x70;
+        const int VK_F2 = 0x71;
+        const int VK_F3 = 0x72;
         const int VK_PAUSE = 0x13;
+        const int MOD_ALT = 1;
+        const int MOD_CONTROL = 2;
+        const int MOD_SHIFT = 4;
+        const int MOD_WIN = 8;
+        const int MOD_NOREPEAT = 0x4000;
         const int WM_HOTKEY = 0x0312;
         const int WM_SYSCOMMAND = 0x112;
         const int MF_STRING = 0x0;

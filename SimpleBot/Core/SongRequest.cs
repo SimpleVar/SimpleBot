@@ -90,7 +90,7 @@ namespace SimpleBot
         /// </summary>
         public static event EventHandler<SRData> NeedUpdateUI_SongList;
 
-        public static event EventHandler<(int volume, int maxVolume)> NeedUpdateUI_Volume;
+        public static event EventHandler<(int volume, int maxVolume, float currSongVolumeFactor)> NeedUpdateUI_Volume;
         public static event EventHandler<bool> NeedUpdateUI_Paused;
 
         #region User Settings
@@ -538,15 +538,19 @@ namespace SimpleBot
 
         public static void GetVolume(Chatter chatter)
         {
-            var (vol, maxVol) = _GetVolume();
-            _bot.TwSendMsg("Volume is " + vol + " out of " + maxVol, chatter);
+            var (vol, maxVol, currSongVolumeFactor) = _GetVolume();
+            int effectiveVolume = _GetEffectiveVolume(vol, maxVol, currSongVolumeFactor);
+            _bot.TwSendMsg("Volume is " + effectiveVolume + " out of " + maxVol, chatter);
         }
 
-        public static (int vol, int maxVol) _GetVolume()
+        public static int _VolumeUp() => _SetVolume(_SR_volume + 1);
+        public static int _VolumeDown() => _SetVolume(_SR_volume - 1);
+
+        public static (int vol, int maxVol, float currSongVolumeFactor) _GetVolume()
         {
             lock (_lock)
             {
-                return (_SR_volume, _SR_maxVolume);
+                return (_SR_volume, _SR_maxVolume, _sr.CurrSong.GetEffectiveVolumeFactor());
             }
         }
 
@@ -577,10 +581,13 @@ namespace SimpleBot
             if (vol != ogVol || forceUpdate)
             {
                 _SetEffectiveVolume(vol, maxVol, volFactor);
-                NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
+                NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol, volFactor));
             }
             return vol;
         }
+
+        public static void _SongVolumeFactorUp() => _SetSongVolumeFactor(_sr.CurrSong.GetEffectiveVolumeFactor() + (float)MainForm.Get.srv.nudSongVolumeFactor.Increment);
+        public static void _SongVolumeFactorDown() => _SetSongVolumeFactor(_sr.CurrSong.GetEffectiveVolumeFactor() - (float)MainForm.Get.srv.nudSongVolumeFactor.Increment);
 
         public static void _SetSongVolumeFactor(float factor)
         {
@@ -600,7 +607,7 @@ namespace SimpleBot
                 (vol, maxVol, volFactor) = (_SR_volume, _SR_maxVolume, _sr.CurrSong.GetEffectiveVolumeFactor());
             }
             _SetEffectiveVolume(vol, maxVol, volFactor);
-            NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
+            NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol, volFactor));
         }
 
         public static int _SetMaxVolume(int maxVolume)
@@ -621,12 +628,13 @@ namespace SimpleBot
             if (vol != ogVol)
             {
                 _SetEffectiveVolume(vol, maxVol, volFactor);
-                NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol));
+                NeedUpdateUI_Volume?.Invoke(null, (vol, maxVol, volFactor));
             }
             return maxVol;
         }
 
-        static void _SetEffectiveVolume(int vol, int maxVol, float volFactor) => _yt.SetVolume(Math.Min(maxVol, Math.Max((int)(vol * (volFactor <= 0 ? 1 : volFactor)), Math.Min(1, vol))));
+        public static int _GetEffectiveVolume(int vol, int maxVol, float volFactor) => (int)Math.Min(maxVol, Math.Max((int)(vol * (volFactor <= 0 ? 1 : volFactor)), Math.Min(1, vol)));
+        static void _SetEffectiveVolume(int vol, int maxVol, float volFactor) => _yt.SetVolume(_GetEffectiveVolume(vol, maxVol, volFactor));
 
         public static void AddToQueue(HashSet<string> videoIds)
         {

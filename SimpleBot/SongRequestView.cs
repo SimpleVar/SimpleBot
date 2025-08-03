@@ -158,18 +158,19 @@ namespace SimpleBot
             });
         }
 
-        private void SongRequest_NeedUpdateUI_Volume(object sender, (int volume, int maxVolume) e)
+        private void SongRequest_NeedUpdateUI_Volume(object sender, (int volume, int maxVolume, float currSongVolumeFactor) e)
         {
             // event comes from different thread
             BeginInvoke(() => UpdateVolumeDisplay(e));
         }
 
-        void UpdateVolumeDisplay((int volume, int maxVolume) e)
+        void UpdateVolumeDisplay((int volume, int maxVolume, float currSongVolumeFactor) e)
         {
             // don't update nudMaxVolume.Value, the UI itself is the original cause of the maxVolume value change
             sliderVolume.Maximum = e.maxVolume;
             sliderVolume.Value = e.volume;
             labelVolume.Text = e.volume + "";
+            nudSongVolumeFactor.Value = (decimal)e.currSongVolumeFactor;
         }
 
         bool _subscribedToVideoVisible;

@@ -422,12 +422,12 @@
             ctx.Items.AddRange(new ToolStripItem[] { ctxMenuItem_addToQueue, ctxMenuItem_moveToTop, ctxMenuItem_delete, ctxMenuItem_lblSelectedAmount });
             ctx.Name = "ctx";
             ctx.ShowImageMargin = false;
-            ctx.Size = new Size(156, 114);
+            ctx.Size = new Size(139, 92);
             // 
             // ctxMenuItem_addToQueue
             // 
             ctxMenuItem_addToQueue.Name = "ctxMenuItem_addToQueue";
-            ctxMenuItem_addToQueue.Size = new Size(155, 22);
+            ctxMenuItem_addToQueue.Size = new Size(138, 22);
             ctxMenuItem_addToQueue.Text = "Add to Queue";
             ctxMenuItem_addToQueue.Click += ctxMenuItem_addToQueue_Click;
             // 
@@ -680,8 +680,8 @@
         private DataGridViewLinkColumn Duration;
         private DataGridViewTextBoxColumn RequestedBy;
         private DataGridViewTextBoxColumn VideoId;
-        private NumericUpDown nudSongVolumeFactor;
         private Label label7;
         private ToolStripMenuItem ctxMenuItem_addToQueue;
+        internal NumericUpDown nudSongVolumeFactor;
     }
 }

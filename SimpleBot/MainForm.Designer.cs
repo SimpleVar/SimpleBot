@@ -245,6 +245,6 @@
         private ContextMenuStrip ctxChatters;
         private ToolStripMenuItem toolStripMenuItem1;
         private TextBox txtDbg;
-        public SongRequestView srv;
+        internal SongRequestView srv;
     }
 }
