@@ -276,7 +276,7 @@ namespace SimpleBot
             var (tot, req) = SongRequest.SaveCurrSongToPlaylist();
             if (tot == -1 || req.ogRequesterDisplayName == Bot.ONE.CHANNEL)
                 return;
-            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs");
+            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs" + (tot >= 100 ? " celesteGasm" : ""));
         }
 
         private void btnSavePrevToPlaylist_Click(object sender, EventArgs e)
@@ -284,7 +284,7 @@ namespace SimpleBot
             var (tot, req) = SongRequest.SavePrevSongToPlaylist();
             if (tot == -1 || req.ogRequesterDisplayName == Bot.ONE.CHANNEL)
                 return;
-            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs");
+            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs" + (tot >= 100 ? " celesteGasm" : ""));
         }
 
         private void btnRemoveCurrFromPlaylist_Click(object sender, EventArgs e)

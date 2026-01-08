@@ -187,6 +187,9 @@ namespace SimpleBot
             return;
 #endif
             if (_sheets == null) return;
+            int BASE_retryIntervalMs = 1000;
+            int MAX_retryIntervalMs = 20000;
+            int retryIntervalMs = BASE_retryIntervalMs;
             while (true)
             {
                 while (_pendingSheetUpdate == null)
@@ -208,10 +211,15 @@ namespace SimpleBot
                     req.IncludeValuesInResponse = false;
                     req.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
                     var res = req.Execute();
+                    retryIntervalMs = BASE_retryIntervalMs;
                 }
                 catch (Exception ex)
                 {
                     Bot.Log($"[SongRequest::{nameof(UpdateSheet)}] ERROR " + ex);
+                    Thread.Sleep(retryIntervalMs);
+                    retryIntervalMs *= 2;
+                    if (retryIntervalMs > MAX_retryIntervalMs)
+                        retryIntervalMs = MAX_retryIntervalMs;
                 }
             }
         }
@@ -306,6 +314,7 @@ namespace SimpleBot
                     HttpClientInitializer = (await GoogleCredential.FromFileAsync(Settings.Default.GoogleCredentialsFile, CancellationToken.None).ThrowMainThread())
                         .CreateScoped("https://www.googleapis.com/auth/spreadsheets")
                 });
+                _sheets.HttpClient.Timeout = TimeSpan.FromSeconds(10);
                 _updateSheetAllSongs();
                 _threadSheetUpdates = new Thread(_updateSheetJob) { IsBackground = true };
                 _threadSheetUpdates.Start();
@@ -320,7 +329,7 @@ namespace SimpleBot
                     string videoId = _sr.CurrSong.ytVideoId;
                     if (videoId != null)
                     {
-                        _playVid(videoId);
+                        _playVid(videoId, _sr.CurrSong.durationTime);
                         lock (_lock)
                         {
                             FireNeedUpdateUI_SongList_noLock();
@@ -512,6 +521,15 @@ namespace SimpleBot
             {
                 return _sr.Playlist.ToArray();
             }
+        }
+
+        public static void ClearQueue(Chatter chatter)
+        {
+            lock (_lock)
+            {
+                _sr.Queue.Clear();
+            }
+            Next();
         }
 
         public static void GetCurrSong(Chatter chatter)
@@ -756,6 +774,7 @@ namespace SimpleBot
             if (_sr.Playlist.Count <= 0)
                 return;
             string videoId = null;
+            TimeSpan dur;
             lock (_lock)
             {
                 if (_sr.Playlist.Count <= 0)
@@ -773,9 +792,10 @@ namespace SimpleBot
 
                 _onSongListChange_noLock();
                 videoId = _sr.CurrSong.ytVideoId;
+                dur = _sr.CurrSong.durationTime;
             }
             if (videoId != null)
-                _playVid(videoId);
+                _playVid(videoId, dur);
         }
 
         public static async Task<bool> PlayPause()
@@ -785,15 +805,16 @@ namespace SimpleBot
             return paused;
         }
 
-        static void _playVid(string videoId)
+        static void _playVid(string videoId, TimeSpan dur)
         {
-            _ = Task.Run(() => _yt.PlayVideo(videoId)).LogErr();
+            _ = Task.Run(() => _yt.PlayVideo(videoId, dur)).LogErr();
             NeedUpdateUI_Paused?.Invoke(null, false);
         }
 
         public static void Next()
         {
             string videoId = null;
+            TimeSpan dur;
             lock (_lock)
             {
                 _sr.PrevSong = _sr.CurrSong;
@@ -815,9 +836,10 @@ namespace SimpleBot
 
                 _onSongListChange_noLock();
                 videoId = _sr.CurrSong.ytVideoId;
+                dur = _sr.CurrSong.durationTime;
             }
             if (videoId != null)
-                _playVid(videoId);
+                _playVid(videoId, dur);
         }
 
         public static void ImportToPlaylist_nochecks(Req[] reqs)
@@ -926,7 +948,7 @@ namespace SimpleBot
                     if (string.Equals(_sr.Playlist[i].ogRequesterDisplayName, userDisplayName, StringComparison.InvariantCultureIgnoreCase))
                         totalByUser++;
             }
-            Bot.ONE.TwSendMsg((isSelf ? "You have contributed " : userDisplayName + " has contributed ") + (totalByUser == 0 ? "no" : totalByUser) + " songs to the playlist" + (totalByUser == 0 ? "" : " blobDance"));
+            Bot.ONE.TwSendMsg((isSelf ? "You have contributed " : userDisplayName + " has contributed ") + (totalByUser == 0 ? "no" : totalByUser) + " songs to the playlist" + (totalByUser == 0 ? "" : (totalByUser >= 100 ? " celesteGasm" : " blobDance")));
         }
 
         public static void RequestSong(string query, Chatter chatter)

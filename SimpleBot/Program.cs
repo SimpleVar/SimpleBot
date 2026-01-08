@@ -1,9 +1,11 @@
 ﻿using Lucene.Net.Search;
 using System.Diagnostics;
-using System.Text;
-using static Lucene.Net.Util.Fst.Util;
-using System.Web;
 using System.Net;
+using System.Net.Sockets;
+using System.Reactive.Concurrency;
+using System.Text;
+using System.Web;
+using static Lucene.Net.Util.Fst.Util;
 using static SimpleBot.Youtube;
 
 namespace SimpleBot
@@ -74,6 +76,19 @@ namespace SimpleBot
                     Clipboard.SetText(output);
                 }).GetAwaiter().GetResult();
                 return;
+            }
+
+            //if (false)
+            {
+                if (Process.GetProcessesByName("chatterino").Length == 0)
+                {
+                    Process.Start(new ProcessStartInfo(@"C:\Program Files\Chatterino\chatterino.exe") { WorkingDirectory = @"C:\Program Files\Chatterino\" });
+                }
+                if (Process.GetProcessesByName("obs64").Length == 0)
+                {
+                    Process.Start(new ProcessStartInfo(@"C:\Program Files\obs-studio\bin\64bit\obs64.exe") { WorkingDirectory = @"C:\Program Files\obs-studio\bin\64bit\" });
+                    Thread.Sleep(1000);
+                }
             }
 
             ApplicationConfiguration.Initialize();

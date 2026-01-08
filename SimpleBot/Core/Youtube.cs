@@ -2,8 +2,10 @@
 using SimpleBot.v2;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Web;
+using System.Windows.Interop;
 using Windows.Data.Html;
 
 namespace SimpleBot
@@ -40,17 +42,28 @@ namespace SimpleBot
 
         readonly HttpClient _web;
         readonly byte[] _buff = new byte[BUFF_SIZE];
-        private string _lastPlayedVideoId;
 
         public Youtube()
         {
-            var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
-            _web = new HttpClient(handler);
+            _web = new HttpClient(new SocketsHttpHandler()
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+                ConnectCallback = async (context, cancellationToken) =>
+                {
+                    // Use DNS to look up the IP address(es) of the target host (only ipv4)
+                    IPHostEntry ipHostEntry = await Dns.GetHostEntryAsync(context.DnsEndPoint.Host, AddressFamily.InterNetwork);
+                    IPAddress ipAddress = ipHostEntry.AddressList.FirstOrDefault() ?? throw new Exception($"No IP4 address for {context.DnsEndPoint.Host}");
+                    TcpClient tcp = new();
+                    await tcp.ConnectAsync(ipAddress, context.DnsEndPoint.Port, cancellationToken);
+                    return tcp.GetStream();
+                }
+            });
         }
 
         public Task Init(WebView2 existingWebView)
         {
             webView = existingWebView;
+            webView.CoreWebView2.Settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
             webView.WebMessageReceived += (o, e) =>
             {
                 var msg = e.WebMessageAsJson[1..^1]; // removes quotes from string value
@@ -74,8 +87,26 @@ namespace SimpleBot
                     VideoEnded.Invoke(this, msg);
                 }
             };
+            if (false)
+            {
+                // adblock extension
+                string[] adblocks = [
+                    @"C:\Users\SimpleVar\AppData\Local\Microsoft\Edge\User Data\Profile 6\Extensions\ndcileolkflehcjpmjnfbnaibdcgglog\6.33.2_0",
+                    "C:/Users/SimpleVar/AppData/Local/Microsoft/Edge/User Data/Profile 6/Extensions/pciakllldcajllepkbbihkmfkikheffb/4.0.106_0",
+                    "C:/Users/SimpleVar/AppData/Local/Microsoft/Edge/User Data/Profile 6/Extensions/hdocmehchiccjnceipkfflndgcognhmf/3.2.1_0",
+                    "C:/Users/SimpleVar/AppData/Local/Microsoft/Edge/User Data/Profile 6/Extensions/cimighlppcgcoapaliogpjjdehbnofhn/2026.104.1656_0",
+                ];
+                foreach (string adblock in adblocks)
+                {
+                    var ext = webView.CoreWebView2.Profile.AddBrowserExtensionAsync(adblock).Result;
+                    if (!ext.IsEnabled) throw new ApplicationException("an edge ext is disabled");
+                }
+            }
+            var once = false;
             webView.CoreWebView2.DOMContentLoaded += async (o, e) =>
             {
+                if (once) return;
+                once = true;
                 // inject the html source into google so that youtube likes as and plays embedded videos
                 _ = await webView.ExecuteScriptAsync(@"
 const sanitizer = trustedTypes.createPolicy('foo', {createHTML:x=>x, createScriptURL:x=>x});
@@ -87,7 +118,7 @@ function onYouTubeIframeAPIReady() {
   const player = new YT.Player('player', {
     height: '100%',
     width: '100%',
-    playerVars: { 'autoplay': 1, 'controls': 1 },
+    playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1 },
     events: {
       'onReady': () => { debugger; setInterval(checkAds, 50); document.ytPlayer = player; player.setVolume(0); window.chrome.webview.postMessage('loaded baby'); },
       'onStateChange': e => {
@@ -123,7 +154,8 @@ function playNow(id, start, end) {
   ;(async () => {
     //document.ytPlayer?.loadVideoById(id, 1, 2); await waitMs(50); document.ytPlayer?.loadVideoById(id, 2, 3); await waitMs(50)
     beQuite = false
-    document.ytPlayer?.loadVideoById(id, start, end)
+    //document.ytPlayer?.loadVideoById(id, start, end)
+    document.ytPlayer?.loadVideoById({videoId: id})
   })();
 }
 let currVolume = 0
@@ -157,7 +189,9 @@ document.body.append(tag);
             };
             // now we are in an https secured url, Muahahahahahahahhahahahqahahahadhahssdhakjsawdg
             // specifically in youtube domain, to be able to read into the iframe bullshit, and look for elements (mini-ad-block)
-            webView.Invoke(() => webView.CoreWebView2.Navigate("https://www.youtube.com"));
+            // www.youtube doesn't work (they are on to me with a shadow-ghost-silent-undocument error ooo scary)
+            // music.youtube works hehe
+            webView.Invoke(() => webView.CoreWebView2.Navigate("https://music.youtube.com/"));
             return Task.CompletedTask;
         }
 
@@ -173,7 +207,7 @@ document.body.append(tag);
                 {
                     _ytViewForm = new Form
                     {
-                        ClientSize = new Size(420, 69),
+                        ClientSize = new Size(420, 140),
                         ShowIcon = false,
 #if false // dont set these properties if you want OBS to be able to capture the video player
                         FormBorderStyle = FormBorderStyle.SizableToolWindow,
@@ -222,15 +256,31 @@ document.body.append(tag);
             webView?.BeginInvoke(() => webView.ExecuteScriptAsync($"doSetVolume({volume})").LogErr());
         }
 
-        public void PlayVideo(string videoId, int startSeconds = 0, int endSeconds = 0)
+        int _runningPlayId = 0;
+        public void PlayVideo(string videoId, TimeSpan dur, int startSeconds = 0, int endSeconds = 0)
         {
-            this._lastPlayedVideoId = videoId;
+            isPaused = false;
             webView?.BeginInvoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})").LogErr());
+            
+            return; // temporary hack to kinda go to the next song when the time is right, for when the real player is not working and we dont have "end" event
+            int id = Interlocked.Increment(ref _runningPlayId);
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(dur + TimeSpan.FromSeconds(2));
+                lock (_webViewInitLock)
+                {
+                    if (id != _runningPlayId)
+                        return;
+                }
+                if (!isPaused)
+                    VideoEnded.Invoke(this, videoId);
+            });
         }
-
+        bool isPaused;
         public async Task<bool> PauseOrResume()
         {
             var paused = (await webView?.Invoke(() => webView.ExecuteScriptAsync($"pauseOrResume()").LogErr())) != "1";
+            isPaused = paused;
             return paused;
         }
 

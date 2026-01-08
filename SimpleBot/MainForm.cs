@@ -1,3 +1,4 @@
+using Microsoft.Web.WebView2.Core;
 using SimpleBot.Properties;
 using SimpleBot.v2;
 using System.Diagnostics;
@@ -81,7 +82,9 @@ namespace SimpleBot
             listChatters.DrawItem += ListChatters_DrawItem;
 
             var webView = new Microsoft.Web.WebView2.WinForms.WebView2 { Dock = DockStyle.Fill };
-            await webView.EnsureCoreWebView2Async(); 
+            CoreWebView2EnvironmentOptions options = new() { AreBrowserExtensionsEnabled = true };
+            CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, null, options);
+            await webView.EnsureCoreWebView2Async(env);
             
             bot = new Bot(this);
             bot.UpdatedTwitchConnected += Bot_UpdatedTwitchConnected;

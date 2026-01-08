@@ -589,6 +589,7 @@ namespace SimpleBot
               [BotCommandId.SongRequest_ShufflePlaylist] = new[] { "shuffle" },
               [BotCommandId.SongRequest_WrongSong] = new[] { "wrongsong", "oops" },
               [BotCommandId.SongRequest_MySongs] = new[] { "mysongs" },
+              [BotCommandId.SongRequest_ClearQueue] = new[] { "clearsr" },
               [BotCommandId.Reminders_Add] = new[] { "reminder", "timer", "alarm", "setreminder", "settimer", "setalarm" },
               [BotCommandId.Reminders_Show] = new[] { "reminders", "timers", "alarms", "showreminder", "showtimer", "showalarm", "myreminder", "mytimer", "myalarm", "showreminders", "showtimers", "showalarms", "myreminders", "mytimers", "myalarms" },
               //[BotCommandId.Queue_Curr] = new[] { "curr", "current" },
@@ -1236,6 +1237,11 @@ namespace SimpleBot
                 case BotCommandId.SongRequest_MySongs:
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_MySongs);
                     _ = Task.Run(() => SongRequest.GetPlaylistedSongsByUser(chatter, args.FirstOrDefault()?.CleanUsername())).LogErr();
+                    return;
+                case BotCommandId.SongRequest_ClearQueue:
+                    if (chatter.userLevel != UserLevel.Streamer) return;
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_ClearQueue);
+                    _ = Task.Run(() => SongRequest.ClearQueue(chatter)).LogErr();
                     return;
                 case BotCommandId.SongRequest_Volume:
                     if (chatter.userLevel < UserLevel.Moderator) return;
