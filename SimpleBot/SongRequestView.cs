@@ -130,7 +130,7 @@ namespace SimpleBot
                 nudSongVolumeFactor.Value = (decimal)e.CurrSong.GetEffectiveVolumeFactor();
 
                 bool isCurrFromPlaylist = e.CurrSong.ytVideoId == e.Playlist[e.CurrIndexToPlayInPlaylist].ytVideoId;
-                lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false)}\r\n{(isCurrFromPlaylist ? "" : "*")}Requested by: {e.CurrSong.ogRequesterDisplayName}";
+                lblCurrSong.Text = $"{e.CurrSong.ToLongString(includeLink: false, includePlayStats: false)}\r\n{(isCurrFromPlaylist ? "" : "*")}Requested by: {e.CurrSong.ogRequesterDisplayName}";
                 lblQueueSize.Text = e.Queue.Count + " in queue";
                 lblPlaylistLength.Text = "size: " + e.Playlist.Count;
 
@@ -263,7 +263,7 @@ namespace SimpleBot
 
         private void btnSkip_Click(object sender, EventArgs e)
         {
-            SongRequest.Next();
+            _ = Task.Run(() => SongRequest.Next(Bot.ONE.CHANNEL));
         }
 
         private void btnPrev_Click(object sender, EventArgs e)
@@ -276,7 +276,7 @@ namespace SimpleBot
             var (tot, req) = SongRequest.SaveCurrSongToPlaylist();
             if (tot == -1 || req.ogRequesterDisplayName == Bot.ONE.CHANNEL)
                 return;
-            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs" + (tot >= 100 ? " celesteGasm" : ""));
+            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includePlayStats: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs" + (tot >= 100 ? " celesteGasm" : ""));
         }
 
         private void btnSavePrevToPlaylist_Click(object sender, EventArgs e)
@@ -284,7 +284,7 @@ namespace SimpleBot
             var (tot, req) = SongRequest.SavePrevSongToPlaylist();
             if (tot == -1 || req.ogRequesterDisplayName == Bot.ONE.CHANNEL)
                 return;
-            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs" + (tot >= 100 ? " celesteGasm" : ""));
+            Bot.ONE.TwSendMsg(req.ToLongString(includeLink: false, includePlayStats: false, includeDuration: true) + " has been added to the playlist. " + req.ogRequesterDisplayName + " has contributed " + tot + " songs" + (tot >= 100 ? " celesteGasm" : ""));
         }
 
         private void btnRemoveCurrFromPlaylist_Click(object sender, EventArgs e)

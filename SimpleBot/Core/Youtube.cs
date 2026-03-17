@@ -230,7 +230,7 @@ document.body.append(tag);
                             var mainPos = MainForm.Get.Location;
                             var w = Math.Min(420, Screen.PrimaryScreen.WorkingArea.Width - mainPos.X);
                             var h = (int)(w * .5625f); // 16:9
-                            _ytViewForm.Location = new Point(mainPos.X + 1, mainPos.Y + 242);
+                            _ytViewForm.Location = new Point(mainPos.X - 1, mainPos.Y + 242);
                             _ytViewForm.ClientSize = new Size(w, h);
                         }
                         PlayerFormVisibleChanged?.Invoke(this, _ytViewForm.Visible);
@@ -257,13 +257,26 @@ document.body.append(tag);
         }
 
         int _runningPlayId = 0;
+        object _runningPlayIdLock = new object();
         public void PlayVideo(string videoId, TimeSpan dur, int startSeconds = 0, int endSeconds = 0)
         {
-            isPaused = false;
             webView?.BeginInvoke(() => webView.ExecuteScriptAsync($"playNow('{videoId}', {(startSeconds > 0 ? startSeconds : "undefined")}, {(endSeconds > 0 ? endSeconds : "undefined")})").LogErr());
             
-            return; // temporary hack to kinda go to the next song when the time is right, for when the real player is not working and we dont have "end" event
+            // update song stats when reached halfway
             int id = Interlocked.Increment(ref _runningPlayId);
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(dur * 0.5f);
+                lock (_webViewInitLock)
+                {
+                    if (id != _runningPlayId)
+                        return;
+                }
+                if (!isPaused)
+                    SongRequest.IncrementCurrSongPlayCount(videoId);
+            });
+            return;
+            // temporary hack to kinda go to the next song when the time is right, for when the real player is not working and we dont have "end" event
             _ = Task.Run(async () =>
             {
                 await Task.Delay(dur + TimeSpan.FromSeconds(2));

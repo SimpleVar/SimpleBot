@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 
 namespace SimpleBot.v2
 {
@@ -26,7 +27,10 @@ namespace SimpleBot.v2
         {
             Monitor = new WindowMonitor(p =>
             {
-                if (p.procName != @"C:\CoinPoker\game.exe")
+                if (p.procName == @"C:\Program Files\CoinPoker\resources\unity-resources-win-x64\CoinPoker Game\CoinPoker.exe")
+                    return true; // for updated client v1.0.32
+
+                if (p.procName != @"C:\Program Files\CoinPoker\CoinPoker.exe")
                     return false;
                 if (p.title.StartsWith("checking for updates", StringComparison.InvariantCultureIgnoreCase))
                     return false;
@@ -107,7 +111,8 @@ namespace SimpleBot.v2
             for (int i = 0; i < ObsTables.Length && i < PokerTables.Count; i++)
             {
                 string source;
-                try { source = PokerTables[i].title + ":Qt673QWindowIcon:game.exe"; }
+                //try { source = PokerTables[i].title + ":UnityWndClass:CoinPoker.exe"; }
+                try { source = "CoinPoker:UnityWndClass:CoinPoker.exe"; }
                 catch { source = ""; }
                 ObsTables[i].SetWindowSource(source);
             }

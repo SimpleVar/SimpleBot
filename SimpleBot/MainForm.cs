@@ -172,7 +172,7 @@ namespace SimpleBot
                         switch (m.LParam >> 16)
                         {
                             case VK_MEDIA_NEXT_TRACK:
-                                _ = Task.Run(SongRequest.Next);
+                                _ = Task.Run(() => SongRequest.Next(Bot.ONE.CHANNEL));
                                 return;
                             case VK_MEDIA_PREV_TRACK:
                                 _ = Task.Run(SongRequest.PlaylistBackOne);

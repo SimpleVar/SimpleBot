@@ -1,9 +1,13 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
+using Humanizer;
 using System.Diagnostics;
 using System.Globalization;
+using System.Speech.Synthesis.TtsEngine;
 using System.Text.Json.Serialization;
+using Windows.Devices.Usb;
+using static SimpleBot.SongRequest;
 
 namespace SimpleBot
 {
@@ -13,6 +17,10 @@ namespace SimpleBot
         {
             public string ogRequesterDisplayName, ytVideoId, title, author, duration;
             public float volFactor;
+            public int totalPlays;
+            public DateTime utcLastPlayedPrev;
+            public DateTime utcLastPlayed;
+            private DateTime lastPlayedThatIsntLikeRightNow => (DateTime.UtcNow - utcLastPlayed).Duration() * 2 < durationTime ? utcLastPlayedPrev : utcLastPlayed;
 
             public static readonly TimeSpan FAILED_TO_PARSE_DEFAULT_DURATION = TimeSpan.Zero;
             [JsonIgnore]
@@ -49,12 +57,14 @@ namespace SimpleBot
                 return inclAuthor ? title + " - " + author : title;
             }
 
-            public readonly string ToLongString(bool includeLink = true, bool includeDuration = true)
+            public string ToLongString(bool includeLink = true, bool includeDuration = true, bool includePlayStats = true)
             {
                 var tit = FullTitle();
                 var dur = includeDuration ? " (" + duration + ")" : string.Empty;
                 var link = includeLink ? " https://youtu.be/" + ytVideoId : string.Empty;
-                return tit + dur + link;
+                var xx = includePlayStats ? lastPlayedThatIsntLikeRightNow : default;
+                var stats = includePlayStats && totalPlays > 0 ? " | Playing for the " + (totalPlays + 1).Ordinalize() + " time" + (xx == default ? "" : ", last played " + xx.Humanize()) : string.Empty;
+                return tit + dur + link + stats;
             }
 
             public readonly string ToCompactJson() => $"[{(ytVideoId ?? "").ToJson()}, {(title ?? "").ToJson()}, {(author ?? "").ToJson()}, {(duration ?? "").ToJson()}, {(ogRequesterDisplayName ?? "").ToJson()}]";
@@ -336,7 +346,7 @@ namespace SimpleBot
                         }
                     }
                     else
-                        Next();
+                        Next("*");
                 }
                 catch (Exception ex)
                 {
@@ -371,7 +381,7 @@ namespace SimpleBot
         private static void _yt_VideoEnded(object sender, string videoId)
         {
             if (videoId == _sr.CurrSong.ytVideoId)
-                Next();
+                Next("*");
         }
 
         static void FireNeedUpdateUI_SongList_noLock()
@@ -529,7 +539,48 @@ namespace SimpleBot
             {
                 _sr.Queue.Clear();
             }
-            Next();
+            Next("*");
+        }
+
+        public static void IncrementCurrSongPlayCount(string matchVideoId)
+        {
+            lock (_lock)
+            {
+                if (_sr.CurrSong.ytVideoId != matchVideoId)
+                    return;
+
+                _sr.CurrSong.utcLastPlayedPrev = _sr.CurrSong.utcLastPlayed;
+                _sr.CurrSong.utcLastPlayed = DateTime.UtcNow;
+                _sr.CurrSong.totalPlays++;
+                if (_sr.CurrSong.ytVideoId == _sr.Playlist[_sr.CurrIndexToPlayInPlaylist].ytVideoId)
+                {
+                    _sr.Playlist[_sr.CurrIndexToPlayInPlaylist] = _sr.CurrSong;
+                }
+            }
+        }
+
+        public static void Bump(Chatter chatter, string targetName)
+        {
+            string response = null;
+            var canonicalTargetName = targetName.CanonicalUsername();
+            lock (_lock)
+            {
+                for (int i = 0; i < _sr.Queue.Count; i++)
+                {
+                    if (_sr.Queue[i].ogRequesterDisplayName.CanonicalUsername() == canonicalTargetName)
+                    {
+                        var bumped = _sr.Queue[i];
+                        for (int j = i; j > 0; j--)
+                            _sr.Queue[i] = _sr.Queue[i - 1];
+                        _sr.Queue[0] = bumped;
+                        string timeToWaitStr = TimeToWaitStr(ApproxCurrSongTimeRemaining());
+                        response = $"SeemsGood Bumped sr by {bumped.ogRequesterDisplayName} to #1: {bumped.FullTitle()} (Playing in: {timeToWaitStr})";
+                        break;
+                    }
+                }
+                response ??= "D: No sr found by " + targetName;
+            }
+            Bot.ONE.TwSendMsg(response, chatter);
         }
 
         public static void GetCurrSong(Chatter chatter)
@@ -662,7 +713,11 @@ namespace SimpleBot
                 for (int i = 0; i < N; i++)
                 {
                     if (videoIds.Contains(_sr.Playlist[i].ytVideoId))
-                        _addToQueue(_sr.Playlist[i], true, out _);
+                    {
+                        var s = _sr.Playlist[i];
+                        // 'ref s' The request object will not be modified because these requests originate from the playlist
+                        _addToQueue(ref s, true, out _);
+                    }
                 }
             }
         }
@@ -811,8 +866,21 @@ namespace SimpleBot
             NeedUpdateUI_Paused?.Invoke(null, false);
         }
 
-        public static void Next()
+        static string _lastRequesterId;
+        static DateTime _lastRequesterTime = DateTime.MinValue;
+        public static void Next(string requesterId)
         {
+            TimeSpan delay = TimeSpan.Zero;
+            if (requesterId != "*" && requesterId != _lastRequesterId)
+            {
+                // human reaction time + chat latency + margin of error
+                delay = TimeSpan.FromSeconds(5);
+            }
+            _lastRequesterId = requesterId;
+            if ((DateTime.UtcNow - _lastRequesterTime) < delay)
+                return;
+            _lastRequesterTime = DateTime.UtcNow;
+
             string videoId = null;
             TimeSpan dur;
             lock (_lock)
@@ -863,7 +931,7 @@ namespace SimpleBot
             MessageBox.Show("Added " + importCount + " new songs to the playlist");
         }
 
-        static ReqResult _addToQueue(Req r, bool ignoreLimits, out TimeSpan durationToWait)
+        static ReqResult _addToQueue(ref Req r, bool ignoreLimits, out TimeSpan durationToWait)
         {
             durationToWait = TimeSpan.Zero;
             int maxReqsByUser = int.MaxValue;
@@ -881,15 +949,14 @@ namespace SimpleBot
             lock (_lock)
             {
                 int reqsByUser = 0;
-                if (ignoreLimits)
+                if (_sr.CurrSong.ytVideoId == r.ytVideoId)
+                    return ReqResult.AlreadyExists;
+                for (int i = 0; i < _sr.Queue.Count; i++)
                 {
-                    for (int i = 0; i < _sr.Queue.Count; i++)
-                    {
-                        if (_sr.Queue[i].ytVideoId == r.ytVideoId)
-                            return ReqResult.AlreadyExists;
-                    }
+                    if (_sr.Queue[i].ytVideoId == r.ytVideoId)
+                        return ReqResult.AlreadyExists;
                 }
-                else
+                if (!ignoreLimits)
                 {
                     for (int i = 0; i < _sr.Queue.Count; i++)
                     {
@@ -900,17 +967,39 @@ namespace SimpleBot
                     }
                 }
 
-                durationToWait = _sr.QueueDuration + _sr.CurrSong.durationTime;
-                if (_sr.SyncUTC != default)
+                durationToWait = _sr.QueueDuration + ApproxCurrSongTimeRemaining();
+                // take play stats from playlist
+                for (int i = 0; i < _sr.Playlist.Count; i++)
                 {
-                    var playedDur = DateTimeOffset.UtcNow - _sr.SyncUTC;
-                    durationToWait -= playedDur > _sr.CurrSong.durationTime ? _sr.CurrSong.durationTime : playedDur;
+                    var s = _sr.Playlist[i];
+                    if (s.ytVideoId != r.ytVideoId)
+                        continue;
+                    r.volFactor = s.volFactor;
+                    r.totalPlays = s.totalPlays;
+                    r.utcLastPlayed = s.utcLastPlayed;
+                    r.utcLastPlayedPrev = s.utcLastPlayedPrev;
+                    // preserve ogRequester
+                    if (!string.IsNullOrWhiteSpace(s.ogRequesterDisplayName))
+                        r.ogRequesterDisplayName = s.ogRequesterDisplayName;
+                    _sr.Playlist[i] = r; // updates data from youtube (like title)
+                    break;
                 }
                 _sr.Queue.Add(r);
                 _sr.QueueDuration += r.durationTime;
                 _onSongListChange_noLock();
             }
             return ReqResult.OK;
+        }
+
+        private static TimeSpan ApproxCurrSongTimeRemaining()
+        {
+            TimeSpan dur = _sr.CurrSong.durationTime;
+            if (_sr.SyncUTC != default)
+            {
+                var playedDur = DateTimeOffset.UtcNow - _sr.SyncUTC;
+                dur -= playedDur > _sr.CurrSong.durationTime ? _sr.CurrSong.durationTime : playedDur;
+            }
+            return dur;
         }
 
         public static void WrongSong(Chatter chatter)
@@ -979,10 +1068,8 @@ namespace SimpleBot
                 duration = video.duration,
                 ogRequesterDisplayName = requestedBy?.DisplayName ?? _bot.CHANNEL
             };
-            var res = _addToQueue(req, ignoreLimits: string.Equals(req.ogRequesterDisplayName, _bot.CHANNEL, StringComparison.InvariantCultureIgnoreCase), out TimeSpan timeToWait);
-
-            bool showHours = timeToWait.TotalHours >= 1;
-            string timeToWaitStr = (showHours ? (int)timeToWait.TotalHours + ":" : "") + (showHours ? timeToWait.Minutes.ToString().PadLeft(2, '0') : timeToWait.Minutes) + ':' + timeToWait.Seconds.ToString().PadLeft(2, '0');
+            var res = _addToQueue(ref req, ignoreLimits: string.Equals(req.ogRequesterDisplayName, _bot.CHANNEL, StringComparison.InvariantCultureIgnoreCase), out TimeSpan timeToWait);
+            string timeToWaitStr = TimeToWaitStr(timeToWait);
             return res switch
             {
                 ReqResult.OK => $"Added #{_sr.Queue.Count} {req.ToLongString()} (Playing in: {timeToWaitStr})",
@@ -992,6 +1079,13 @@ namespace SimpleBot
                 ReqResult.TooLong => "The video is too long D:",
                 _ => "Error: " + res,
             };
+        }
+
+        private static string TimeToWaitStr(TimeSpan timeToWait)
+        {
+            bool showHours = timeToWait.TotalHours >= 1;
+            string timeToWaitStr = (showHours ? (int)timeToWait.TotalHours + ":" : "") + (showHours ? timeToWait.Minutes.ToString().PadLeft(2, '0') : timeToWait.Minutes) + ':' + timeToWait.Seconds.ToString().PadLeft(2, '0');
+            return timeToWaitStr;
         }
 
         #endregion

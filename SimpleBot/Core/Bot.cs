@@ -584,12 +584,13 @@ namespace SimpleBot
               [BotCommandId.SongRequest_Volume] = new[] { "volume", "vol" },
               [BotCommandId.SongRequest_SetVolumeMax] = new[] { "setmaxvolume" },
               [BotCommandId.SongRequest_Next] = new[] { "skip", "skipsong", "nextsong" },
-              [BotCommandId.SongRequest_GetPrev] = new[] { "prevsong", "lastsong" },
+              [BotCommandId.SongRequest_GetPrev] = new[] { "prevsong", "lastsong", "last", "prev", "previous" },
               [BotCommandId.SongRequest_GetCurr] = new[] { "currsong", "currentsong", "songname", "cs", "song" },
               [BotCommandId.SongRequest_ShufflePlaylist] = new[] { "shuffle" },
               [BotCommandId.SongRequest_WrongSong] = new[] { "wrongsong", "oops" },
               [BotCommandId.SongRequest_MySongs] = new[] { "mysongs" },
               [BotCommandId.SongRequest_ClearQueue] = new[] { "clearsr" },
+              [BotCommandId.SongRequest_BumpUser] = new[] { "bump" },
               [BotCommandId.Reminders_Add] = new[] { "reminder", "timer", "alarm", "setreminder", "settimer", "setalarm" },
               [BotCommandId.Reminders_Show] = new[] { "reminders", "timers", "alarms", "showreminder", "showtimer", "showalarm", "myreminder", "mytimer", "myalarm", "showreminders", "showtimers", "showalarms", "myreminders", "mytimers", "myalarms" },
               //[BotCommandId.Queue_Curr] = new[] { "curr", "current" },
@@ -768,7 +769,7 @@ namespace SimpleBot
             args.RemoveAt(0);
             var argsStr = string.Join(' ', args);
             BotCommandId cid = ParseBuiltinCommandId(cmd);
-
+            
             switch (cid)
             {
                 case BotCommandId.ListCommands:
@@ -781,6 +782,11 @@ namespace SimpleBot
                     if (args.Count > 0)
                     {
                         Settings.Default.ObsWebsocketUrl = "ws://" + argsStr.Trim();
+                        Settings.Default.Save();
+                    }
+                    else
+                    {
+                        Settings.Default.ObsWebsocketUrl = "ws://localhost:4455";
                         Settings.Default.Save();
                     }
                     _obsNotifyNextConnection = true;
@@ -1215,7 +1221,7 @@ namespace SimpleBot
                 case BotCommandId.SongRequest_Next:
                     if (chatter.userLevel < UserLevel.VIP) return;
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_Next);
-                    SongRequest.Next();
+                    SongRequest.Next(chatter.DisplayName);
                     return;
                 case BotCommandId.SongRequest_GetPrev:
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_GetPrev);
@@ -1242,6 +1248,16 @@ namespace SimpleBot
                     if (chatter.userLevel != UserLevel.Streamer) return;
                     ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_ClearQueue);
                     _ = Task.Run(() => SongRequest.ClearQueue(chatter)).LogErr();
+                    return;
+                case BotCommandId.SongRequest_BumpUser:
+                    if (chatter.userLevel < UserLevel.Moderator) return;
+                    if (args.Count == 0)
+                    {
+                        TwSendMsg("Missing target username", chatter);
+                        return;
+                    }
+                    ChatActivity.IncCommandCounter(chatter, BotCommandId.SongRequest_BumpUser);
+                    _ = Task.Run(() => SongRequest.Bump(chatter, args[0])).LogErr();
                     return;
                 case BotCommandId.SongRequest_Volume:
                     if (chatter.userLevel < UserLevel.Moderator) return;

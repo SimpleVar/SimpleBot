@@ -84,11 +84,6 @@ namespace SimpleBot
                 {
                     Process.Start(new ProcessStartInfo(@"C:\Program Files\Chatterino\chatterino.exe") { WorkingDirectory = @"C:\Program Files\Chatterino\" });
                 }
-                if (Process.GetProcessesByName("obs64").Length == 0)
-                {
-                    Process.Start(new ProcessStartInfo(@"C:\Program Files\obs-studio\bin\64bit\obs64.exe") { WorkingDirectory = @"C:\Program Files\obs-studio\bin\64bit\" });
-                    Thread.Sleep(1000);
-                }
             }
 
             ApplicationConfiguration.Initialize();

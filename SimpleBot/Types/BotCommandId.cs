@@ -37,6 +37,7 @@
     SongRequest_WrongSong = 1209,
     SongRequest_MySongs = 1210,
     SongRequest_ClearQueue = 1211,
+    SongRequest_BumpUser = 1212,
     Reminders_Add = 1300,
     Reminders_Show = 1301,
     Queue_Curr = 1500,
