@@ -715,8 +715,9 @@ namespace SimpleBot
                     if (videoIds.Contains(_sr.Playlist[i].ytVideoId))
                     {
                         var s = _sr.Playlist[i];
+                        s.ogRequesterDisplayName = Bot.ONE.CHANNEL;
                         // 'ref s' The request object will not be modified because these requests originate from the playlist
-                        _addToQueue(ref s, true, out _);
+                        _ = _addToQueue(ref s, true, out _);
                     }
                 }
             }
@@ -725,6 +726,25 @@ namespace SimpleBot
         public static void MoveToTop(HashSet<string> videoIds)
         {
             _removeManySongsFromPlaylist(videoIds, true);
+        }
+
+        public static int RemoveManySongsFromQueue(HashSet<string> videoIds)
+        {
+            lock (_lock)
+            {
+                int c = 0;
+                for (int i = _sr.Queue.Count - 1; i >= 0; i--)
+                {
+                    if (videoIds.Contains(_sr.Queue[i].ytVideoId))
+                    {
+                        _sr.Queue.RemoveAt(i);
+                        c++;
+                    }
+                }
+                if (c > 0)
+                    _onSongListChange_noLock();
+                return c;
+            }
         }
 
         public static void RemoveManySongsFromPlaylist(HashSet<string> videoIds)
@@ -758,6 +778,26 @@ namespace SimpleBot
                 if (moveToTop)
                     _sr.Playlist.InsertRange(_sr.CurrIndexToPlayInPlaylist + 1, removedSongs);
                 _onSongListChange_noLock();
+            }
+        }
+
+        public static void RemoveFromQueueByUser(string displayName)
+        {
+            displayName = displayName.CanonicalUsername();
+            lock (_lock)
+            {
+                bool any = false;
+                for (int i = _sr.Queue.Count - 1; i >= 0; i--)
+                {
+                    if (_sr.Queue[i].ogRequesterDisplayName.CanonicalUsername() == displayName)
+                    {
+                        _sr.QueueDuration -= _sr.Queue[i].durationTime;
+                        _sr.Queue.RemoveAt(i);
+                        any = true;
+                    }
+                }
+                if (any)
+                    _onSongListChange_noLock();
             }
         }
 
@@ -979,9 +1019,11 @@ namespace SimpleBot
                     r.utcLastPlayed = s.utcLastPlayed;
                     r.utcLastPlayedPrev = s.utcLastPlayedPrev;
                     // preserve ogRequester
+                    var currRequester = r.ogRequesterDisplayName;
                     if (!string.IsNullOrWhiteSpace(s.ogRequesterDisplayName))
                         r.ogRequesterDisplayName = s.ogRequesterDisplayName;
                     _sr.Playlist[i] = r; // updates data from youtube (like title)
+                    r.ogRequesterDisplayName = currRequester;
                     break;
                 }
                 _sr.Queue.Add(r);

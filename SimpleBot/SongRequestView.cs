@@ -155,6 +155,7 @@ namespace SimpleBot
                 }
                 dgvQueueAndPlaylist.ClearSelection();
                 dgvQueueAndPlaylist.ResumeLayout(true);
+                filterRows();
             });
         }
 
@@ -323,7 +324,8 @@ namespace SimpleBot
         private void ctxMenuItem_delete_Click(object sender, EventArgs e)
         {
             var ids = GetSelectedVideoIds();
-            SongRequest.RemoveManySongsFromPlaylist(ids);
+            if (SongRequest.RemoveManySongsFromQueue(ids) < ids.Count)
+                SongRequest.RemoveManySongsFromPlaylist(ids);
         }
 
         private void dgvQueueAndPlaylist_MouseClick(object sender, MouseEventArgs e)
@@ -389,6 +391,8 @@ namespace SimpleBot
             for (int i = 0; i < cells.Count; i++)
             {
                 var c = cells[i];
+                if (!c.Visible)
+                    continue;
                 var rowIdx = c.RowIndex;
                 var row = dgvQueueAndPlaylist.Rows[rowIdx];
                 if (row.Tag == tag)

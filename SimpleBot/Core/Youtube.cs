@@ -192,11 +192,22 @@ document.body.append(tag);
             // www.youtube doesn't work (they are on to me with a shadow-ghost-silent-undocument error ooo scary)
             // music.youtube works hehe
             webView.Invoke(() => webView.CoreWebView2.Navigate("https://music.youtube.com/"));
+
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                bool visible = _ytViewForm?.Visible == true;
+                var x = Bot.ONE._obs.IsConnected;
+                obsVidPlayer.SetEnabled(visible);
+                obsSongInfo.SetEnabled(visible);
+            });
+
             return Task.CompletedTask;
         }
 
         Form _ytViewForm;
         ObsItem obsVidPlayer = new("vid", "CODE");
+        ObsItem obsSongInfo = new("song info", "CODE");
 
         // Sometimes WebView2 freezes, it seems to help turning off hardware-acceleration on Edge browser :)
         public void ShowOrHide()
@@ -242,11 +253,13 @@ document.body.append(tag);
                 {
                     _ytViewForm.Hide();
                     obsVidPlayer.SetEnabled(false);
+                    obsSongInfo.SetEnabled(false);
                 }
                 else
                 {
                     _ytViewForm.Show();
                     obsVidPlayer.SetEnabled(true);
+                    obsSongInfo.SetEnabled(true);
                 }
             });
         }

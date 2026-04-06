@@ -343,6 +343,7 @@ namespace SimpleBot
                     new TwEventSubReq(1, "channel.cheer").Cond("broadcaster_user_id", CHANNEL_ID),
                     new TwEventSubReq(1, "channel.raid").Cond("to_broadcaster_user_id", CHANNEL_ID),
                     new TwEventSubReq(1, "channel.charity_campaign.donate").Cond("broadcaster_user_id", CHANNEL_ID),
+                    new TwEventSubReq(1, "channel.ban").Cond("broadcaster_user_id", CHANNEL_ID),
                 };
                 foreach (var evSub in evSubs)
                 {
@@ -458,6 +459,13 @@ namespace SimpleBot
                         return;
                 }
                 TwSendMsg("Thanks for following @" + ev.UserName);
+            };
+            twEventSub.ChannelBan += (o, _e) =>
+            {
+                var e = _e.Notification.Payload.Event;
+                if (!e.IsPermanent)
+                    return;
+                SongRequest.RemoveFromQueueByUser(e.UserName);
             };
             if (!(await twEventSub.ConnectAsync().ConfigureAwait(true)))
                 Log("[twEventSub] failed to connect");
