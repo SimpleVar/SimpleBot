@@ -1,4 +1,5 @@
-﻿using Google.Apis.Auth.OAuth2;
+﻿using AxWMPLib;
+using Google.Apis.Auth.OAuth2;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Humanizer;
@@ -20,6 +21,11 @@ namespace SimpleBot
             public int totalPlays;
             public DateTime utcLastPlayedPrev;
             public DateTime utcLastPlayed;
+
+            [JsonIgnore]
+            string _searchableString;
+            public string GetSearchableString() => _searchableString ??= string.Join(" § ", author ?? "", title ?? "", ogRequesterDisplayName ?? "");
+
             private DateTime lastPlayedThatIsntLikeRightNow => (DateTime.UtcNow - utcLastPlayed).Duration() * 2 < durationTime ? utcLastPlayedPrev : utcLastPlayed;
 
             public static readonly TimeSpan FAILED_TO_PARSE_DEFAULT_DURATION = TimeSpan.Zero;
@@ -950,7 +956,7 @@ namespace SimpleBot
                 _playVid(videoId, dur);
         }
 
-        public static void ImportToPlaylist_nochecks(Req[] reqs)
+        public static void ImportToPlaylist_nochecks(IEnumerable<Req> reqs)
         {
             /*
               // NightBot export:
@@ -967,6 +973,7 @@ namespace SimpleBot
                 var newReqs = reqs.Where(r => !s.Contains(r.ytVideoId)).ToArray();
                 _sr.Playlist.AddRange(newReqs);
                 importCount = newReqs.Length;
+                _onSongListChange_noLock();
             }
             MessageBox.Show("Added " + importCount + " new songs to the playlist");
         }
@@ -1091,6 +1098,20 @@ namespace SimpleBot
             }).LogErr();
         }
 
+        public static async Task<Req> Search(string query, string requestedBy = null)
+        {
+            if (await _yt.Search(query) is not Youtube.YtVideo video)
+                return default;
+            return new Req
+            {
+                ytVideoId = video.id,
+                title = video.title,
+                author = video.author,
+                duration = video.duration,
+                ogRequesterDisplayName = requestedBy ?? _bot.CHANNEL
+            };
+        }
+
         /// <summary>
         /// A null requestedBy means the request is by the streamer, and ignore limitations
         /// </summary>
@@ -1099,23 +1120,15 @@ namespace SimpleBot
         /// <returns></returns>
         public static async Task<string> _RequestSong(string query, Chatter requestedBy)
         {
-            if (await _yt.Search(query) is not Youtube.YtVideo video)
+            var req = await Search(query, requestedBy?.DisplayName);
+            if (string.IsNullOrEmpty(req.ytVideoId))
                 return "No video found for: " + query;
-
-            var req = new Req
-            {
-                ytVideoId = video.id,
-                title = video.title,
-                author = video.author,
-                duration = video.duration,
-                ogRequesterDisplayName = requestedBy?.DisplayName ?? _bot.CHANNEL
-            };
             var res = _addToQueue(ref req, ignoreLimits: string.Equals(req.ogRequesterDisplayName, _bot.CHANNEL, StringComparison.InvariantCultureIgnoreCase), out TimeSpan timeToWait);
             string timeToWaitStr = TimeToWaitStr(timeToWait);
             return res switch
             {
                 ReqResult.OK => $"Added #{_sr.Queue.Count} {req.ToLongString()} (Playing in: {timeToWaitStr})",
-                ReqResult.AlreadyExists => $"\"{video.title}\" is already in the queue",
+                ReqResult.AlreadyExists => $"\"{req.title}\" is already in the queue",
                 ReqResult.TooManyOngoingRequestsByUser => "You have enough requests already in the queue",
                 ReqResult.TooShort => "The video is too short D:",
                 ReqResult.TooLong => "The video is too long D:",

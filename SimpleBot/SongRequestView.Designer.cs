@@ -77,6 +77,7 @@
             panelSettings = new Panel();
             panel4 = new Panel();
             btnShowHideSettings = new Button();
+            btnAddManyFromClipboard = new Button();
             ((System.ComponentModel.ISupportInitialize)nudMinSeconds).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudMaxSeconds).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudMaxPerUser).BeginInit();
@@ -565,6 +566,7 @@
             panelSettings.Controls.Add(label3);
             panelSettings.Controls.Add(btnImportPlaylist);
             panelSettings.Controls.Add(label4);
+            panelSettings.Controls.Add(btnAddManyFromClipboard);
             panelSettings.Dock = DockStyle.Top;
             panelSettings.Location = new Point(0, 0);
             panelSettings.Margin = new Padding(0);
@@ -598,6 +600,16 @@
             btnShowHideSettings.Text = "Show Settings";
             btnShowHideSettings.UseVisualStyleBackColor = true;
             btnShowHideSettings.Click += btnShowHideSettings_Click;
+            // 
+            // btnAddManyFromClipboard
+            // 
+            btnAddManyFromClipboard.Location = new Point(177, 71);
+            btnAddManyFromClipboard.Name = "btnAddManyFromClipboard";
+            btnAddManyFromClipboard.Size = new Size(51, 20);
+            btnAddManyFromClipboard.TabIndex = 10;
+            btnAddManyFromClipboard.Text = "↩";
+            btnAddManyFromClipboard.UseVisualStyleBackColor = true;
+            btnAddManyFromClipboard.Click += btnAddManyFromClipboard_Click;
             // 
             // SongRequestView
             // 
@@ -683,5 +695,6 @@
         private Label label7;
         private ToolStripMenuItem ctxMenuItem_addToQueue;
         internal NumericUpDown nudSongVolumeFactor;
+        private Button btnAddManyFromClipboard;
     }
 }

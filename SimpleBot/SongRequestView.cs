@@ -27,6 +27,9 @@ namespace SimpleBot
             nudMaxVolume.Value = sliderVolume.Maximum;
 
             txtSearch.TextChanged += ((EventHandler)TxtSearch_TextChanged).Debounce(100);
+
+            dgvQueueAndPlaylist.VirtualMode = true;
+            dgvQueueAndPlaylist.CellValueNeeded += DgvQueueAndPlaylist_CellValueNeeded;
         }
 
         private void SongRequestView_Load(object sender, EventArgs e)
@@ -39,7 +42,7 @@ namespace SimpleBot
 
         private void cbIsSearchRegex_CheckedChanged(object sender, EventArgs e)
         {
-            filterRows();
+            BeginInvoke(filterRows);
         }
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)
@@ -65,50 +68,53 @@ namespace SimpleBot
             }
 
             dgvQueueAndPlaylist.SuspendLayout();
-            var autoSizeModes = new DataGridViewAutoSizeColumnMode[dgvQueueAndPlaylist.ColumnCount];
-            for (int i = 0; i < dgvQueueAndPlaylist.ColumnCount; i++)
-            {
-                var col = dgvQueueAndPlaylist.Columns[i];
-                autoSizeModes[i] = col.AutoSizeMode;
-                col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            }
-
-            string getTitle(DataGridViewRow row) => TextUtils.FoldToASCII((string)row.Cells[1].Value);
-            string getAuthor(DataGridViewRow row) => TextUtils.FoldToASCII((string)row.Cells[2].Value);
-            string getRequestedBy(DataGridViewRow row) => TextUtils.FoldToASCII((string)row.Cells[4].Value);
+            _cacheFiltered.Clear();
 
             if (rgx != null)
             {
-                for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
+                for (int i = 0; i < _cache.Count; i++)
                 {
-                    var row = dgvQueueAndPlaylist.Rows[i];
-                    row.Visible = new[]
-                    {
-                        getTitle(row),
-                        getAuthor(row),
-                        getRequestedBy(row)
-                    }.Any(x => !string.IsNullOrWhiteSpace(x) && rgx.IsMatch(x));
+                    var row = _cache[i];
+                    if (rgx.IsMatch(row.Item7))
+                        _cacheFiltered.Add(i);
                 }
             }
             else
             {
-                for (int i = 0; i < dgvQueueAndPlaylist.RowCount; i++)
+                var query = txtSearch.Text;
+                for (int i = 0; i < _cache.Count; i++)
                 {
-                    var row = dgvQueueAndPlaylist.Rows[i];
-                    row.Visible = new[]
-                    {
-                        getTitle(row),
-                        getAuthor(row),
-                        getRequestedBy(row)
-                    }.Any(x => !string.IsNullOrWhiteSpace(x) && x.Contains(txtSearch.Text, StringComparison.InvariantCultureIgnoreCase));
+                    var row = _cache[i];
+                    if (row.Item7.Contains(query, StringComparison.InvariantCultureIgnoreCase))
+                        _cacheFiltered.Add(i);
                 }
             }
-
-            for (int i = 0; i < dgvQueueAndPlaylist.ColumnCount; i++)
-                dgvQueueAndPlaylist.Columns[i].AutoSizeMode = autoSizeModes[i];
-
+            
             dgvQueueAndPlaylist.ClearSelection();
+            dgvQueueAndPlaylist.Rows.Clear();
+            dgvQueueAndPlaylist.RowCount = _cacheFiltered.Count == 0 ? 0 : 1;
+            if (_cacheFiltered.Count > 1)
+                dgvQueueAndPlaylist.Rows.AddCopies(0, _cacheFiltered.Count - 1);
             dgvQueueAndPlaylist.ResumeLayout(true);
+        }
+
+        List<(string, string, string, string, string, string, string)> _cache = [];
+        List<int> _cacheFiltered = [];
+
+        private void DgvQueueAndPlaylist_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
+        {
+            var x = _cache[_cacheFiltered[e.RowIndex]];
+            e.Value = e.ColumnIndex switch
+            {
+                0 => x.Item1,
+                1 => x.Item2,
+                2 => x.Item3,
+                3 => x.Item4,
+                4 => x.Item5,
+                5 => x.Item6,
+                6 => x.Item7,
+                _ => throw new ApplicationException()
+            };
         }
 
         private void dgvQueueAndPlaylist_CellContentDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -135,26 +141,29 @@ namespace SimpleBot
                 lblPlaylistLength.Text = "size: " + e.Playlist.Count;
 
                 dgvQueueAndPlaylist.SuspendLayout();
-                dgvQueueAndPlaylist.Rows.Clear();
+                _cache.Clear();
                 // queue
                 for (int i = 0; i < e.Queue.Count; i++)
                 {
                     var q = e.Queue[i];
-                    dgvQueueAndPlaylist.Rows.Add(i + 1, q.title, q.author, q.duration, q.ogRequesterDisplayName, q.ytVideoId);
+                    //dgvQueueAndPlaylist.Rows.Add(i + 1, q.title, q.author, q.duration, q.ogRequesterDisplayName, q.ytVideoId);
+                    _cache.Add(((i + 1).ToString(), q.title, q.author, q.duration, q.ogRequesterDisplayName, q.ytVideoId, q.GetSearchableString()));
                 }
                 // playlist
                 for (int i = e.CurrIndexToPlayInPlaylist + 1; i < e.Playlist.Count; i++)
                 {
                     var p = e.Playlist[i];
-                    dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
+                    //dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
+                    _cache.Add(("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId, p.GetSearchableString()));
                 }
                 for (int i = 0; i <= e.CurrIndexToPlayInPlaylist; i++)
                 {
                     var p = e.Playlist[i];
-                    dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
+                    //dgvQueueAndPlaylist.Rows.Add("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId);
+                    _cache.Add(("", p.title, p.author, p.duration, p.ogRequesterDisplayName, p.ytVideoId, p.GetSearchableString()));
                 }
-                dgvQueueAndPlaylist.ClearSelection();
-                dgvQueueAndPlaylist.ResumeLayout(true);
+                //dgvQueueAndPlaylist.ClearSelection();
+                //dgvQueueAndPlaylist.ResumeLayout(true);
                 filterRows();
             });
         }
@@ -237,21 +246,54 @@ namespace SimpleBot
             _ = Task.Run(() => SongRequest._SetVolume(vol)).LogErr();
         }
 
+        private void btnAddManyFromClipboard_Click(object sender, EventArgs e)
+        {
+            var text = Clipboard.GetText().Trim();
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var ids = text
+                        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(Youtube.GetIdFromUrl)
+                        .Where(x => x != null)
+                        .ToArray();
+                    if (ids.Length == 0)
+                        return;
+                    if (MessageBox.Show("Add " + ids.Length + " ids to playlist?", "Song Requests", MessageBoxButtons.OKCancel) != DialogResult.OK)
+                        return;
+                    var reqs = new List<SongRequest.Req>();
+                    foreach (var id in ids)
+                    {
+                        var req = await SongRequest.Search(id);
+                        if (string.IsNullOrEmpty(req.ytVideoId))
+                            continue;
+                        reqs.Add(req);
+                    }
+                    SongRequest.ImportToPlaylist_nochecks(reqs);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error: " + ex.Message);
+                    return;
+                }
+            });
+        }
+
         private void btnImportPlaylist_Click(object sender, EventArgs e)
         {
             if (ofd.ShowDialog() != DialogResult.OK)
                 return;
-            SongRequest.Req[] songs;
             try
             {
-                songs = File.ReadAllText(ofd.FileName).FromJson<SongRequest.Req[]>();
+                var songs = File.ReadAllText(ofd.FileName).FromJson<SongRequest.Req[]>();
+                SongRequest.ImportToPlaylist_nochecks(songs);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error: " + ex.Message);
                 return;
             }
-            SongRequest.ImportToPlaylist_nochecks(songs);
         }
 
         private void btnExportPlaylist_Click(object sender, EventArgs e)

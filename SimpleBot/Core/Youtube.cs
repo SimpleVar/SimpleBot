@@ -310,7 +310,7 @@ document.body.append(tag);
             return paused;
         }
 
-        private string GetIdFromUrl(string url)
+        public static string GetIdFromUrl(string url)
         {
             try
             {
